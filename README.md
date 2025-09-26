@@ -8,6 +8,7 @@ Applications include **classification**, **regression**, **NLP**, and **deep lea
 
 ## 📂 Repository Structure
 - `data/` : raw and processed datasets use to do linear_regression_et_polinomiale (`.csv`, ...)
+- `doc/`: raw data use to do a notebook supervised_machine_learning(`.csv`)
 - `dataset` : data use to do supervise machine learning(apprentissage_supervise) (`.parquet` etc)
 - `scripts/` : Python scripts for preprocessing, training, and evaluation
 - `notebooks/` : Jupyter/Colab notebooks with tutorials and experiments
