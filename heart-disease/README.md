@@ -43,7 +43,9 @@ Exploratory data analysis (EDA)
 
 Data preprocessing and cleaning
 
-Predictive modeling (supervised classification)
+Predictive modeling (supervised classification, explore different algorithms)
+
+Use Lime and SHAP for interpretation of our model
 
 Model evaluation (accuracy, recall, F1-score, AUC)
 
