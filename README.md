@@ -2,7 +2,7 @@
 
 This repository explores Machine Learning through projects, scripts, and tutorials.  
 It covers **data preprocessing**, **feature engineering**, **model training**, **evaluation**, and **deployment** using frameworks like **scikit-learn**, **TensorFlow**, and **PyTorch**.  
-Applications include **classification**, **regression**, **NLP**, and **deep learning**, **supervise learning**, **semi supervised learning**, **reinforcement learning**, **Unsupervised learning**
+Applications include **classification**, **regression**, **NLP**, and **deep learning**, **supervise learning**, **semi supervised learning**, **reinforcement learning**, **Unsupervised learning**, **Transcriptomics Analysis**, **Genomics analysis**, **Cancer genomics analysis**, **proteomics**
 
 ---
 
