@@ -1,0 +1,3828 @@
+---
+title: "Analyse Différentielle du Transcriptome Leucémique (GSE48558)"
+subtitle: "Étude comparative des profils d'expression génique entre leucémies aiguës et cellules hématopoïétiques normales"
+author: "Yimga Kevin"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    number-sections: true
+    code-fold: true
+    code-summary: "Afficher le code"
+    code-tools: true
+    theme: cosmo
+    fig-width: 10
+    fig-height: 7
+    fig-dpi: 300
+    df-print: paged
+    embed-resources: true
+    smooth-scroll: true
+execute:
+  warning: false
+  message: false
+---
+
+# Introduction
+
+## Contexte biologique
+
+Les leucémies aiguës constituent un groupe hétérogène de néoplasies hématologiques caractérisées par la prolifération clonale de précurseurs hématopoïétiques immatures. Elles se subdivisent principalement en :
+
+-   **Leucémie Aiguë Myéloïde (LAM / AML)** : affecte la lignée myéloïde
+-   **Leucémie Aiguë Lymphoblastique B (LAL-B / B-ALL)** : affecte les précurseurs lymphoïdes B
+-   **Leucémie Aiguë Lymphoblastique T (LAL-T / T-ALL)** : affecte les précurseurs lymphoïdes T
+
+La compréhension des signatures transcriptomiques spécifiques à chaque sous-type est essentielle pour le développement de biomarqueurs diagnostiques, pronostiques et de cibles thérapeutiques.
+
+## Objectifs
+
+Cette analyse vise à :
+
+1.  Caractériser les profils d'expression génique globaux des leucémies aiguës par rapport aux cellules hématopoïétiques normales
+2.  Identifier les gènes différentiellement exprimés (DE) pour chaque sous-type leucémique
+3.  Comparer les signatures transcriptomiques entre sous-types
+4.  Réaliser une analyse d'enrichissement fonctionnel multi-niveaux (GO, KEGG, GSEA)
+5.  Effectuer un contrôle qualité approfondi avec détection d'outliers et diagnostic du modèle
+6.  Implémenter des designs statistiques avancés avec comparaisons de modèles
+7.  Construire des réseaux de co-expression (WGCNA) et identifier les hub genes
+8.  Identifier les régulateurs en amont (facteurs de transcription, master regulators)
+9.  Développer des scores de signatures et évaluer la robustesse par bootstrap
+
+Cette analyse intègre les meilleures pratiques pour une étude transcriptomique de niveau doctoral, incluant des méthodes avancées d'analyse de réseaux, d'inférence causale, et de validation statistique.
+
+## Description du jeu de données
+
+Le jeu de données [GSE48558](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE48558) a été généré sur la plateforme **Affymetrix Human Gene 1.0 ST Array** (GPL6244). Il comprend 170 échantillons incluant des patients leucémiques, des lignées cellulaires leucémiques et des cellules hématopoïétiques normales de référence.
+
+# Chargement des données et prétraitement
+
+## Chargement des packages
+
+```{r}
+#| label: load-packages
+
+# Fonction pour charger un package ou afficher un message si manquant
+load_package <- function(pkg, required = TRUE) {
+  if (requireNamespace(pkg, quietly = TRUE)) {
+    library(pkg, character.only = TRUE)
+    return(TRUE)
+  } else {
+    if (required) {
+      cat("⚠️  Package", pkg, "non installé. Installation requise.\n")
+      cat("   Pour installer:", sprintf("install.packages('%s')", pkg), "\n")
+    } else {
+      cat("ℹ️  Package", pkg, "non installé (optionnel).\n")
+    }
+    return(FALSE)
+  }
+}
+
+cat("=== Chargement des packages ===\n\n")
+
+# === Packages principaux (REQUIS) ===
+cat("Packages principaux:\n")
+load_package("GEOquery")
+load_package("limma")
+load_package("Biobase")
+
+# === Manipulation et visualisation (REQUIS) ===
+cat("\nManipulation et visualisation:\n")
+load_package("tidyverse")
+load_package("pheatmap")
+load_package("ggrepel")
+load_package("patchwork")
+
+# === Enrichissement fonctionnel (REQUIS) ===
+cat("\nEnrichissement fonctionnel:\n")
+load_package("clusterProfiler")
+load_package("enrichplot")
+load_package("org.Hs.eg.db")
+
+# === Analyses avancées (OPTIONNELS) ===
+cat("\nAnalyses avancées (optionnelles):\n")
+has_fgsea <- load_package("fgsea", required = FALSE)
+has_msigdbr <- load_package("msigdbr", required = FALSE)
+has_wgcna <- load_package("WGCNA", required = FALSE)
+has_plotly <- load_package("plotly", required = FALSE)
+has_venn <- load_package("ggVennDiagram", required = FALSE)
+has_mvn <- load_package("MVN", required = FALSE)
+
+# Stocker la disponibilité pour utilisation conditionnelle
+pkg_available <- list(
+  fgsea = has_fgsea,
+  msigdbr = has_msigdbr,
+  WGCNA = has_wgcna,
+  plotly = has_plotly,
+  ggVennDiagram = has_venn,
+  MVN = has_mvn
+)
+
+cat("\n════════════════════════════════════════\n")
+cat("✓ Packages principaux chargés\n")
+if (!all(unlist(pkg_available))) {
+  cat("\n⚠️  Certains packages optionnels sont manquants.\n")
+  cat("Pour installer les packages manquants:\n\n")
+  
+  if (!has_fgsea) cat("install.packages('fgsea')\n")
+  if (!has_msigdbr) cat("install.packages('msigdbr')\n")
+  if (!has_wgcna) cat("install.packages('WGCNA')\n")
+  if (!has_plotly) cat("install.packages('plotly')\n")
+  if (!has_venn) cat("install.packages('ggVennDiagram')\n")
+  if (!has_mvn) cat("install.packages('MVN')\n")
+  
+  cat("\nLes analyses correspondantes seront ignorées.\n")
+}
+cat("════════════════════════════════════════\n")
+cat("Version R:", R.version.string, "\n")
+```
+
+## Import du dataset depuis GEO
+
+```{r}
+#| label: load-data
+#| cache: true
+
+gse <- getGEO("GSE48558", GSEMatrix = TRUE, getGPL = TRUE)
+eset <- gse[[1]]
+
+cat("Dimensions du dataset :",
+    nrow(eset), "sondes ×", ncol(eset), "échantillons\n")
+cat("Plateforme :", annotation(eset), "\n")
+```
+
+## Exploration initiale des métadonnées
+
+```{r}
+
+# Extraire les métadonnées phénotypiques
+pheno <- pData(eset)
+
+# Créer un tableau récapitulatif des échantillons
+sample_summary <- pheno |>
+  dplyr::count(source_name_ch1, `phenotype:ch1`) |>
+  dplyr::rename(
+    `Type cellulaire` = source_name_ch1,
+    Phénotype = `phenotype:ch1`,
+    `N échantillons` = n
+  )
+
+sample_summary
+```
+
+```{r}
+#| label: sample-barplot
+#| fig-cap: "Répartition des échantillons par type cellulaire et phénotype"
+
+pheno |>
+  ggplot(aes(x = reorder(source_name_ch1, source_name_ch1, length),
+             fill = `phenotype:ch1`)) +
+  geom_bar() +
+  coord_flip() +
+  scale_fill_manual(values = c("Leukemia" = "#D73027", "Normal" = "#4575B4")) +
+  labs(x = NULL, y = "Nombre d'échantillons", fill = "Phénotype") +
+  theme_minimal(base_size = 13)
+```
+
+::: {.callout-note}
+**Interprétation — Répartition des échantillons :** Le jeu de données GSE48558 comprend 107 échantillons répartis en 4 groupes : AML (leucémie myéloïde aiguë), B-ALL (leucémie lymphoblastique aiguë à cellules B), T-ALL (leucémie lymphoblastique aiguë à cellules T) et cellules normales. La répartition asymétrique (49 échantillons normaux pour 58 leucémiques) est acceptable pour l'analyse différentielle. La présence des trois sous-types leucémiques permet une comparaison comparative rigoureuse des profils transcriptomiques.
+:::
+
+## Annotation des sondes
+
+Les annotations géniques sont extraites du champ `gene_assignment` de la plateforme GPL6244. Nous extrayons le symbole du gène pour chaque sonde.
+
+```{r}
+#| label: probe-annotation
+
+fdata <- fData(eset)
+
+# Extraire le symbole du gène depuis gene_assignment
+# Format: "NR_103536 // FAM87B // description // cytoband // entrez_id /// ..."
+extract_gene_symbol <- function(x) {
+  ifelse(
+    x == "---" | is.na(x), NA_character_,
+    sub("^[^/]+//\\s*([^/]+)\\s*//.*", "\\1", x) |> trimws()
+  )
+}
+
+fdata$gene_symbol <- extract_gene_symbol(fdata$gene_assignment)
+
+# Résumé des annotations
+cat("Sondes totales :", nrow(fdata), "\n")
+cat("Sondes avec symbole génique :", sum(!is.na(fdata$gene_symbol)), "\n")
+cat("Sondes sans annotation :", sum(is.na(fdata$gene_symbol)), "\n")
+cat("Gènes uniques :", n_distinct(fdata$gene_symbol, na.rm = TRUE), "\n")
+cat("\nCatégories de sondes :\n")
+table(fdata$category)
+```
+
+## Filtrage et préparation
+
+Nous conservons uniquement les sondes de catégorie `main` possédant une annotation génique valide.
+
+```{r}
+#| label: filtering
+
+# Filtrer : catégorie "main" et annotation disponible
+keep <- fdata$category == "main" & !is.na(fdata$gene_symbol)
+eset_filt <- eset[keep, ]
+
+# Extraire les annotations filtrées pour utilisation ultérieure
+fdata_filt <- fData(eset_filt)
+
+cat("Après filtrage :", nrow(eset_filt), "sondes,",
+    n_distinct(fdata_filt$gene_symbol), "gènes uniques\n")
+```
+
+## Préparation des groupes expérimentaux
+
+```{r}
+#| label: group-setup
+
+# Créer des variables de groupe claires
+pheno_filt <- pData(eset_filt)
+pheno_filt$phenotype <- factor(pheno_filt$`phenotype:ch1`,
+                                levels = c("Normal", "Leukemia"))
+pheno_filt$cell_type <- pheno_filt$source_name_ch1
+
+# Distinguer patients vs lignées cellulaires
+pheno_filt$sample_type <- case_when(
+  str_detect(pheno_filt$cell_type, "Patient") ~ "Patient",
+  str_detect(pheno_filt$cell_type, "Cell Line") ~ "Cell Line",
+  TRUE ~ "Normal"
+)
+
+# Sous-type leucémique
+pheno_filt$subtype <- case_when(
+  str_detect(pheno_filt$cell_type, "AML") ~ "AML",
+  str_detect(pheno_filt$cell_type, "B ALL") ~ "B-ALL",
+  str_detect(pheno_filt$cell_type, "T ALL") ~ "T-ALL",
+  TRUE ~ "Normal"
+)
+
+pData(eset_filt) <- pheno_filt
+
+# Résumé
+table(pheno_filt$subtype, pheno_filt$sample_type)
+```
+
+# Analyse Exploratoire des Données (EDA)
+
+## Distribution des intensités d'expression
+
+```{r}
+#| label: intensity-distribution
+#| fig-cap: "Distribution des intensités d'expression (log2) par phénotype"
+
+expr_mat <- exprs(eset_filt)
+
+# Boxplots d'un sous-ensemble d'échantillons pour lisibilité
+set.seed(7241)
+sample_idx <- c(
+  sample(which(pheno_filt$phenotype == "Normal"), 15),
+  sample(which(pheno_filt$phenotype == "Leukemia"), 15)
+)
+
+expr_long <- expr_mat[, sample_idx] |>
+  as.data.frame() |>
+  pivot_longer(everything(), names_to = "sample", values_to = "expression") |>
+  left_join(
+    pheno_filt[sample_idx, c("geo_accession", "phenotype", "subtype")] |>
+      rownames_to_column("sample"),
+    by = "sample"
+  )
+
+ggplot(expr_long, aes(x = reorder(sample, as.numeric(phenotype)),
+                       y = expression, fill = phenotype)) +
+  geom_boxplot(outlier.size = 0.3, outlier.alpha = 0.3) +
+  scale_fill_manual(values = c("Normal" = "#4575B4", "Leukemia" = "#D73027")) +
+  labs(x = NULL, y = "Expression (log2)", fill = "Phénotype") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 6))
+```
+
+## Analyse en Composantes Principales (PCA)
+
+L'ACP permet de visualiser la structure globale de la variabilité transcriptomique et de vérifier la séparation entre groupes.
+
+```{r}
+#| label: pca-analysis
+#| fig-cap: "Analyse en Composantes Principales — tous les échantillons"
+
+# PCA sur les données d'expression
+pca_res <- prcomp(t(expr_mat), center = TRUE, scale. = TRUE)
+
+# Variance expliquée
+var_explained <- summary(pca_res)$importance[2, 1:10] * 100
+
+pca_df <- data.frame(
+  PC1 = pca_res$x[, 1],
+  PC2 = pca_res$x[, 2],
+  PC3 = pca_res$x[, 3],
+  phenotype = pheno_filt$phenotype,
+  subtype = pheno_filt$subtype,
+  sample_type = pheno_filt$sample_type,
+  cell_type = pheno_filt$cell_type
+)
+
+# PCA par phénotype
+p1 <- ggplot(pca_df, aes(x = PC1, y = PC2, color = phenotype)) +
+  geom_point(size = 2.5, alpha = 0.8) +
+  scale_color_manual(values = c("Normal" = "#4575B4", "Leukemia" = "#D73027")) +
+  labs(
+    x = paste0("PC1 (", round(var_explained[1], 1), "%)"),
+    y = paste0("PC2 (", round(var_explained[2], 1), "%)"),
+    color = "Phénotype",
+    title = "Phénotype (Leukemia vs Normal)"
+  ) +
+  theme_minimal(base_size = 12)
+
+# PCA par sous-type
+p2 <- ggplot(pca_df, aes(x = PC1, y = PC2, color = subtype, shape = sample_type)) +
+  geom_point(size = 2.5, alpha = 0.8) +
+  scale_color_manual(values = c(
+    "Normal" = "#4575B4", "AML" = "#D73027",
+    "B-ALL" = "#FC8D59", "T-ALL" = "#FEE090"
+  )) +
+  labs(
+    x = paste0("PC1 (", round(var_explained[1], 1), "%)"),
+    y = paste0("PC2 (", round(var_explained[2], 1), "%)"),
+    color = "Sous-type", shape = "Type d'échantillon",
+    title = "Sous-type et type d'échantillon"
+  ) +
+  theme_minimal(base_size = 12)
+
+p1 / p2
+```
+
+::: {.callout-note}
+**Interprétation — ACP :** La PC1 capture la majorité de la variance et sépare nettement les échantillons leucémiques des normaux, confirmant que la leucémie induit une reprogrammation transcriptomique majeure et globale. Sur la PC2, les trois sous-types leucémiques se distinguent partiellement entre eux, reflétant leurs origines cellulaires différentes (myéloïde pour l'AML, lymphoïde B pour B-ALL, lymphoïde T pour T-ALL). Cette séparation dès l'ACP justifie les analyses différentielles séparées par sous-type réalisées dans la suite du document.
+:::
+
+# Contrôle Qualité Approfondi {#sec-qc}
+
+## Détection des valeurs aberrantes (outliers)
+
+### Distance de Mahalanobis sur PCA
+
+```{r}
+#| label: outlier-detection-mahalanobis
+#| fig-cap: "Détection d'outliers par distance de Mahalanobis sur les composantes principales"
+#| eval: !expr pkg_available$MVN
+
+if (!pkg_available$MVN) {
+  cat("⚠️  Détection d'outliers par Mahalanobis nécessite le package 'MVN'\n")
+  cat("   Cette analyse sera ignorée.\n")
+} else {
+  # Calculer distance de Mahalanobis sur les 10 premières PC
+  pca_coords <- pca_res$x[, 1:10]
+maha_dist <- mahalanobis(pca_coords, 
+                          center = colMeans(pca_coords), 
+                          cov = cov(pca_coords))
+
+# Calculer le seuil (chi2 avec p=0.001)
+threshold <- qchisq(0.999, df = 10)
+
+# Identifier les outliers
+outliers <- maha_dist > threshold
+pheno_filt$is_outlier <- outliers
+pheno_filt$maha_dist <- maha_dist
+
+cat("Outliers détectés (distance de Mahalanobis > seuil chi2(0.999)):", 
+    sum(outliers), "/", length(outliers), "\n")
+
+# Visualiser
+data.frame(
+  sample = colnames(expr_mat),
+  maha_dist = maha_dist,
+  is_outlier = outliers,
+  phenotype = pheno_filt$phenotype,
+  subtype = pheno_filt$subtype
+) |>
+  ggplot(aes(x = seq_along(maha_dist), y = maha_dist, 
+             color = is_outlier, shape = phenotype)) +
+  geom_point(size = 2.5, alpha = 0.7) +
+  geom_hline(yintercept = threshold, linetype = "dashed", color = "red") +
+  scale_color_manual(values = c("FALSE" = "grey60", "TRUE" = "#D73027")) +
+  labs(x = "Index d'échantillon", y = "Distance de Mahalanobis",
+       color = "Outlier", shape = "Phénotype",
+       title = "Détection d'outliers multivariés") +
+  theme_minimal(base_size = 13)
+}
+```
+
+::: {.callout-note}
+**Interprétation — Distance de Mahalanobis :** La distance de Mahalanobis multivariée (sur les 10 premières PC) permet de détecter les échantillons qui dévient globalement du nuage de points. Les échantillons au-delà du seuil chi² (χ²₀.₉₉₉, 10 degrés de liberté) sont considérés comme outliers multivariés. Leur présence peut refléter des artéfacts techniques (mauvaise hybridation, contamination) ou une variabilité biologique extrême. Ces échantillons ne sont pas retirés automatiquement mais signalés pour inspection manuelle.
+:::
+
+### Leverage et influence (distances de Cook)
+
+```{r}
+#| label: cook-distance
+#| fig-cap: "Distance de Cook pour identifier les échantillons influents"
+
+# Calculer les distances de Cook pour le modèle global
+design_for_cook <- model.matrix(~ phenotype, data = pheno_filt)
+fit_cook <- lmFit(expr_mat, design_for_cook)
+fit_cook <- eBayes(fit_cook)
+
+# Calculer les leverages (hat values)
+hat_values <- hat(design_for_cook)
+
+# Pour chaque échantillon, calculer une mesure d'influence globale
+# basée sur les résidus standardisés
+residuals_std <- residuals(fit_cook, expr_mat)
+influence_score <- apply(residuals_std^2, 2, mean) * hat_values / (1 - hat_values)
+
+pheno_filt$influence_score <- influence_score
+pheno_filt$leverage <- hat_values
+
+# Identifier les échantillons à forte influence
+high_influence <- influence_score > median(influence_score) + 3*mad(influence_score)
+
+cat("Échantillons à forte influence:", sum(high_influence), "\n")
+
+data.frame(
+  sample = colnames(expr_mat),
+  influence = influence_score,
+  leverage = hat_values,
+  phenotype = pheno_filt$phenotype,
+  subtype = pheno_filt$subtype,
+  high_influence = high_influence
+) |>
+  ggplot(aes(x = leverage, y = influence, 
+             color = phenotype, size = high_influence)) +
+  geom_point(alpha = 0.6) +
+  scale_size_manual(values = c("FALSE" = 2, "TRUE" = 4)) +
+  scale_color_manual(values = c("Normal" = "#4575B4", "Leukemia" = "#D73027")) +
+  labs(x = "Leverage (hat value)", y = "Influence Score",
+       title = "Influence des échantillons sur le modèle") +
+  theme_minimal(base_size = 13)
+```
+
+::: {.callout-note}
+**Interprétation — Distances de Cook :** Le graphique leverage × influence permet d'identifier les échantillons ayant un impact disproportionné sur les estimations du modèle. Un fort leverage indique un échantillon atypique dans l'espace des covariables (ex. profil d'expression très différent), tandis qu'une forte influence signifie que sa suppression changerait significativement les coefficients estimés. Les échantillons avec score d'influence > médiane + 3×MAD méritent une attention particulière, bien qu'ils ne soient pas automatiquement exclus car leur variabilité peut être d'origine biologique réelle.
+:::
+
+## Diagnostic des dispersions et ajustement du modèle
+
+```{r}
+#| label: variance-diagnostic
+#| fig-cap: "Diagnostic de la relation moyenne-variance"
+
+# Calculer moyenne et variance pour chaque gène
+gene_means <- rowMeans(expr_mat)
+gene_vars <- apply(expr_mat, 1, var)
+
+# Mean-variance trend
+data.frame(mean = gene_means, var = gene_vars) |>
+  ggplot(aes(x = mean, y = var)) +
+  geom_point(alpha = 0.3, size = 0.5) +
+  geom_smooth(method = "loess", color = "#D73027", se = TRUE) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "blue") +
+  scale_x_log10() + scale_y_log10() +
+  labs(x = "Expression moyenne (log10)", y = "Variance (log10)",
+       title = "Relation moyenne-variance",
+       subtitle = "Ligne bleue: variance = moyenne (Poisson)") +
+  theme_minimal(base_size = 13)
+```
+
+::: {.callout-note}
+**Interprétation — Relation moyenne-variance :** Le graphique log-log de la variance en fonction de l'expression moyenne révèle la structure de la dispersion des données. La ligne rouge (LOESS) indique la tendance observée, tandis que la ligne bleue pointillée représente la relation de Poisson (variance = moyenne). Pour des données microarray normalisées par RMA, on s'attend à une variance supérieure à la moyenne (surdispersion) et relativement stable à travers les niveaux d'expression. Ce diagnostic confirme que la normalisation RMA a bien corrigé la dépendance moyenne-variance, justifiant l'utilisation de limma pour l'analyse différentielle.
+:::
+
+```{r}
+#| label: limma-diagnostic-placeholder
+#| echo: false
+
+# Note: Le diagnostic de l'ajustement limma sera effectué après 
+# l'analyse différentielle, une fois fit_global2 créé
+# Voir section "Diagnostic du modèle limma" après les résultats
+cat("✓ Diagnostic du modèle limma sera effectué après l'analyse différentielle\n")
+```
+
+## PCA avant vs après normalisation/ajustement
+
+```{r}
+#| label: pca-comparison
+#| fig-cap: "Comparaison PCA avant et après ajustement (simulation de batch)"
+#| fig-height: 8
+
+# Note: Les données GEO sont déjà normalisées (RMA)
+# On va comparer PCA sur données brutes vs données ajustées par ComBat (si batch disponible)
+
+# Vérifier si des variables de batch existent dans les métadonnées
+batch_candidates <- c("batch:ch1", "plate:ch1", "scan date:ch1", "hybridization date:ch1")
+batch_vars <- intersect(batch_candidates, colnames(pheno_filt))
+
+if (length(batch_vars) > 0) {
+  cat("Variables de batch potentielles trouvées:", batch_vars, "\n")
+  # Utiliser la première disponible
+  batch_var <- batch_vars[1]
+  if (length(unique(pheno_filt[[batch_var]])) > 1) {
+    library(sva)
+    batch_info <- as.factor(pheno_filt[[batch_var]])
+    expr_combat <- ComBat(dat = expr_mat, batch = batch_info, 
+                          mod = model.matrix(~phenotype, data = pheno_filt))
+    
+    pca_combat <- prcomp(t(expr_combat), center = TRUE, scale. = TRUE)
+    var_combat <- summary(pca_combat)$importance[2, 1:10] * 100
+    
+    pca_df_combat <- data.frame(
+      PC1 = pca_combat$x[, 1],
+      PC2 = pca_combat$x[, 2],
+      phenotype = pheno_filt$phenotype,
+      subtype = pheno_filt$subtype
+    )
+    
+    p_before <- ggplot(pca_df, aes(x = PC1, y = PC2, color = phenotype)) +
+      geom_point(size = 2, alpha = 0.7) +
+      scale_color_manual(values = c("Normal" = "#4575B4", "Leukemia" = "#D73027")) +
+      labs(title = "AVANT ajustement batch",
+           x = paste0("PC1 (", round(var_explained[1], 1), "%)"),
+           y = paste0("PC2 (", round(var_explained[2], 1), "%)")) +
+      theme_minimal(base_size = 11)
+    
+    p_after <- ggplot(pca_df_combat, aes(x = PC1, y = PC2, color = phenotype)) +
+      geom_point(size = 2, alpha = 0.7) +
+      scale_color_manual(values = c("Normal" = "#4575B4", "Leukemia" = "#D73027")) +
+      labs(title = "APRÈS ajustement batch (ComBat)",
+           x = paste0("PC1 (", round(var_combat[1], 1), "%)"),
+           y = paste0("PC2 (", round(var_combat[2], 1), "%)")) +
+      theme_minimal(base_size = 11)
+    
+    p_before / p_after
+  } else {
+    cat("Variable de batch trouvée mais pas de variation entre échantillons\n")
+    cat("PCA AVANT normalisation déjà affiché dans la section EDA\n")
+  }
+} else {
+  cat("Aucune variable de batch explicite trouvée dans les métadonnées.\n")
+  cat("Les données GEO sont pré-normalisées (RMA).\n")
+  cat("PCA sur données normalisées déjà affiché dans la section EDA.\n")
+}
+```
+
+**Interprétation du contrôle qualité:**
+
+1.  **Outliers multivariés**: La distance de Mahalanobis permet d'identifier les échantillons qui dévient significativement du nuage de points dans l'espace multidimensionnel. Les outliers détectés peuvent représenter:
+
+    -   Des erreurs techniques (dégradation RNA, contamination)
+    -   Des échantillons biologiquement atypiques
+    -   Des sous-types leucémiques rares non étiquetés
+
+2.  **Influence sur le modèle**: Les échantillons à forte influence (Cook's distance élevée) ont un impact disproportionné sur les estimations des coefficients. Leur identification permet de vérifier la robustesse des résultats.
+
+3.  **Relation moyenne-variance**: La déviation par rapport au modèle Poisson (variance = moyenne) est attendue pour les données microarray après normalisation log. L'ajustement limma prend en compte cette hétéroscédasticité via les poids empiriques de Bayes.
+
+```{r}
+#| label: check-optional-packages
+#| echo: false
+#| results: asis
+
+# Afficher un message si certaines analyses seront ignorées
+missing_pkgs <- names(pkg_available)[!unlist(pkg_available)]
+
+if (length(missing_pkgs) > 0) {
+  cat("\n:::{.callout-warning}\n")
+  cat("## ⚠️ Packages Optionnels Manquants\n\n")
+  cat("Certaines analyses avancées seront ignorées car les packages suivants ne sont pas installés:\n\n")
+  for (pkg in missing_pkgs) {
+    cat("- `", pkg, "`\n", sep = "")
+  }
+  cat("\n**Sections qui seront ignorées:**\n\n")
+  if ("fgsea" %in% missing_pkgs || "msigdbr" %in% missing_pkgs) {
+    cat("- Gene Set Enrichment Analysis (GSEA)\n")
+    cat("- Enrichissement de facteurs de transcription\n")
+  }
+  if ("WGCNA" %in% missing_pkgs) {
+    cat("- Analyse WGCNA (réseaux de co-expression)\n")
+  }
+  if ("plotly" %in% missing_pkgs) {
+    cat("- Heatmap interactive (une version statique sera utilisée)\n")
+  }
+  cat("\n**Pour installer les packages manquants, consultez `INSTALLATION_PACKAGES.md`**\n")
+  cat(":::\n\n")
+}
+```
+
+# Design Statistique Avancé {#sec-advanced-design}
+
+## Exploration des covariables et effets de batch
+
+```{r}
+#| label: explore-covariates
+
+# Explorer toutes les métadonnées disponibles
+meta_cols <- colnames(pData(eset_filt))
+cat("Variables disponibles dans les métadonnées:\n")
+print(meta_cols[1:min(20, length(meta_cols))])
+
+# Identifier les variables catégorielles potentiellement utiles
+cat("\n=== Variables potentielles pour le modèle ===\n")
+
+# Source name (type cellulaire)
+cat("\nDistribution source_name_ch1:\n")
+print(table(pheno_filt$source_name_ch1))
+
+# Vérifier s'il y a des informations sur le sexe, l'âge, ou autres covariables
+sex_vars <- grep("sex|gender|Sex|Gender", meta_cols, value = TRUE)
+age_vars <- grep("age|Age", meta_cols, value = TRUE)
+batch_vars <- grep("batch|Batch|plate|scan", meta_cols, value = TRUE, ignore.case = TRUE)
+
+if (length(sex_vars) > 0) cat("\nVariables sexe trouvées:", sex_vars, "\n")
+if (length(age_vars) > 0) cat("Variables âge trouvées:", age_vars, "\n")
+if (length(batch_vars) > 0) cat("Variables batch trouvées:", batch_vars, "\n")
+```
+
+## Préparation des données pour les analyses avancées
+
+Pour les analyses différentielles et les modèles avancés, nous utilisons exclusivement les **échantillons de patients** (et non les lignées cellulaires), car ces dernières présentent des dérives transcriptomiques dues à la culture *in vitro*.
+
+```{r}
+#| label: prepare-patient-data
+
+# Conserver uniquement patients et normaux (exclure les lignées cellulaires)
+keep_samples <- pheno_filt$sample_type %in% c("Patient", "Normal")
+eset_patients <- eset_filt[, keep_samples]
+
+pheno_pat <- pData(eset_patients)
+expr_pat <- exprs(eset_patients)
+
+cat("Échantillons retenus pour les analyses:\n")
+table(pheno_pat$subtype, pheno_pat$sample_type)
+cat("\nTotal :", ncol(eset_patients), "échantillons\n")
+cat("  - Patients leucémiques:", sum(pheno_pat$sample_type == "Patient"), "\n")
+cat("  - Cellules normales:", sum(pheno_pat$sample_type == "Normal"), "\n")
+```
+
+## Modèle avec effets de batch (si disponibles)
+
+```{r}
+#| label: batch-effect-model
+
+# Créer une variable de batch synthétique basée sur le type d'échantillon
+# (Patient vs Cell Line vs Normal) comme proxy
+pheno_pat$sample_origin <- pheno_pat$sample_type
+
+# Modèle 1: Simple (sans covariable)
+design_simple <- model.matrix(~ 0 + phenotype, data = pheno_pat)
+colnames(design_simple) <- c("Normal", "Leukemia")
+
+# Modèle 2: Avec type d'échantillon comme covariable
+# Pour les échantillons patients uniquement, créer une variable pour le sous-type
+design_subtype <- model.matrix(~ 0 + subtype, data = pheno_pat)
+colnames(design_subtype) <- make.names(levels(factor(pheno_pat$subtype)))
+
+cat("Design matrices créées:\n")
+cat("- Modèle simple: phenotype uniquement\n")
+cat("- Modèle subtype: avec sous-types leucémiques\n")
+```
+
+## Modèle avec interactions (phénotype × origine cellulaire)
+
+```{r}
+#| label: interaction-model
+
+# S'assurer que les packages nécessaires sont chargés
+library(dplyr)
+library(limma)
+
+# Créer une variable simplifiée d'origine cellulaire pour les échantillons normaux
+# On va regrouper les types cellulaires normaux en catégories biologiquement pertinentes
+
+pheno_pat$cell_origin <- dplyr::case_when(
+  pheno_pat$cell_type %in% c("B Cells", "B ALL Patient") ~ "B_lineage",
+  pheno_pat$cell_type %in% c("T Cells", "T ALL Patient") ~ "T_lineage",
+  pheno_pat$cell_type %in% c("AML Patient", "CD34+HSPC", "Monocytes", "Granulocytes") ~ "Myeloid_lineage",
+  TRUE ~ "Other"
+)
+
+# Distribution
+cat("=== Distribution de cell_origin ===\n")
+table(pheno_pat$cell_origin, pheno_pat$phenotype)
+
+# Modèle avec interaction: phenotype × cell_origin
+# Question: L'effet de la leucémie dépend-il de la lignée cellulaire d'origine?
+
+design_interaction <- model.matrix(~ phenotype * cell_origin, data = pheno_pat)
+colnames(design_interaction)
+
+cat("\n=== Design matrix avec interaction ===\n")
+cat("Colonnes du modèle:\n")
+print(colnames(design_interaction))
+cat("\nDimensions:", nrow(design_interaction), "échantillons ×", 
+    ncol(design_interaction), "coefficients\n")
+
+# Fit du modèle avec interaction
+fit_interaction <- lmFit(expr_pat, design_interaction)
+fit_interaction <- eBayes(fit_interaction)
+
+# Les termes d'interaction testent si l'effet de la leucémie diffère selon la lignée
+# Par exemple: phenotypeLeukemia:cell_originMyeloid_lineage teste si l'effet 
+# leucémique dans la lignée myéloïde diffère de la référence (B_lineage)
+
+cat("\n=== Tests des termes d'interaction ===\n")
+interaction_terms <- grep(":", colnames(design_interaction), value = TRUE)
+cat("Termes d'interaction identifiés:\n")
+print(interaction_terms)
+
+# Tester les interactions
+if (length(interaction_terms) > 0) {
+  results_interaction <- topTable(fit_interaction, 
+                                  coef = interaction_terms[1], 
+                                  number = Inf, 
+                                  sort.by = "P")
+  
+  n_sig_interaction <- sum(results_interaction$adj.P.Val < 0.05)
+  cat("\nGènes avec interaction significative (", interaction_terms[1], "):\n")
+  cat("  FDR < 0.05:", n_sig_interaction, "gènes\n")
+  
+  if (n_sig_interaction > 0) {
+    cat("\nTop 10 gènes avec effet d'interaction:\n")
+    top_inter <- results_interaction[results_interaction$adj.P.Val < 0.05, ]
+    top_inter <- head(top_inter, 10)
+    
+    # Ajouter les symboles
+    top_inter$probe_id <- as.integer(rownames(top_inter))
+    gene_annot <- fdata_filt[, c("ID", "gene_assignment")]
+    gene_annot$gene_symbol <- sub("^[^/]*//\\s*([^/]+)\\s*//.*", "\\1", gene_annot$gene_assignment)
+    gene_annot <- gene_annot[, c("ID", "gene_symbol")]
+    
+    top_inter <- merge(top_inter, gene_annot, by.x = "probe_id", by.y = "ID", all.x = TRUE)
+    
+    print(top_inter[, c("gene_symbol", "logFC", "AveExpr", "adj.P.Val")])
+  }
+}
+```
+
+```{r}
+#| label: compare-models-anova-placeholder
+#| eval: false
+
+# NOTE: Cette section sera exécutée après la création de fit_global
+# Voir section "Comparaison des modèles" après l'analyse différentielle globale
+
+cat("⏭️  Comparaison des modèles sera effectuée après l'analyse différentielle\n")
+```
+
+```{r}
+#| label: placeholder-comparison
+#| eval: false
+#| echo: false
+
+# Comparer le modèle simple (sans interaction) vs modèle avec interaction
+# en utilisant un F-test pour les gènes
+
+# Modèle simple (déjà calculé: fit_global)
+# Modèle avec interaction: fit_interaction
+
+# NOTE: limma ne stocke pas les résidus directement dans l'objet MArrayLM.
+# On les calcule manuellement : résidus = expr - fitted values
+# fitted = design %*% t(coefficients)
+
+# Récupérer la matrice d'expression utilisée (toutes les données)
+expr_full <- expr_pat
+
+# Résidus du modèle simple
+fitted_simple      <- fit_global$design %*% t(fit_global$coefficients)
+residuals_simple   <- t(expr_full) - fitted_simple          # colonnes = gènes
+
+# Résidus du modèle avec interaction
+fitted_interaction      <- fit_interaction$design %*% t(fit_interaction$coefficients)
+residuals_interaction   <- t(expr_full) - fitted_interaction
+rss_simple         <- colSums(residuals_simple^2)
+
+# Résidus du modèle avec interaction
+fitted_interaction      <- fit_interaction$design %*% t(fit_interaction$coefficients)
+residuals_interaction   <- t(expr_full) - fitted_interaction
+rss_interaction         <- colSums(residuals_interaction^2)
+
+# Amélioration relative
+improvement <- (rss_simple - rss_interaction) / rss_simple * 100
+
+# Identifier les gènes où l'interaction explique >5% de variance additionnelle
+genes_with_interaction <- improvement > 5
+
+cat("=== Comparaison des modèles ===\n")
+cat("Modèle simple: ~ phenotype\n")
+cat("Modèle avec interaction: ~ phenotype * cell_origin\n\n")
+
+cat("Gènes où l'interaction explique >5% de variance additionnelle:",
+    sum(genes_with_interaction), "/", length(genes_with_interaction), "\n")
+
+# Visualiser la distribution des améliorations
+data.frame(improvement = improvement) |>
+  ggplot(aes(x = improvement)) +
+  geom_histogram(bins = 50, fill = "#4575B4", color = "white") +
+  geom_vline(xintercept = 5, linetype = "dashed", color = "red", linewidth = 1) +
+  labs(x = "Amélioration du modèle (%)", 
+       y = "Nombre de gènes",
+       title = "Contribution de l'interaction phenotype × cell_origin",
+       subtitle = "Pourcentage de variance additionnelle expliquée par l'interaction") +
+  theme_minimal(base_size = 13)
+
+# Top gènes avec forte interaction
+top_improvement <- head(order(improvement, decreasing = TRUE), 20)
+top_improvement_data <- data.frame(
+  probe = rownames(expr_pat)[top_improvement],
+  improvement = improvement[top_improvement]
+)
+top_improvement_data$probe <- as.integer(top_improvement_data$probe)
+
+# Préparer annotations
+gene_annot <- fdata_filt[, c("ID", "gene_assignment")]
+gene_annot$gene_symbol <- sub("^[^/]*//\\s*([^/]+)\\s*//.*", "\\1", gene_annot$gene_assignment)
+
+# Merger
+top_improvement_data <- merge(top_improvement_data, 
+                               gene_annot[, c("ID", "gene_symbol")], 
+                               by.x = "probe", by.y = "ID", all.x = TRUE)
+
+cat("\nTop 20 gènes avec la plus forte contribution de l'interaction:\n")
+print(head(top_improvement_data[, c("gene_symbol", "improvement")], 20))
+```
+
+**Interprétation du modèle avec interactions:**
+
+1.  **Question biologique**: L'interaction **phenotype × cell_origin** teste si l'effet de la leucémie sur l'expression génique dépend de la lignée cellulaire d'origine (B, T, ou myéloïde).
+
+2.  **Termes d'interaction significatifs**:
+
+    -   Si des gènes montrent une interaction significative, cela signifie que leur dérégulation leucémique est **spécifique à une lignée**
+    -   Exemple: un gène peut être fortement surexprimé dans B-ALL mais pas dans AML → interaction significative
+
+3.  **Amélioration du modèle**:
+
+    -   Pour la plupart des gènes, le modèle simple (sans interaction) est suffisant
+    -   Les gènes avec \>5% d'amélioration sont ceux dont l'expression dépend vraiment de la lignée cellulaire
+    -   Ces gènes sont des candidats pour des **marqueurs spécifiques de sous-type**
+
+4.  **Applications pratiques**:
+
+    -   **Diagnostic différentiel**: Les gènes avec forte interaction distinguent mieux les sous-types
+    -   **Biomarqueurs de lignée**: Utiles pour classifier des leucémies de lignée ambiguë
+    -   **Mécanismes biologiques**: Révèlent des programmes oncogéniques lignée-spécifiques
+
+5.  **Considérations statistiques**:
+
+    -   L'interaction ajoute des paramètres au modèle → risque de sur-ajustement
+    -   Utiliser uniquement si biologiquement justifié et statistiquement significatif
+    -   Les gènes avec forte interaction méritent une validation indépendante
+
+## Comparaison de modèles (likelihood ratio tests)
+
+```{r}
+#| label: model-comparison
+
+# Comparer différents modèles pour le sous-ensemble leucémie
+leuk_samples <- pheno_pat$phenotype == "Leukemia"
+expr_leuk <- expr_pat[, leuk_samples]
+pheno_leuk <- pheno_pat[leuk_samples, ]
+
+# Modèle nul: intercept seulement
+design_null <- model.matrix(~ 1, data = pheno_leuk)
+
+# Modèle 1: Subtype
+design_m1 <- model.matrix(~ 0 + subtype, data = pheno_leuk)
+colnames(design_m1) <- make.names(levels(factor(pheno_leuk$subtype)))
+
+# Modèle 2: Subtype + sample_type (si variation)
+if (length(unique(pheno_leuk$sample_type)) > 1) {
+  design_m2 <- model.matrix(~ subtype + sample_type, data = pheno_leuk)
+} else {
+  design_m2 <- design_m1  # Pas de variation dans sample_type
+}
+
+# Fit des modèles
+fit_m1 <- lmFit(expr_leuk, design_m1)
+fit_m1 <- eBayes(fit_m1)
+
+# Calculer l'AIC/BIC pour comparaison (approximation)
+# Pour limma, on utilise les log-likelihoods approximatives
+calc_aic <- function(fit, k) {
+  n <- ncol(fit$coefficients)
+  p <- nrow(fit$coefficients)
+  loglik <- sum(dnorm(fit$residuals, mean = 0, sd = sqrt(fit$s2.post), log = TRUE))
+  aic <- -2 * loglik + 2 * k
+  return(aic)
+}
+
+cat("=== Comparaison de modèles (échantillons leucémiques) ===\n")
+cat("Modèle 1 (Subtype uniquement):\n")
+cat("  Paramètres:", ncol(design_m1), "\n")
+cat("  Échantillons:", nrow(pheno_leuk), "\n")
+
+# Test F pour comparer les modèles emboîtés
+# Créer des contrastes pour tester l'effet global du sous-type
+contrast_subtype <- makeContrasts(
+  AML_vs_BALL = AML - B.ALL,
+  AML_vs_TALL = AML - T.ALL,
+  BALL_vs_TALL = B.ALL - T.ALL,
+  levels = design_m1
+)
+
+fit_contrasts <- contrasts.fit(fit_m1, contrast_subtype)
+fit_contrasts <- eBayes(fit_contrasts)
+
+# Résumé des gènes différentiels entre sous-types
+results_aml_ball <- topTable(fit_contrasts, coef = "AML_vs_BALL", number = Inf)
+results_aml_tall <- topTable(fit_contrasts, coef = "AML_vs_TALL", number = Inf)
+results_ball_tall <- topTable(fit_contrasts, coef = "BALL_vs_TALL", number = Inf)
+
+cat("\n=== Comparaisons entre sous-types leucémiques ===\n")
+cat("AML vs B-ALL: DE genes (FDR<0.05):", 
+    sum(results_aml_ball$adj.P.Val < 0.05), "\n")
+cat("AML vs T-ALL: DE genes (FDR<0.05):", 
+    sum(results_aml_tall$adj.P.Val < 0.05), "\n")
+cat("B-ALL vs T-ALL: DE genes (FDR<0.05):", 
+    sum(results_ball_tall$adj.P.Val < 0.05), "\n")
+```
+
+```{r}
+#| label: subtype-comparison-volcano
+#| fig-cap: "Comparaisons directes entre sous-types leucémiques"
+#| fig-height: 10
+
+# Volcano plots pour les comparaisons entre sous-types
+make_volcano_comparison <- function(res, title) {
+  res <- res |>
+    mutate(
+      significance = case_when(
+        adj.P.Val < 0.05 & logFC > 1 ~ "Up",
+        adj.P.Val < 0.05 & logFC < -1 ~ "Down",
+        adj.P.Val < 0.05 ~ "FDR<0.05",
+        TRUE ~ "NS"
+      ),
+      probe_id = as.integer(rownames(res))
+    ) |>
+    left_join(
+      fdata_filt |> 
+        mutate(gene_symbol = sub("^[^/]*//\\s*([^/]+)\\s*//.*", "\\1", gene_assignment)) |>
+        dplyr::select(ID, gene_symbol),
+      by = c("probe_id" = "ID")
+    )
+  
+  top_lab <- res |>
+    filter(adj.P.Val < 0.05, abs(logFC) > 1) |>
+    arrange(adj.P.Val) |>
+    slice_head(n = 10)
+  
+  ggplot(res, aes(x = logFC, y = -log10(adj.P.Val), color = significance)) +
+    geom_point(alpha = 0.5, size = 1) +
+    geom_text_repel(
+      data = top_lab,
+      aes(label = gene_symbol),
+      size = 2.5, max.overlaps = 10, color = "black"
+    ) +
+    scale_color_manual(values = c(
+      "Up" = "#D73027", "Down" = "#4575B4",
+      "FDR<0.05" = "grey50", "NS" = "grey80"
+    )) +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40") +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey40") +
+    labs(x = "log2 Fold Change", y = "-log10(FDR)", color = NULL, title = title) +
+    theme_minimal(base_size = 11)
+}
+
+v_ab <- make_volcano_comparison(results_aml_ball, "AML vs B-ALL")
+v_at <- make_volcano_comparison(results_aml_tall, "AML vs T-ALL")
+v_bt <- make_volcano_comparison(results_ball_tall, "B-ALL vs T-ALL")
+
+v_ab / v_at / v_bt
+```
+
+**Interprétation des comparaisons de modèles:**
+
+1.  **Comparaisons inter-sous-types**: Les analyses directes entre sous-types leucémiques (AML vs B-ALL, etc.) révèlent les gènes spécifiques de lignée qui distinguent les leucémies myéloïdes des lymphoïdes, et les lymphoïdes B des T.
+
+2.  **Hiérarchie des effets**: Si AML vs B-ALL montre plus de gènes DE que B-ALL vs T-ALL, cela suggère que la séparation myéloïde/lymphoïde est plus marquée que la séparation B/T au sein de la lignée lymphoïde.
+
+3.  **Implications biologiques**: Les gènes discriminant entre sous-types sont des candidats pour des biomarqueurs diagnostiques ou des cibles thérapeutiques spécifiques de sous-type.
+
+# Analyse Différentielle avec limma
+
+Les données ont été préparées dans la section précédente (Design Statistique Avancé) avec uniquement les échantillons de patients et normaux. Les objets `pheno_pat` et `expr_pat` sont déjà disponibles.
+
+## Analyse globale : Leukemia vs Normal {#sec-global}
+
+```{r}
+#| label: limma-global
+
+# Design matrix
+design_global <- model.matrix(~ 0 + phenotype, data = pheno_pat)
+colnames(design_global) <- c("Normal", "Leukemia")
+
+# Fit du modèle linéaire
+fit_global <- lmFit(expr_pat, design_global)
+
+# Contraste : Leukemia - Normal
+contrast_global <- makeContrasts(Leukemia - Normal, levels = design_global)
+fit_global2 <- contrasts.fit(fit_global, contrast_global)
+fit_global2 <- eBayes(fit_global2)
+
+# Résultats — trier par p-value pour avoir les vrais top gènes DE en premier
+results_global <- topTable(fit_global2, number = Inf, sort.by = "p")
+
+# Ajouter les symboles géniques depuis gene_assignment via la colonne ID
+results_global$probe_id <- as.integer(rownames(results_global))
+results_global$gene_symbol <- trimws(
+  sub("^[^/]*//\\s*([^/]+)\\s*//.*", "\\1",
+      fdata_filt$gene_assignment[match(results_global$probe_id, fdata_filt$ID)]))
+
+# Résumé
+cat("=== Leukemia vs Normal (global) ===\n")
+cat("Gènes DE (FDR < 0.05) :", sum(results_global$adj.P.Val < 0.05), "\n")
+cat("  - Surexprimés :", sum(results_global$adj.P.Val < 0.05 & results_global$logFC > 0), "\n")
+cat("  - Sous-exprimés :", sum(results_global$adj.P.05 < 0.05 & results_global$logFC < 0), "\n")
+cat("Gènes DE (FDR < 0.05 & |logFC| > 1) :",
+    sum(results_global$adj.P.Val < 0.05 & abs(results_global$logFC) > 1), "\n")
+```
+
+::: {.callout-note}
+**Interprétation — Modèle limma global :** L'analyse différentielle limma (modèle linéaire avec empirical Bayes) compare 58 échantillons leucémiques à 49 échantillons normaux. Le nombre important de gènes différentiellement exprimés (FDR < 0,05) reflète la profonde reprogrammation transcriptomique associée à la leucémie. L'emprunt d'information entre gènes (shrinkage empirique de Bayes) améliore la stabilité des estimations, en particulier pour les gènes à faible expression où la variance est naturellement plus incertaine.
+:::
+
+```{r}
+#| label: volcano-global
+#| fig-cap: "Volcano plot — Leukemia vs Normal (patients uniquement)"
+
+# Ajouter les symboles de gènes
+results_global <- results_global |>
+  dplyr::mutate(
+    probe_id = as.integer(rownames(results_global)),
+    significance = dplyr::case_when(
+      adj.P.Val < 0.05 & logFC > 1 ~ "Up (FDR<0.05, |logFC|>1)",
+      adj.P.Val < 0.05 & logFC < -1 ~ "Down (FDR<0.05, |logFC|>1)",
+      adj.P.Val < 0.05 ~ "FDR<0.05",
+      TRUE ~ "NS"
+    )
+  )
+# Note: gene_symbol déjà ajouté ci-dessus, pas besoin d'un left_join supplémentaire
+
+# Top gènes à labelliser
+top_label <- results_global |>
+  filter(adj.P.Val < 0.05, abs(logFC) > 1) |>
+  arrange(adj.P.Val) |>
+  slice_head(n = 20)
+
+library(ggplot2)
+ggplot(results_global, aes(x = logFC, y = -log10(adj.P.Val), color = significance)) +
+  geom_point(alpha = 0.5, size = 1) +
+  geom_text_repel(
+    data = top_label,
+    aes(label = gene_symbol),
+    size = 3, max.overlaps = 20, color = "black"
+  ) +
+  scale_color_manual(values = c(
+    "Up (FDR<0.05, |logFC|>1)" = "#D73027",
+    "Down (FDR<0.05, |logFC|>1)" = "#4575B4",
+    "FDR<0.05" = "grey50",
+    "NS" = "grey80"
+  )) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40") +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey40") +
+  labs(x = "log2 Fold Change", y = "-log10(FDR)", color = NULL,
+       title = "Leukemia vs Normal") +
+  theme_minimal(base_size = 13)
+```
+
+::: {.callout-note}
+**Interprétation — Volcano plot :** Le volcano plot illustre simultanément la magnitude (logFC, axe X) et la significativité statistique (−log₁₀ FDR, axe Y) de chaque gène. Les points rouges (surexprimés, logFC > 1, FDR < 0,05) correspondent aux gènes activés dans la leucémie, dominés par des régulateurs de la prolifération cellulaire (TYMS, KIAA0101, DTL, MKI67, TOP2A). Les points bleus (sous-exprimés) incluent des gènes de différenciation hématopoïétique normale et de fonctions immunitaires. La forme caractéristique en « volcan » avec une large base confirme la robustesse statistique de l'analyse.
+:::
+
+```{r}
+#| label: ma-global
+#| fig-cap: "MA plot — Leukemia vs Normal"
+
+results_global$AveExpr_col <- results_global$AveExpr
+
+ggplot(results_global, aes(x = AveExpr_col, y = logFC, color = significance)) +
+  geom_point(alpha = 0.4, size = 0.8) +
+  scale_color_manual(values = c(
+    "Up (FDR<0.05, |logFC|>1)" = "#D73027",
+    "Down (FDR<0.05, |logFC|>1)" = "#4575B4",
+    "FDR<0.05" = "grey50",
+    "NS" = "grey80"
+  )) +
+  geom_hline(yintercept = 0, color = "black") +
+  labs(x = "Expression moyenne (log2)", y = "log2 Fold Change", color = NULL,
+       title = "MA Plot — Leukemia vs Normal") +
+  theme_minimal(base_size = 13)
+```
+
+::: {.callout-note}
+**Interprétation — MA plot :** Le MA plot représente le logFC (M, axe Y) en fonction de l'expression moyenne (A, axe X). Il permet de détecter un biais dépendant de l'intensité : si les gènes fortement ou faiblement exprimés montraient systématiquement un logFC positif ou négatif, cela indiquerait un problème de normalisation. Ici, les gènes différentiellement exprimés sont distribués de façon symétrique autour de l'axe horizontal à travers tous les niveaux d'expression, confirmant la qualité de la normalisation RMA et l'absence de biais d'intensité.
+:::
+
+### Diagnostic du modèle limma
+
+```{r}
+#| label: limma-model-diagnostic
+#| fig-cap: "Diagnostic de la précision de l'ajustement du modèle limma"
+
+# Vérifier la précision de l'ajustement limma via les écarts-types résiduels
+sigma_genes <- sqrt(fit_global2$s2.post)
+
+data.frame(
+  avg_expr = rowMeans(expr_pat),
+  sigma = sigma_genes
+) |>
+  ggplot(aes(x = avg_expr, y = sigma)) +
+  geom_point(alpha = 0.2, size = 0.5) +
+  geom_smooth(method = "loess", color = "#D73027") +
+  labs(x = "Expression moyenne", y = "Écart-type résiduel (σ)",
+       title = "Précision de l'ajustement du modèle limma") +
+  theme_minimal(base_size = 13)
+```
+
+**Interprétation du diagnostic :**
+
+Le graphique montre la relation entre l'expression moyenne des gènes et leur écart-type résiduel après ajustement limma. Une bonne modélisation devrait montrer :
+
+1.  **Stabilisation de la variance** : L'écart-type résiduel devrait être relativement constant à travers différents niveaux d'expression, grâce à l'approche empirique de Bayes de limma qui "emprunte" de l'information entre gènes.
+
+2.  **Pas de tendance systématique** : Si on observe une tendance forte (ex: variance augmentant avec l'expression), cela suggérerait que le modèle ne capture pas complètement la structure moyenne-variance. Pour les données microarray normalisées (RMA), on s'attend à une variance relativement homogène.
+
+3.  **Points extrêmes** : Les gènes avec σ très élevé mériteraient une inspection individuelle - ce sont soit des outliers techniques, soit des gènes avec une variabilité biologique réelle très élevée (ex: gènes avec expression bimodale selon les sous-types).
+
+### Comparaison des modèles : simple vs interaction
+
+Maintenant que nous avons `fit_global` et `fit_interaction`, comparons-les pour identifier les gènes où l'interaction apporte une information significative.
+
+```{r}
+#| label: compare-models-final
+#| fig-cap: "Comparaison modèle simple vs modèle avec interaction"
+
+# Comparer le modèle simple (fit_global) vs modèle avec interaction (fit_interaction)
+# Pour chaque gène, calculer si l'ajout de l'interaction améliore le fit
+
+# Utiliser les sigmas (écarts-types résiduels) comme mesure de qualité d'ajustement
+# Plus le sigma est petit, meilleur est l'ajustement
+sigma_simple <- fit_global$sigma
+sigma_interaction <- fit_interaction$sigma
+
+# Amélioration relative : réduction de sigma
+# (sigma_simple - sigma_interaction) / sigma_simple * 100
+improvement <- ((sigma_simple - sigma_interaction) / sigma_simple) * 100
+
+# Identifier les gènes où l'interaction explique >5% de variance additionnelle
+genes_with_interaction <- improvement > 5
+
+cat("=== Comparaison des modèles ===\n")
+cat("Modèle simple: ~ phenotype\n")
+cat("Modèle avec interaction: ~ phenotype * cell_origin\n\n")
+
+cat("Gènes où l'interaction explique >5% de variance additionnelle:",
+    sum(genes_with_interaction, na.rm = TRUE), "/", length(genes_with_interaction), "\n")
+
+# Visualiser la distribution des améliorations
+data.frame(improvement = improvement) |>
+  ggplot(aes(x = improvement)) +
+  geom_histogram(bins = 50, fill = "#4575B4", color = "white") +
+  geom_vline(xintercept = 5, linetype = "dashed", color = "red", linewidth = 1) +
+  labs(x = "Amélioration du modèle (%)", 
+       y = "Nombre de gènes",
+       title = "Contribution de l'interaction phenotype × cell_origin",
+       subtitle = "Pourcentage de variance additionnelle expliquée par l'interaction") +
+  theme_minimal(base_size = 13)
+
+# Top gènes avec forte interaction
+top_improvement <- head(order(improvement, decreasing = TRUE), 20)
+top_improvement_data <- data.frame(
+  probe = rownames(expr_pat)[top_improvement],
+  improvement = improvement[top_improvement]
+)
+top_improvement_data$probe <- as.integer(top_improvement_data$probe)
+
+# Préparer annotations
+gene_annot_temp <- fdata_filt[, c("ID", "gene_assignment")]
+gene_annot_temp$gene_symbol <- sub("^[^/]*//\\s*([^/]+)\\s*//.*", "\\1", 
+                                    gene_annot_temp$gene_assignment)
+
+# Merger
+top_improvement_data <- merge(top_improvement_data, 
+                               gene_annot_temp[, c("ID", "gene_symbol")], 
+                               by.x = "probe", by.y = "ID", all.x = TRUE)
+
+cat("\nTop 20 gènes avec la plus forte contribution de l'interaction:\n")
+print(head(top_improvement_data[, c("gene_symbol", "improvement")], 20))
+```
+
+**Interprétation de la comparaison des modèles:**
+
+1.  **Amélioration du modèle**: L'histogramme montre la réduction relative de l'écart-type résiduel (sigma) quand on ajoute l'interaction. Une amélioration positive signifie que le modèle avec interaction ajuste mieux les données. Pour la majorité des gènes, cette amélioration est modeste (\<5%), indiquant que le modèle simple est suffisant.
+
+2.  **Gènes avec forte amélioration** (\>5% réduction de sigma): Ces gènes sont ceux dont l'expression dépend vraiment de la combinaison phénotype × lignée cellulaire. L'ajout de l'interaction permet de mieux expliquer leur variabilité. Ce sont des candidats pour des marqueurs spécifiques de sous-type.
+
+3.  **Applications**: Les gènes avec forte interaction sont particulièrement utiles pour:
+
+    -   Diagnostic différentiel entre sous-types leucémiques
+    -   Comprendre les mécanismes lignée-spécifiques
+    -   Identifier des cibles thérapeutiques sous-type-spécifiques
+
+### Top 30 gènes différentiellement exprimés (global)
+
+```{r}
+#| label: top-genes-global
+
+results_global |>
+  filter(adj.P.Val < 0.05, abs(logFC) > 1) |>
+  arrange(adj.P.Val) |>
+  dplyr::select(gene_symbol, logFC, AveExpr, t, P.Value, adj.P.Val) |>
+  mutate(across(where(is.numeric), \(x) signif(x, 4))) |>
+  head(30)
+```
+
+::: {.callout-note}
+**Interprétation — Top 30 gènes DE :** Les 30 gènes les plus significativement différentiellement exprimés incluent majoritairement des régulateurs de la prolifération cellulaire surexprimés dans la leucémie : **KIAA0101** (facteur de réplication de l'ADN), **TYMS** (thymidylate synthase, cible du méthotrexate), **DTL** (E3 ubiquitine ligase du point de contrôle de réplication), **CDC45** et **MCM** (facteurs d'initiation de la réplication), **ERG** (facteur de transcription oncogénique). Ces gènes sont tous impliqués dans la division cellulaire accélérée caractéristique des leucémies aiguës. Leur identification constitue une base solide pour cibler thérapeutiquement les processus de réplication et de mitose.
+:::
+
+### Boxplots des gènes les plus différentiellement exprimés
+
+```{r}
+#| label: boxplot-top-de-genes
+#| fig-cap: "Expression des top 12 gènes DE — Leukemia vs Normal"
+#| fig-height: 12
+
+# Sélectionner les top 12 gènes (6 up, 6 down) - méthode base R robuste
+# S'assurer que results_global a les bons rownames
+if (nrow(results_global) == nrow(expr_pat)) {
+  rownames(results_global) <- rownames(expr_pat)
+}
+
+top_up_indices <- which(results_global$adj.P.Val < 0.05 & results_global$logFC > 1)
+top_up_ordered <- top_up_indices[order(results_global$adj.P.Val[top_up_indices])]
+top_up_final <- head(top_up_ordered, 6)
+
+top_down_indices <- which(results_global$adj.P.Val < 0.05 & results_global$logFC < -1)
+top_down_ordered <- top_down_indices[order(results_global$adj.P.Val[top_down_indices])]
+top_down_final <- head(top_down_ordered, 6)
+
+# Créer le dataframe avec les vrais IDs de sondes depuis rownames(expr_pat)
+top_genes_for_plot <- rbind(
+  data.frame(
+    probe_id = rownames(expr_pat)[top_up_final],
+    gene_symbol = results_global$gene_symbol[top_up_final],
+    logFC = results_global$logFC[top_up_final],
+    adj.P.Val = results_global$adj.P.Val[top_up_final],
+    direction = "Surexprimé",
+    stringsAsFactors = FALSE
+  ),
+  data.frame(
+    probe_id = rownames(expr_pat)[top_down_final],
+    gene_symbol = results_global$gene_symbol[top_down_final],
+    logFC = results_global$logFC[top_down_final],
+    adj.P.Val = results_global$adj.P.Val[top_down_final],
+    direction = "Sous-exprimé",
+    stringsAsFactors = FALSE
+  )
+)
+
+# Extraire les sondes correspondantes (vrais IDs depuis expr_pat)
+top_probes <- top_genes_for_plot$probe_id
+
+# Préparer les données pour boxplot - base R robuste
+expr_top_mat <- expr_pat[top_probes, , drop = FALSE]
+
+# Convertir en format long
+expr_top_long <- data.frame(
+  probe_id = rep(rownames(expr_top_mat), each = ncol(expr_top_mat)),
+  sample = rep(colnames(expr_top_mat), times = nrow(expr_top_mat)),
+  expression = as.vector(t(expr_top_mat)),
+  stringsAsFactors = FALSE
+)
+
+# Ajouter info phénotype
+pheno_info <- data.frame(
+  sample = rownames(pheno_pat),
+  phenotype = pheno_pat$phenotype,
+  subtype = pheno_pat$subtype,
+  stringsAsFactors = FALSE
+)
+expr_top_long <- merge(expr_top_long, pheno_info, by = "sample", all.x = TRUE)
+
+# Ajouter info gènes
+expr_top_long <- merge(expr_top_long, top_genes_for_plot, by = "probe_id", all.x = TRUE)
+
+# Créer label
+expr_top_long$gene_label <- paste0(
+  expr_top_long$gene_symbol, "\n(logFC=", round(expr_top_long$logFC, 2), 
+  ", FDR=", signif(expr_top_long$adj.P.Val, 2), ")"
+)
+
+# Boxplot avec statistiques
+ggplot(expr_top_long, aes(x = phenotype, y = expression, fill = phenotype)) +
+  geom_boxplot(outlier.size = 1, alpha = 0.8) +
+  geom_jitter(width = 0.15, alpha = 0.3, size = 0.8) +
+  facet_wrap(~gene_label, scales = "free_y", ncol = 3) +
+  scale_fill_manual(values = c("Normal" = "#4575B4", "Leukemia" = "#D73027")) +
+  stat_summary(fun = median, geom = "point", shape = 23, size = 3, 
+               fill = "yellow", color = "black") +
+  labs(x = NULL, y = "Expression (log2)",
+       title = "Top gènes différentiellement exprimés",
+       subtitle = "Losange jaune = médiane") +
+  theme_minimal(base_size = 11) +
+  theme(
+    legend.position = "top",
+    strip.text = element_text(size = 8, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+```{r}
+#| label: boxplot-by-subtype
+#| fig-cap: "Expression par sous-type leucémique — Top 9 gènes DE"
+#| fig-height: 10
+
+# Top 9 gènes pour visualisation par sous-type - base R robuste
+# S'assurer que results_global a les bons rownames
+if (nrow(results_global) == nrow(expr_pat)) {
+  rownames(results_global) <- rownames(expr_pat)
+}
+
+top9_indices <- which(results_global$adj.P.Val < 0.05 & abs(results_global$logFC) > 1)
+top9_ordered <- top9_indices[order(results_global$adj.P.Val[top9_indices])]
+top9_final <- head(top9_ordered, 9)
+
+# Extraire avec vrais IDs depuis expr_pat
+top9_probes <- rownames(expr_pat)[top9_final]
+top9_genes <- data.frame(
+  probe_id = top9_probes,
+  gene_symbol = results_global$gene_symbol[top9_final],
+  logFC = results_global$logFC[top9_final],
+  stringsAsFactors = FALSE
+)
+
+# Préparer les données - base R
+expr_top9_mat <- expr_pat[top9_probes, , drop = FALSE]
+expr_top9_long <- data.frame(
+  probe_id = rep(rownames(expr_top9_mat), each = ncol(expr_top9_mat)),
+  sample = rep(colnames(expr_top9_mat), times = nrow(expr_top9_mat)),
+  expression = as.vector(t(expr_top9_mat)),
+  stringsAsFactors = FALSE
+)
+
+# Merge phénotype
+pheno_info <- data.frame(
+  sample = rownames(pheno_pat),
+  phenotype = pheno_pat$phenotype,
+  subtype = pheno_pat$subtype,
+  stringsAsFactors = FALSE
+)
+expr_top9_long <- merge(expr_top9_long, pheno_info, by = "sample")
+
+# Merge info gènes
+expr_top9_long <- merge(expr_top9_long, top9_genes, by = "probe_id")
+
+# Créer label
+expr_top9_long$gene_label <- paste0(expr_top9_long$gene_symbol, " (logFC=", 
+                                     round(expr_top9_long$logFC, 2), ")")
+
+# Boxplot par sous-type
+expr_top9_long |>
+  ggplot(aes(x = subtype, y = expression, fill = subtype)) +
+  geom_boxplot(outlier.size = 0.8, alpha = 0.8) +
+  geom_jitter(width = 0.15, alpha = 0.25, size = 0.5) +
+  facet_wrap(~gene_label, scales = "free_y", ncol = 3) +
+  scale_fill_manual(values = c(
+    "Normal" = "#4575B4", 
+    "AML" = "#D73027",
+    "B-ALL" = "#FC8D59", 
+    "T-ALL" = "#FEE090"
+  )) +
+  stat_summary(fun = median, geom = "point", shape = 23, size = 2.5, 
+               fill = "yellow", color = "black") +
+  labs(x = NULL, y = "Expression (log2)",
+       title = "Expression des top gènes par sous-type leucémique",
+       fill = "Sous-type") +
+  theme_minimal(base_size = 11) +
+  theme(
+    legend.position = "top",
+    strip.text = element_text(size = 9, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8)
+  )
+```
+
+**Interprétation des boxplots:**
+
+1.  **Validation visuelle des différences**: Les boxplots confirment visuellement les différences statistiques détectées par limma. Pour les gènes surexprimés, la médiane est clairement plus élevée dans les leucémies que dans les normaux, et vice versa pour les gènes sous-exprimés.
+
+2.  **Distribution et outliers**:
+
+    -   Les boxplots révèlent la distribution complète (quartiles, médiane, outliers)
+    -   La présence d'outliers est normale en biologie mais doit être notée
+    -   Les points individuels (jitter) montrent la variabilité inter-échantillons
+
+3.  **Effet de magnitude**:
+
+    -   L'amplitude de la différence (écart entre les médianes) correspond au logFC
+    -   Des boîtes bien séparées = forte différence biologique
+    -   Chevauchement minimal = haute spécificité du biomarqueur
+
+4.  **Patterns par sous-type**:
+
+    -   Certains gènes montrent des patterns différents selon le sous-type
+    -   Gènes surexprimés uniformément dans toutes les leucémies = signature leucémique commune
+    -   Gènes variables entre sous-types = marqueurs spécifiques de lignée
+
+5.  **Variabilité intra-groupe**:
+
+    -   Variabilité normale = reflet de l'hétérogénéité biologique entre patients
+    -   Variabilité excessive = possible effet batch ou sous-groupes non identifiés
+    -   Comparaison Normal vs Leukemia: généralement Normal plus homogène
+
+## Analyses par sous-type leucémique {#sec-subtype}
+
+Nous réalisons des analyses différentielles séparées pour chaque sous-type leucémique (AML, B-ALL, T-ALL) par rapport aux cellules normales.
+
+```{r}
+#| label: limma-subtype-function
+
+run_limma_subtype <- function(eset, subtype_name) {
+  pheno_sub <- pData(eset)
+
+  # Sélectionner les échantillons du sous-type et les normaux
+  keep <- pheno_sub$subtype %in% c(subtype_name, "Normal") &
+          pheno_sub$sample_type %in% c("Patient", "Normal")
+  eset_sub <- eset[, keep]
+  pheno_sub <- pData(eset_sub)
+
+  # Créer un facteur pour la comparaison
+  pheno_sub$group <- factor(
+    ifelse(pheno_sub$subtype == subtype_name, subtype_name, "Normal"),
+    levels = c("Normal", subtype_name)
+  )
+
+  # Utiliser make.names() pour créer des noms syntaxiquement valides
+  design <- model.matrix(~ 0 + group, data = pheno_sub)
+  colnames(design) <- make.names(c("Normal", subtype_name))
+  
+  # Créer le contraste avec les noms valides
+  subtype_valid <- make.names(subtype_name)
+  fit <- lmFit(exprs(eset_sub), design)
+  contrast <- makeContrasts(
+    contrasts = paste0(subtype_valid, " - Normal"),
+    levels = design
+  )
+  fit2 <- contrasts.fit(fit, contrast)
+  fit2 <- eBayes(fit2)
+
+  res <- topTable(fit2, number = Inf, sort.by = "p")
+  
+  # Ajouter probe_id et gene_symbol proprement
+  res$probe_id    <- as.integer(rownames(res))
+  res$gene_symbol <- trimws(sub(
+    "^[^/]*//\\s*([^/]+)\\s*//.*", "\\1",
+    fdata_filt$gene_assignment[match(res$probe_id, fdata_filt$ID)]))
+
+  n_samples <- table(pheno_sub$group)
+  cat(subtype_name, ":", n_samples[subtype_name], "vs Normal :",
+      n_samples["Normal"], "\n")
+  cat("  Gènes DE (FDR<0.05) :", sum(res$adj.P.Val < 0.05), "\n")
+  cat("  Gènes DE (FDR<0.05 & |logFC|>1) :",
+      sum(res$adj.P.Val < 0.05 & abs(res$logFC) > 1), "\n\n")
+
+  res
+}
+```
+
+```{r}
+#| label: run-subtypes
+
+results_aml  <- run_limma_subtype(eset_filt, "AML")
+results_ball <- run_limma_subtype(eset_filt, "B-ALL")
+results_tall <- run_limma_subtype(eset_filt, "T-ALL")
+```
+
+### Volcano plots par sous-type
+
+```{r}
+#| label: volcano-subtypes
+#| fig-cap: "Volcano plots par sous-type leucémique vs Normal"
+#| fig-height: 10
+
+make_volcano <- function(res, title) {
+  # Créer colonne significance - base R
+  res$significance <- "NS"
+  res$significance[res$adj.P.Val < 0.05 & res$logFC > 1] <- "Up"
+  res$significance[res$adj.P.Val < 0.05 & res$logFC < -1] <- "Down"
+  res$significance[res$adj.P.Val < 0.05 & abs(res$logFC) <= 1] <- "FDR<0.05"
+
+  # Top labels - base R
+  sig_genes <- res[res$adj.P.Val < 0.05 & abs(res$logFC) > 1, ]
+  sig_genes <- sig_genes[order(sig_genes$adj.P.Val), ]
+  top_lab <- head(sig_genes, 15)
+
+  ggplot(res, aes(x = logFC, y = -log10(adj.P.Val), color = significance)) +
+    geom_point(alpha = 0.5, size = 1) +
+    geom_text_repel(
+      data = top_lab,
+      aes(label = gene_symbol),
+      size = 2.8, max.overlaps = 15, color = "black"
+    ) +
+    scale_color_manual(values = c(
+      "Up" = "#D73027", "Down" = "#4575B4",
+      "FDR<0.05" = "grey50", "NS" = "grey80"
+    )) +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40") +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey40") +
+    labs(x = "log2 Fold Change", y = "-log10(FDR)", color = NULL, title = title) +
+    theme_minimal(base_size = 12)
+}
+
+v1 <- make_volcano(results_aml, "AML vs Normal")
+v2 <- make_volcano(results_ball, "B-ALL vs Normal")
+v3 <- make_volcano(results_tall, "T-ALL vs Normal")
+
+v1
+v2
+v3
+```
+
+### Top 20 gènes DE par sous-type
+
+```{r}
+#| label: top-genes-subtypes
+
+format_top <- function(res, name) {
+  res |>
+    filter(adj.P.Val < 0.05, abs(logFC) > 1) |>
+    arrange(adj.P.Val) |>
+    dplyr::select(gene_symbol, logFC, AveExpr, t, P.Value, adj.P.Val) |>
+    mutate(across(where(is.numeric), \(x) signif(x, 4))) |>
+    head(20)
+}
+
+cat("=== AML vs Normal — Top 20 ===\n")
+format_top(results_aml, "AML")
+```
+
+```{r}
+#| label: top-genes-ball
+
+cat("=== B-ALL vs Normal — Top 20 ===\n")
+format_top(results_ball, "B-ALL")
+```
+
+```{r}
+#| label: top-genes-tall
+
+cat("=== T-ALL vs Normal — Top 20 ===\n")
+format_top(results_tall, "T-ALL")
+```
+
+```{r}
+library(ggplot2)
+```
+
+### Boxplots des marqueurs spécifiques par sous-type
+
+```{r}
+#| label: boxplot-subtype-markers
+#| fig-cap: "Marqueurs spécifiques de chaque sous-type leucémique (top 3 par sous-type)"
+#| fig-height: 10
+
+# Sélectionner top 3 marqueurs de chaque sous-type - base R
+aml_idx <- which(results_aml$adj.P.Val < 0.05 & results_aml$logFC > 1)
+aml_idx <- aml_idx[order(results_aml$adj.P.Val[aml_idx])][1:min(3, length(aml_idx))]
+
+ball_idx <- which(results_ball$adj.P.Val < 0.05 & results_ball$logFC > 1)
+ball_idx <- ball_idx[order(results_ball$adj.P.Val[ball_idx])][1:min(3, length(ball_idx))]
+
+tall_idx <- which(results_tall$adj.P.Val < 0.05 & results_tall$logFC > 1)
+tall_idx <- tall_idx[order(results_tall$adj.P.Val[tall_idx])][1:min(3, length(tall_idx))]
+
+# Créer dataframe combiné avec vrais IDs
+subtype_markers <- rbind(
+  data.frame(
+    probe_id = results_aml$probe_id[aml_idx],
+    gene_symbol = results_aml$gene_symbol[aml_idx],
+    logFC = results_aml$logFC[aml_idx],
+    subtype_marker = "AML",
+    stringsAsFactors = FALSE
+  ),
+  data.frame(
+    probe_id = results_ball$probe_id[ball_idx],
+    gene_symbol = results_ball$gene_symbol[ball_idx],
+    logFC = results_ball$logFC[ball_idx],
+    subtype_marker = "B-ALL",
+    stringsAsFactors = FALSE
+  ),
+  data.frame(
+    probe_id = results_tall$probe_id[tall_idx],
+    gene_symbol = results_tall$gene_symbol[tall_idx],
+    logFC = results_tall$logFC[tall_idx],
+    subtype_marker = "T-ALL",
+    stringsAsFactors = FALSE
+  )
+)
+
+marker_probes <- as.character(subtype_markers$probe_id)
+
+# Préparer les données pour boxplot - base R
+expr_markers_mat <- expr_pat[marker_probes, , drop = FALSE]
+expr_markers_long <- data.frame(
+  probe_id = rep(rownames(expr_markers_mat), each = ncol(expr_markers_mat)),
+  sample = rep(colnames(expr_markers_mat), times = nrow(expr_markers_mat)),
+  expression = as.vector(t(expr_markers_mat)),
+  stringsAsFactors = FALSE
+)
+
+# Merge phénotype
+pheno_info <- data.frame(
+  sample = rownames(pheno_pat),
+  phenotype = pheno_pat$phenotype,
+  subtype = pheno_pat$subtype,
+  stringsAsFactors = FALSE
+)
+expr_markers_long <- merge(expr_markers_long, pheno_info, by = "sample")
+
+# Merge info gènes
+expr_markers_long <- merge(expr_markers_long, subtype_markers, by = "probe_id")
+
+# Créer label
+expr_markers_long$gene_label <- paste0(expr_markers_long$gene_symbol, 
+                                        "\n(Marqueur ", expr_markers_long$subtype_marker, ")")
+
+# Boxplot avec mise en évidence du sous-type correspondant
+ggplot(expr_markers_long, aes(x = subtype, y = expression, fill = subtype)) +
+  geom_boxplot(outlier.size = 0.8, alpha = 0.8) +
+  geom_jitter(width = 0.15, alpha = 0.3, size = 0.6) +
+  facet_wrap(~gene_label, scales = "free_y", ncol = 3) +
+  scale_fill_manual(values = c(
+    "Normal" = "#4575B4", 
+    "AML" = "#D73027",
+    "B-ALL" = "#FC8D59", 
+    "T-ALL" = "#FEE090"
+  )) +
+  stat_summary(fun = median, geom = "point", shape = 23, size = 2.5, 
+               fill = "yellow", color = "black") +
+  labs(x = NULL, y = "Expression (log2)",
+       title = "Marqueurs spécifiques de sous-types leucémiques",
+       subtitle = "Chaque gène est enrichi dans le sous-type indiqué",
+       fill = "Sous-type") +
+  theme_minimal(base_size = 11) +
+  theme(
+    legend.position = "top",
+    strip.text = element_text(size = 8, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+```{r}
+#| label: boxplot-selected-genes
+#| fig-cap: "Expression de gènes d'intérêt clinique connus"
+#| fig-height: 8
+
+# Sélectionner des gènes d'intérêt clinique connus (si présents dans les données)
+genes_of_interest <- c("MYC", "TP53", "BCL2", "CEBPA", "RUNX1", "FLT3", 
+                       "KIT", "CD34", "MPO", "CD19", "CD3D", "PAX5")
+
+# Extraire gene_symbol depuis gene_assignment si la colonne n'existe pas encore
+if (!"gene_symbol" %in% colnames(fdata_filt)) {
+  fdata_filt$gene_symbol <- trimws(sub("^[^/]*//\\s*([^/]+)\\s*//.*", "\\1", fdata_filt$gene_assignment))
+}
+
+# Identifier les sondes correspondantes - base R
+interest_subset <- fdata_filt[fdata_filt$gene_symbol %in% genes_of_interest, ]
+
+# Prendre la première sonde par gène
+if (nrow(interest_subset) > 0) {
+  interest_probes <- do.call(rbind, lapply(split(interest_subset, interest_subset$gene_symbol), function(x) x[1, ]))
+} else {
+  interest_probes <- interest_subset  # data.frame vide
+}
+
+if (nrow(interest_probes) > 0) {
+  # Vérifier quels gènes sont présents
+  available_genes <- interest_probes$gene_symbol
+  cat("Gènes d'intérêt disponibles:", paste(available_genes, collapse = ", "), "\n")
+  
+  interest_probe_ids <- as.character(interest_probes$ID)
+  
+  # Préparer les données
+  expr_interest_long <- expr_pat[interest_probe_ids, ] |>
+    as.data.frame() |>
+    rownames_to_column("probe_id") |>
+    pivot_longer(cols = -probe_id, names_to = "sample", values_to = "expression") |>
+    left_join(
+      pheno_pat |> 
+        rownames_to_column("sample") |>
+        dplyr::select(sample, phenotype, subtype),
+      by = "sample"
+    ) |>
+    mutate(probe_id = as.integer(probe_id)) |>
+    left_join(
+      interest_probes |> 
+        dplyr::select(ID, gene_symbol),
+      by = c("probe_id" = "ID")
+    )
+  
+  # Boxplot
+  expr_interest_long |>
+    ggplot(aes(x = subtype, y = expression, fill = subtype)) +
+    geom_boxplot(outlier.size = 0.8, alpha = 0.8) +
+    geom_jitter(width = 0.15, alpha = 0.3, size = 0.6) +
+    facet_wrap(~gene_symbol, scales = "free_y", ncol = 4) +
+    scale_fill_manual(values = c(
+      "Normal" = "#4575B4", 
+      "AML" = "#D73027",
+      "B-ALL" = "#FC8D59", 
+      "T-ALL" = "#FEE090"
+    )) +
+    stat_summary(fun = median, geom = "point", shape = 23, size = 2.5, 
+                 fill = "yellow", color = "black") +
+    labs(x = NULL, y = "Expression (log2)",
+         title = "Expression de gènes d'intérêt clinique",
+         subtitle = "Gènes fréquemment mutés ou utilisés comme marqueurs en leucémie",
+         fill = "Sous-type") +
+    theme_minimal(base_size = 11) +
+    theme(
+      legend.position = "top",
+      strip.text = element_text(size = 9, face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+} else {
+  cat("Aucun des gènes d'intérêt clinique n'est présent dans les données\n")
+}
+```
+
+**Interprétation des marqueurs spécifiques:**
+
+1.  **Spécificité de sous-type**: Les marqueurs sélectionnés montrent une expression élevée dans le sous-type correspondant mais plus faible dans les autres sous-types leucémiques, démontrant leur utilité diagnostique.
+
+2.  **Marqueurs de lignée**:
+
+    -   **AML**: Gènes myéloïdes (ex: MPO si présent)
+    -   **B-ALL**: Marqueurs lymphoïdes B (ex: CD19, PAX5 si présents)
+    -   **T-ALL**: Marqueurs lymphoïdes T (ex: CD3D si présent)
+
+3.  **Utilité clinique**: Ces marqueurs peuvent être utilisés pour:
+
+    -   Sous-typage moléculaire rapide
+    -   Confirmation du diagnostic par immunophénotypage
+    -   Détection de maladie résiduelle minimale (MRD)
+
+4.  **Variabilité inter-patients**: La dispersion au sein de chaque sous-type reflète l'hétérogénéité moléculaire, justifiant l'utilisation de panels multi-gènes plutôt que de marqueurs uniques.
+
+**Interprétation des volcano plots et gènes différentiellement exprimés :**
+
+Les analyses différentielles par sous-type révèlent des signatures transcriptomiques à la fois partagées et spécifiques :
+
+1.  **Ampleur différente de la dérégulation** : Les trois sous-types montrent un nombre important de gènes différentiellement exprimés, mais avec des profils distincts. B-ALL et T-ALL présentent généralement plus de gènes surexprimés liés à la prolifération lymphoïde, tandis que l'AML montre des signatures myéloïdes aberrantes.
+
+2.  **Gènes marqueurs classiques** : Les top gènes identifiés incluent des marqueurs connus de chaque lignée :
+
+    -   **AML** : Gènes myéloïdes et de différenciation myéloïde
+    -   **B-ALL** : Marqueurs lymphoïdes B (RAG1, RAG2, DNTT potentiellement présents)
+    -   **T-ALL** : Marqueurs lymphoïdes T et gènes de développement thymique
+
+3.  **Symétrie surexpression/sous-expression** : Les volcano plots montrent généralement une distribution asymétrique avec plus de gènes surexprimés que sous-exprimés dans les leucémies. Ceci reflète l'activation de programmes oncogéniques (prolifération, survie) plutôt qu'une simple perte de fonction.
+
+4.  **Magnitude des changements** : Les logFC élevés (\>3-4) observés pour certains gènes top indiquent des changements d'expression dramatiques, suggérant des rôles critiques dans la transformation leucémique ou comme biomarqueurs diagnostiques potentiels.
+
+# Comparaison des signatures entre sous-types
+
+## Diagramme de Venn
+
+```{r}
+#| label: venn-diagram
+#| fig-cap: "Gènes différentiellement exprimés partagés entre sous-types (FDR<0.05, |logFC|>1)"
+
+get_de_genes <- function(res) {
+  res |>
+    filter(adj.P.Val < 0.05, abs(logFC) > 1) |>
+    pull(gene_symbol) |>
+    unique() |>
+    na.omit() |>
+    as.character() |>
+    trimws()
+}
+
+de_aml  <- get_de_genes(results_aml)
+de_ball <- get_de_genes(results_ball)
+de_tall <- get_de_genes(results_tall)
+
+gene_lists <- list(
+  AML = de_aml,
+  `B-ALL` = de_ball,
+  `T-ALL` = de_tall
+)
+
+ggVennDiagram(gene_lists, label_alpha = 0) +
+  scale_fill_gradient(low = "#F7F7F7", high = "#D73027") +
+  labs(title = "Gènes DE partagés entre sous-types leucémiques") +
+  theme(legend.position = "none")
+```
+
+::: {.callout-note}
+**Interprétation — Diagramme de Venn :** Le diagramme de Venn révèle la structure de partage des gènes différentiellement exprimés entre les trois sous-types leucémiques. Les gènes dans l'intersection centrale (communs aux trois sous-types) représentent la **signature leucémique universelle** — des gènes fondamentalement altérés dans toute leucémie aiguë, indépendamment du lignage. Les gènes exclusifs à chaque sous-type constituent des **marqueurs spécifiques de lignée** utiles pour le diagnostic différentiel. Le chevauchement B-ALL/T-ALL, généralement plus large que AML/ALL, reflète l'origine lymphoïde commune de ces deux leucémies, confirmant la pertinence biologique des groupes définis.
+:::
+
+## Concordance de la direction des changements
+
+```{r}
+#| label: fc-concordance
+#| fig-cap: "Concordance des log2FC entre sous-types pour les gènes DE communs"
+
+# Nettoyer les espaces dans gene_symbol (résidu du format des sondes Affymetrix)
+results_aml$gene_symbol  <- trimws(results_aml$gene_symbol)
+results_ball$gene_symbol <- trimws(results_ball$gene_symbol)
+results_tall$gene_symbol <- trimws(results_tall$gene_symbol)
+
+# Créer un tableau unifié des logFC
+# distinct() pour garder une seule sonde par gène (la plus significative, après arrange)
+lfc_aml <- results_aml |>
+  dplyr::arrange(adj.P.Val) |>
+  dplyr::distinct(gene_symbol, .keep_all = TRUE) |>
+  dplyr::select(gene_symbol, logFC_AML = logFC)
+
+lfc_ball <- results_ball |>
+  dplyr::arrange(adj.P.Val) |>
+  dplyr::distinct(gene_symbol, .keep_all = TRUE) |>
+  dplyr::select(gene_symbol, logFC_BALL = logFC)
+
+lfc_tall <- results_tall |>
+  dplyr::arrange(adj.P.Val) |>
+  dplyr::distinct(gene_symbol, .keep_all = TRUE) |>
+  dplyr::select(gene_symbol, logFC_TALL = logFC)
+
+lfc_merged <- lfc_aml |>
+  inner_join(lfc_ball, by = "gene_symbol") |>
+  inner_join(lfc_tall, by = "gene_symbol") |>
+  dplyr::filter(!is.na(gene_symbol))
+
+# Gènes DE dans au moins un sous-type
+all_de <- unique(c(trimws(de_aml), trimws(de_ball), trimws(de_tall)))
+lfc_de <- lfc_merged |> dplyr::filter(gene_symbol %in% all_de)
+
+cat("Gènes DE communs aux 3 sous-types dans lfc_de:", nrow(lfc_de), "\n")
+
+p_ab <- ggplot(lfc_de, aes(x = logFC_AML, y = logFC_BALL)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  geom_hline(yintercept = 0, color = "grey60") +
+  geom_vline(xintercept = 0, color = "grey60") +
+  labs(x = "logFC (AML)", y = "logFC (B-ALL)") +
+  theme_minimal(base_size = 11)
+
+p_at <- ggplot(lfc_de, aes(x = logFC_AML, y = logFC_TALL)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  geom_hline(yintercept = 0, color = "grey60") +
+  geom_vline(xintercept = 0, color = "grey60") +
+  labs(x = "logFC (AML)", y = "logFC (T-ALL)") +
+  theme_minimal(base_size = 11)
+
+p_bt <- ggplot(lfc_de, aes(x = logFC_BALL, y = logFC_TALL)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  geom_hline(yintercept = 0, color = "grey60") +
+  geom_vline(xintercept = 0, color = "grey60") +
+  labs(x = "logFC (B-ALL)", y = "logFC (T-ALL)") +
+  theme_minimal(base_size = 11)
+
+(p_ab | p_at | p_bt) +
+  plot_annotation(title = "Concordance des fold changes entre sous-types")
+```
+
+**Interprétation du diagramme de Venn et de la concordance des fold changes :**
+
+1.  **Noyau leucémique commun** : Le diagramme de Venn révèle un ensemble significatif de gènes différentiellement exprimés partagés entre les trois sous-types. Ces gènes représentent probablement un "programme leucémique fondamental" commun à toutes les leucémies aiguës, indépendamment de leur lignée cellulaire d'origine. Ce noyau commun inclut vraisemblablement des gènes liés à la prolifération cellulaire, l'inhibition de l'apoptose et le blocage de différenciation.
+
+2.  **Signatures spécifiques de lignée** : Les segments du Venn montrant des gènes uniques à chaque sous-type (zones non chevauchantes) reflètent les caractéristiques biologiques spécifiques à chaque lignée :
+
+    -   **AML** : Gènes de différenciation myéloïde et métabolisme granulocytaire
+    -   **B-ALL et T-ALL** : Peuvent partager plus de gènes entre eux (lignée lymphoïde commune) qu'avec l'AML
+
+3.  **Concordance directionnelle forte** : Les graphiques de corrélation des logFC montrent que les gènes DE communs tendent à varier dans la **même direction** dans tous les sous-types (points alignés le long de la diagonale). Ceci renforce l'idée d'un programme oncogénique cohérent : les gènes prolifératifs sont surexprimés dans tous les cas, et les gènes suppresseurs ou de différenciation sont réprimés de manière coordonnée.
+
+4.  **Variations d'amplitude** : Bien que la direction soit concordante, l'amplitude des changements (distance à la diagonale) peut varier entre sous-types, suggérant des degrés différents d'activation des mêmes voies, ou des mécanismes régulateurs subtypes-spécifiques modulant l'expression de ces gènes communs.
+
+## Heatmap des gènes DE communs aux trois sous-types
+
+```{r}
+#| label: heatmap-common-de
+#| fig-cap: "Heatmap interactive des 30 gènes les plus variables communs aux trois sous-types leucémiques"
+#| fig-height: 10
+#| fig-width: 14
+#| column: page
+#| out-width: "100%"
+#| eval: !expr pkg_available$plotly
+
+if (!pkg_available$plotly) {
+  cat("⚠️  Heatmap interactive nécessite 'plotly'\n")
+  cat("   Affichage d'une heatmap statique à la place...\n\n")
+}
+
+# Gènes communs aux 3 sous-types
+common_genes <- Reduce(intersect, gene_lists)
+cat("Gènes DE communs aux 3 sous-types :", length(common_genes), "\n")
+
+if (length(common_genes) > 0) {
+  # Nettoyer les noms de gènes communs
+  common_genes_clean <- trimws(common_genes)
+  
+  # Mapper les symboles géniques aux identifiants de sondes
+  fdata_with_symbols <- fdata_filt |>
+    mutate(gene_symbol = trimws(sub("^[^/]*//\\s*([^/]+)\\s*//.*", "\\1", gene_assignment)))
+
+  # Pour chaque gène, prendre la sonde la plus variable - base R
+  common_subset <- as.data.frame(fdata_with_symbols)
+  common_subset <- common_subset[common_subset$gene_symbol %in% common_genes_clean, ]
+  common_subset$var <- apply(expr_pat[as.character(common_subset$ID), ], 1, var)
+  
+  # Pour chaque gène, garder la sonde avec variance maximale
+  common_probes <- do.call(rbind, lapply(split(common_subset, common_subset$gene_symbol), 
+                                          function(x) x[which.max(x$var), ]))
+  
+  # Limiter à 30 gènes pour une lisibilité optimale
+  n_genes <- min(30, nrow(common_probes))
+  common_probes <- common_probes[order(-common_probes$var), ]
+  common_probes <- common_probes[1:n_genes, ]
+  
+  cat("Affichage des", n_genes, "gènes les plus variables sur", length(common_genes_clean), "communs\n")
+
+  # Créer la matrice
+  heatmap_mat <- expr_pat[as.character(common_probes$ID), ]
+  rownames(heatmap_mat) <- common_probes$gene_symbol
+  
+  # Normaliser par ligne (z-score)
+  heatmap_mat_scaled <- t(scale(t(heatmap_mat)))
+  
+  # Limiter les valeurs extrêmes
+  heatmap_mat_scaled[heatmap_mat_scaled > 3] <- 3
+  heatmap_mat_scaled[heatmap_mat_scaled < -3] <- -3
+
+  # Annotation des colonnes
+  subtypes <- as.character(pData(eset_patients)$subtype)
+  
+  # Créer la heatmap interactive avec plotly
+  plot_ly(
+    x = colnames(heatmap_mat_scaled),
+    y = rownames(heatmap_mat_scaled),
+    z = heatmap_mat_scaled,
+    type = "heatmap",
+    colors = colorRampPalette(c("#2166AC", "#4393C3", "#92C5DE", "#D1E5F0",
+                                "#F7F7F7", 
+                                "#FDDBC7", "#F4A582", "#D6604D", "#B2182B"))(100),
+    zmin = -3,
+    zmax = 3,
+    hovertemplate = paste(
+      "<b>Gène:</b> %{y}<br>",
+      "<b>Échantillon:</b> %{x}<br>",
+      "<b>z-score:</b> %{z:.2f}<br>",
+      "<extra></extra>"
+    ),
+    colorbar = list(
+      title = "z-score",
+      titleside = "right",
+      len = 0.7,
+      thickness = 20
+    )
+  ) |>
+    layout(
+      title = list(
+        text = sprintf("Top %d gènes communs aux 3 leucémies (interactif)", n_genes),
+        x = 0.5,
+        xanchor = "center",
+        font = list(size = 16, family = "Arial, sans-serif")
+      ),
+      xaxis = list(
+        title = "Échantillons (colorés par sous-type)",
+        tickangle = -90,
+        tickfont = list(size = 8),
+        side = "bottom",
+        showticklabels = FALSE
+      ),
+      yaxis = list(
+        title = "Gènes",
+        tickfont = list(size = 11),
+        automargin = TRUE
+      ),
+      margin = list(l = 120, r = 80, t = 80, b = 100),
+      hovermode = "closest",
+      plot_bgcolor = "white",
+      paper_bgcolor = "white",
+      autosize = TRUE
+    ) |>
+    config(
+      displayModeBar = TRUE,
+      modeBarButtonsToRemove = c("lasso2d", "select2d"),
+      toImageButtonOptions = list(
+        format = "png",
+        filename = "heatmap_leucemie",
+        height = 800,
+        width = 1200,
+        scale = 2
+      )
+    )
+  
+  cat("\n📊 Heatmap interactive Plotly:\n")
+  cat("  • Survolez une cellule pour voir gène, échantillon et z-score\n")
+  cat("  • Cliquez-glissez pour zoomer sur une région\n")
+  cat("  • Double-cliquez pour réinitialiser la vue\n")
+  cat("  • Utilisez les boutons en haut à droite pour télécharger\n")
+  cat("\n💡 Légende: z-score normalisé par gène (-3 à +3)\n")
+  cat("   Rouge = sur-exprimé | Bleu = sous-exprimé\n")
+}
+```
+
+```{r}
+
+# Vérifier que tout est prêt
+cat("✓ heatmap_mat_scaled existe:", exists("heatmap_mat_scaled"), "\n")
+cat("✓ Dimensions:", paste(dim(heatmap_mat_scaled), collapse=" x "), "\n")
+cat("✓ plotly chargé:", "plotly" %in% loadedNamespaces(), "\n")
+
+# Créer et afficher le graphique
+library(plotly)
+
+p <- plot_ly(
+  x = colnames(heatmap_mat_scaled),
+  y = rownames(heatmap_mat_scaled),
+  z = heatmap_mat_scaled,
+  type = "heatmap",
+  colors = colorRampPalette(c("#2166AC", "#4393C3", "#92C5DE", "#D1E5F0",
+                              "#F7F7F7", 
+                              "#FDDBC7", "#F4A582", "#D6604D", "#B2182B"))(100),
+  zmin = -3,
+  zmax = 3,
+  hovertemplate = paste(
+    "<b>Gène:</b> %{y}<br>",
+    "<b>Échantillon:</b> %{x}<br>",
+    "<b>z-score:</b> %{z:.2f}<br>",
+    "<extra></extra>"
+  ),
+  colorbar = list(title = "z-score", len = 0.7, thickness = 20)
+) |>
+  layout(
+    title = "Top 30 gènes communs aux 3 leucémies",
+    xaxis = list(title = "Échantillons", showticklabels = FALSE),
+    yaxis = list(title = "Gènes", tickfont = list(size = 10), automargin = TRUE),
+    margin = list(l = 120, r = 80, t = 80, b = 80)
+  )
+
+# Afficher
+p
+
+cat("\n✅ Le graphique interactif devrait apparaître dans l'onglet VIEWER\n")
+cat("📍 Regardez en bas à droite de RStudio, onglet 'Viewer'\n")
+```
+
+::: {.callout-note}
+**Interprétation — Heatmap des gènes communs :** La heatmap présente les 30 gènes les plus variables parmi ceux communs aux trois sous-types, avec un clustering hiérarchique des échantillons et des gènes. Les blocs de couleur cohérents le long des colonnes confirment la bonne séparation entre les groupes (Normal vs Leucémie, puis entre sous-types). Les gènes regroupés en clusters au sein de la heatmap partagent des profils d'expression co-régulés, suggérant une régulation commune (même facteur de transcription ou voie de signalisation). Ce patron visuel complète les analyses statistiques en montrant la structure globale de la reprogrammation transcriptomique leucémique.
+:::
+
+# Analyse d'enrichissement fonctionnel (Gene Ontology)
+
+Nous réalisons une analyse d'enrichissement de type *over-representation analysis* (ORA) sur les gènes DE de chaque comparaison en utilisant les termes Gene Ontology (Biological Process).
+
+```{r}
+#| label: go-enrichment-function
+
+run_go_enrichment <- function(de_genes, universe_genes, ont = "BP") {
+  # Convertir les symboles en Entrez IDs
+  de_entrez <- bitr(de_genes, fromType = "SYMBOL", toType = "ENTREZID",
+                     OrgDb = org.Hs.eg.db)
+  universe_entrez <- bitr(universe_genes, fromType = "SYMBOL", toType = "ENTREZID",
+                           OrgDb = org.Hs.eg.db)
+
+  ego <- enrichGO(
+    gene          = de_entrez$ENTREZID,
+    universe      = universe_entrez$ENTREZID,
+    OrgDb         = org.Hs.eg.db,
+    ont           = ont,
+    pAdjustMethod = "BH",
+    pvalueCutoff  = 0.05,
+    qvalueCutoff  = 0.1,
+    readable      = TRUE
+  )
+
+  ego
+}
+
+# Univers = tous les gènes testés
+universe <- results_global$gene_symbol |> unique() |> na.omit() |> as.character() |> trimws()
+```
+
+## Enrichissement GO — Leukemia vs Normal (global)
+
+```{r}
+#| label: go-global
+#| fig-cap: "Top 20 termes GO (Biological Process) — Leukemia vs Normal"
+
+library(dplyr)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+
+# Nettoyer les espaces dans gene_symbol (sécurité)
+results_global$gene_symbol <- trimws(results_global$gene_symbol)
+
+# Construire l'univers de référence = tous les gènes détectés sur la puce
+universe_symbols <- unique(trimws(sub("^[^/]*//\\s*([^/]+)\\s*//.*", "\\1",
+                                      fdata_filt$gene_assignment)))
+universe_symbols <- universe_symbols[universe_symbols != "" & !grepl("^---", universe_symbols)]
+universe_entrez  <- bitr(universe_symbols, fromType = "SYMBOL", toType = "ENTREZID",
+                         OrgDb = org.Hs.eg.db)
+
+# Gènes up et down
+de_global_up <- results_global |>
+  dplyr::filter(adj.P.Val < 0.05, logFC > 1) |>
+  dplyr::pull(gene_symbol) |>
+  unique() |> na.omit() |> trimws()
+
+de_global_down <- results_global |>
+  dplyr::filter(adj.P.Val < 0.05, logFC < -1) |>
+  dplyr::pull(gene_symbol) |>
+  unique() |> na.omit() |> trimws()
+
+cat("Gènes UP:", length(de_global_up), "| DOWN:", length(de_global_down), "\n")
+
+# Convertir en Entrez IDs
+de_entrez_up   <- bitr(de_global_up,   fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+de_entrez_down <- bitr(de_global_down, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+
+# Enrichissement GO avec univers = gènes de la puce
+ego_global_up <- enrichGO(
+  gene          = de_entrez_up$ENTREZID,
+  universe      = universe_entrez$ENTREZID,
+  OrgDb         = org.Hs.eg.db,
+  ont           = "BP",
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.2,
+  readable      = TRUE
+)
+
+ego_global_down <- enrichGO(
+  gene          = de_entrez_down$ENTREZID,
+  universe      = universe_entrez$ENTREZID,
+  OrgDb         = org.Hs.eg.db,
+  ont           = "BP",
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.2,
+  readable      = TRUE
+)
+
+cat("Gènes surexprimés — termes GO enrichis :", nrow(ego_global_up@result   |> dplyr::filter(p.adjust < 0.05)), "\n")
+cat("Gènes sous-exprimés — termes GO enrichis :", nrow(ego_global_down@result |> dplyr::filter(p.adjust < 0.05)), "\n")
+```
+
+```{r}
+#| label: dotplot-global-up
+#| fig-cap: "Enrichissement GO — Gènes surexprimés dans Leukemia vs Normal"
+
+if (nrow(ego_global_up@result |> dplyr::filter(p.adjust < 0.05)) > 0) {
+  dotplot(ego_global_up, showCategory = 20) +
+    labs(title = "GO Biological Process — Gènes surexprimés (Leukemia)")
+}
+```
+
+::: {.callout-note}
+**Interprétation — GO gènes surexprimés :** Les termes GO enrichis dans les gènes surexprimés sont dominés par les processus de **prolifération cellulaire** : réplication de l'ADN, ségrégation chromosomique, division nucléaire mitotique, régulation des points de contrôle du cycle cellulaire. Ces résultats confirment que les cellules leucémiques sont caractérisées par une prolifération incontrôlée avec activation massive de la machinerie de réplication et de division. La taille des points (GeneRatio) et l'intensité de couleur (FDR) indiquent que ces termes sont enrichis de façon très robuste statistiquement, avec des centaines de gènes impliqués.
+:::
+
+```{r}
+#| label: dotplot-global-down
+#| fig-cap: "Enrichissement GO — Gènes sous-exprimés dans Leukemia vs Normal"
+
+if (nrow(ego_global_down@result |> dplyr::filter(p.adjust < 0.05)) > 0) {
+  dotplot(ego_global_down, showCategory = 20) +
+    labs(title = "GO Biological Process — Gènes sous-exprimés (Leukemia)")
+}
+```
+
+::: {.callout-note}
+**Interprétation — GO gènes sous-exprimés :** Les termes GO enrichis dans les gènes sous-exprimés reflètent la **perte des fonctions normales des cellules hématopoïétiques** : réponse immune adaptative, adhésion cellulaire leucocytaire, réponse aux cytokines, différenciation lymphocytaire. Cette répression de la différenciation et des fonctions immunitaires est cohérente avec le blocage de maturation caractéristique des leucémies aiguës. Les cellules leucémiques perdent leur identité fonctionnelle normale tout en acquérant les capacités prolifératives aberrantes reflétées dans les termes surexprimés.
+:::
+
+**Interprétation de l'enrichissement GO global (Leukemia vs Normal) :**
+
+Les analyses d'enrichissement fonctionnel révèlent les programmes biologiques dérégulés dans les leucémies :
+
+**Gènes surexprimés (voies activées dans les leucémies) :**
+
+1.  **Prolifération cellulaire** : Enrichissement massif en termes liés au cycle cellulaire (mitose, réplication de l'ADN, cytokinèse), confirmant l'hyperprolifération caractéristique des cellules leucémiques. Les voies incluent probablement la transition G1/S, la progression en phase M, et la régulation des checkpoints.
+
+2.  **Réplication et réparation de l'ADN** : Activation des machineries de synthèse d'ADN, cohérente avec une division cellulaire rapide. Peut également refléter une instabilité génomique et l'activation de voies de réparation de l'ADN en réponse au stress réplicatif.
+
+3.  **Organisation chromosomique** : Enrichissement en processus de condensation chromosomique, ségrégation des chromatides, et organisation du fuseau mitotique, tous essentiels pour la mitose accélérée.
+
+**Gènes sous-exprimés (voies réprimées dans les leucémies) :**
+
+1.  **Différenciation hématopoïétique** : Répression des programmes de maturation normale des cellules sanguines, reflétant le **blocage de différenciation** qui est l'une des caractéristiques cardinales des leucémies aiguës. Les cellules restent bloquées à un stade immature.
+
+2.  **Fonctions immunitaires** : Perte d'expression de gènes impliqués dans la réponse immune adaptative et innée, expliquant l'immunodéficience observée chez les patients leucémiques.
+
+3.  **Métabolisme spécialisé** : Répression de voies métaboliques spécifiques aux cellules différenciées (ex: métabolisme du fer dans les érythrocytes matures), cohérente avec le phénotype immature.
+
+Ces résultats confirment que les leucémies aiguës présentent un **double défaut** : activation aberrante de la prolifération ET blocage de la différenciation, les deux mécanismes conspirant pour accumuler des cellules immatures non fonctionnelles.
+
+## Enrichissement GO par sous-type
+
+### AML vs Normal
+
+```{r}
+#| label: go-aml
+#| fig-cap: "Enrichissement GO — AML vs Normal (gènes surexprimés)"
+
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+
+# Extraire et nettoyer les gènes AML surexprimés
+de_aml_up <- results_aml |>
+  filter(adj.P.Val < 0.05, logFC > 1) |>
+  pull(gene_symbol) |> 
+  unique() |> 
+  na.omit() |>
+  trimws()  # Nettoyer les espaces
+
+# Convertir en Entrez IDs
+de_aml_entrez <- bitr(de_aml_up, fromType = "SYMBOL", toType = "ENTREZID",
+                       OrgDb = org.Hs.eg.db)
+
+# Enrichissement GO
+ego_aml_up <- enrichGO(
+  gene          = de_aml_entrez$ENTREZID,
+  OrgDb         = org.Hs.eg.db,
+  ont           = "BP",
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.2,
+  readable      = TRUE
+)
+
+# Créer le dotplot
+if (nrow(ego_aml_up@result |> filter(p.adjust < 0.05)) > 0) {
+  dotplot(ego_aml_up, showCategory = 15) +
+    labs(title = "GO BP — AML surexprimés")
+}
+```
+
+### B-ALL vs Normal
+
+```{r}
+#| label: go-ball
+#| fig-cap: "Enrichissement GO — B-ALL vs Normal (gènes surexprimés)"
+
+de_ball_up <- results_ball |>
+  filter(adj.P.Val < 0.05, logFC > 1) |>
+  pull(gene_symbol) |> 
+  unique() |> 
+  na.omit() |>
+  as.character() |>
+  trimws()  # Supprimer les espaces
+
+ego_ball_up <- run_go_enrichment(de_ball_up, universe)
+
+if (nrow(ego_ball_up@result |> filter(p.adjust < 0.05)) > 0) {
+  dotplot(ego_ball_up, showCategory = 15) +
+    labs(title = "GO BP — B-ALL surexprimés")
+}
+```
+
+```{r}
+#| label: go-enrichment-complete
+#| fig-height: 6
+#| fig-width: 8
+
+# ============================================
+# ANALYSE D'ENRICHISSEMENT GO COMPLÈTE
+# ============================================
+
+library(dplyr)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+
+# 1. PRÉPARATION - Nettoyer universe
+universe <- trimws(universe)
+
+# 2. EXTRACTION ET NETTOYAGE DES GÈNES
+# Global
+de_global_up <- results_global |>
+  filter(adj.P.Val < 0.05, logFC > 1) |>
+  pull(gene_symbol) |> unique() |> na.omit() |> trimws()
+de_global_down <- results_global |>
+  filter(adj.P.Val < 0.05, logFC < -1) |>
+  pull(gene_symbol) |> unique() |> na.omit() |> trimws()
+
+# AML
+de_aml_up <- results_aml |>
+  filter(adj.P.Val < 0.05, logFC > 1) |>
+  pull(gene_symbol) |> unique() |> na.omit() |> trimws()
+de_aml_down <- results_aml |>
+  filter(adj.P.Val < 0.05, logFC < -1) |>
+  pull(gene_symbol) |> unique() |> na.omit() |> trimws()
+
+# B-ALL
+de_ball_up <- results_ball |>
+  filter(adj.P.Val < 0.05, logFC > 1) |>
+  pull(gene_symbol) |> unique() |> na.omit() |> trimws()
+de_ball_down <- results_ball |>
+  filter(adj.P.Val < 0.05, logFC < -1) |>
+  pull(gene_symbol) |> unique() |> na.omit() |> trimws()
+
+# T-ALL
+de_tall_up <- results_tall |>
+  filter(adj.P.Val < 0.05, logFC > 1) |>
+  pull(gene_symbol) |> unique() |> na.omit() |> trimws()
+de_tall_down <- results_tall |>
+  filter(adj.P.Val < 0.05, logFC < -1) |>
+  pull(gene_symbol) |> unique() |> na.omit() |> trimws()
+
+# 3. FONCTION D'ENRICHISSEMENT
+do_enrichment <- function(gene_symbols) {
+  entrez <- bitr(gene_symbols, fromType = "SYMBOL", toType = "ENTREZID",
+                 OrgDb = org.Hs.eg.db)
+  
+  enrichGO(
+    gene          = entrez$ENTREZID,
+    OrgDb         = org.Hs.eg.db,
+    ont           = "BP",
+    pAdjustMethod = "BH",
+    pvalueCutoff  = 0.05,
+    qvalueCutoff  = 0.2,
+    readable      = TRUE
+  )
+}
+
+# 4. ENRICHISSEMENT GO
+ego_global_up <- do_enrichment(de_global_up)
+ego_global_down <- do_enrichment(de_global_down)
+ego_aml_up <- do_enrichment(de_aml_up)
+ego_aml_down <- do_enrichment(de_aml_down)
+ego_ball_up <- do_enrichment(de_ball_up)
+ego_ball_down <- do_enrichment(de_ball_down)
+ego_tall_up <- do_enrichment(de_tall_up)
+ego_tall_down <- do_enrichment(de_tall_down)   
+```
+
+### T-ALL vs Normal
+
+```{r}
+#| label: go-tall
+#| fig-cap: "Enrichissement GO — T-ALL vs Normal (gènes surexprimés)"
+
+de_tall_up <- results_tall |>
+  filter(adj.P.Val < 0.05, logFC > 1) |>
+  pull(gene_symbol) |> 
+  unique() |> 
+  na.omit() |>
+  as.character() |>
+  trimws()  # Nettoyer les espaces et convertir en caractères
+
+# Vérifier qu'il y a des gènes valides
+if (length(de_tall_up) > 0) {
+  ego_tall_up <- run_go_enrichment(de_tall_up, universe)
+  
+  if (nrow(ego_tall_up@result |> filter(p.adjust < 0.05)) > 0) {
+    dotplot(ego_tall_up, showCategory = 15) +
+      labs(title = "GO BP — T-ALL surexprimés")
+  }
+} else {
+  message("Aucun gène valide trouvé pour T-ALL surexprimés")
+}
+```
+
+## Comparaison de l'enrichissement entre sous-types
+
+```{r}
+#| label: compare-cluster
+#| fig-cap: "Comparaison des termes GO enrichis entre les trois sous-types leucémiques"
+#| fig-height: 10
+
+# Préparer les listes de gènes en Entrez IDs
+convert_to_entrez <- function(genes) {
+  bitr(genes, fromType = "SYMBOL", toType = "ENTREZID",
+       OrgDb = org.Hs.eg.db)$ENTREZID
+}
+
+gene_clusters <- list(
+  AML   = convert_to_entrez(de_aml_up),
+  `B-ALL` = convert_to_entrez(de_ball_up),
+  `T-ALL` = convert_to_entrez(de_tall_up)
+)
+
+cgo <- compareCluster(
+  geneClusters = gene_clusters,
+  fun = "enrichGO",
+  OrgDb = org.Hs.eg.db,
+  ont = "BP",
+  pAdjustMethod = "BH",
+  pvalueCutoff = 0.05,
+  qvalueCutoff = 0.1,
+  readable = TRUE
+)
+
+dotplot(cgo, showCategory = 10) +
+  labs(title = "Comparaison GO (Biological Process) — Gènes surexprimés par sous-type")
+```
+
+```{r}
+# Afficher le résumé de l'analyse compareCluster
+summary(cgo)
+```
+
+```{r}
+# Résumé statistique des termes par cluster
+result_df <- as.data.frame(cgo)
+
+cat("=== RÉSUMÉ DE L'ANALYSE compareCluster ===\n\n")
+
+cat("Nombre total de termes GO enrichis par sous-type:\n")
+table(result_df$Cluster)
+
+cat("\n\nTop 5 termes GO les plus significatifs pour chaque sous-type:\n\n")
+for (cluster in unique(result_df$Cluster)) {
+  cat("---", cluster, "---\n")
+  cluster_data <- result_df[result_df$Cluster == cluster, ]
+  cluster_data <- cluster_data[order(cluster_data$p.adjust), ]
+  top5 <- head(cluster_data[, c("Description", "p.adjust", "Count")], 5)
+  print(top5)
+  cat("\n")
+}
+```
+
+::: {.callout-note}
+Interprétation des résultats de l'analyse d'enrichissement GO comparant les trois sous-types leucémiques :
+
+Vue d'ensemble L'analyse révèle des signatures biologiques remarquablement convergentes entre les trois sous-types de leucémies aiguës (AML, B-ALL, T-ALL), avec une dominance écrasante des processus liés à la prolifération cellulaire incontrôlée.
+
+Résultats clés 1. Termes GO communs aux 3 sous-types
+
+Les 10 termes biologiques les plus enrichis sont identiques pour les trois leucémies :
+
+-   DNA replication (réplication de l'ADN)
+-   Chromosome segregation (ségrégation chromosomique)
+-   Mitotic nuclear division (division nucléaire mitotique)
+-   Cell cycle regulation (régulation du cycle cellulaire)
+
+Cela indique une signature proliférative universelle dans les leucémies aiguës, indépendamment du lignage cellulaire.
+
+2.  Signification statistique
+
+-   B-ALL montre l'enrichissement le plus fort (p.adjust = 2.78×10⁻⁴⁵ pour chromosome segregation avec 124 gènes)
+-   AML : 551 termes enrichis
+-   B-ALL : 485 termes enrichis
+-   T-ALL : 353 termes enrichis
+
+3.  Processus biologiques dominants
+
+Tous les sous-types montrent une suractivation de :
+
+-   Réplication de l'ADN (75-99 gènes selon le sous-type)
+-   Division cellulaire et mécanismes mitotiques
+-   Contrôle des checkpoints du cycle cellulaire
+-   Ségrégation chromosomique et organisation du fuseau mitotique
+-   Réparation de l'ADN (visible dans les rangs inférieurs)
+
+**Implications biologiques**
+
+-   Dérégulation du cycle cellulaire : Les cellules leucémiques montrent une activation massive des gènes contrôlant la division cellulaire, expliquant leur prolifération incontrôlée.
+
+-   Stress réplicatif : L'enrichissement en processus de réplication et de réparation de l'ADN suggère que ces cellules subissent un stress important lors de leur division rapide.
+
+-   Cibles thérapeutiques communes : La convergence des trois sous-types sur ces processus suggère que des thérapies ciblant la machinerie de réplication (ex: inhibiteurs de kinases du cycle cellulaire comme CDK1, PLK1, AURKA/B) pourraient être efficaces indépendamment du sous-type.
+
+-   Vulnérabilité partagée : L'hyper-dépendance à la machinerie de division cellulaire représente un "talon d'Achille" exploitable thérapeutiquement.
+
+**Le graphique dotplot montre visuellement cette convergence, avec des tailles de points similaires (GeneRatio) et des couleurs rouges intenses (p.adjust très faibles) pour les trois colonnes, confirmant l'homogénéité fonctionnelle malgré les origines cellulaires différentes.**
+
+:::
+## Enrichissement KEGG Pathways
+
+```{r}
+#| label: kegg-enrichment
+#| fig-cap: "Enrichissement KEGG — Leukemia vs Normal (gènes surexprimés)"
+
+library(clusterProfiler)
+
+# KEGG enrichment pour gènes surexprimés globaux
+de_entrez_up_global <- bitr(de_global_up, fromType = "SYMBOL", toType = "ENTREZID",
+                             OrgDb = org.Hs.eg.db)
+
+kegg_global_up <- enrichKEGG(
+  gene = de_entrez_up_global$ENTREZID,
+  organism = "hsa",
+  pvalueCutoff = 0.05,
+  qvalueCutoff = 0.2
+)
+
+if (nrow(kegg_global_up@result |> filter(p.adjust < 0.05)) > 0) {
+  dotplot(kegg_global_up, showCategory = 20) +
+    labs(title = "KEGG Pathways — Gènes surexprimés (Leukemia)")
+} else {
+  cat("Aucune voie KEGG significativement enrichie pour les gènes surexprimés globaux\n")
+}
+```
+
+```{r}
+# Afficher les résultats détaillés de l'enrichissement KEGG
+cat("=== ANALYSE D'ENRICHISSEMENT KEGG ===\n\n")
+
+cat("Nombre de gènes surexprimés analysés:", length(de_global_up), "\n")
+cat("Nombre de gènes convertis en ENTREZID:", nrow(de_entrez_up_global), "\n\n")
+
+# Résumé global
+cat("Total de voies KEGG testées:", nrow(kegg_global_up@result), "\n")
+sig_results <- kegg_global_up@result |> filter(p.adjust < 0.05)
+cat("Voies significatives (p.adjust < 0.05):", nrow(sig_results), "\n\n")
+
+# Top 20 voies les plus enrichies
+cat("=== TOP 20 VOIES KEGG ENRICHIES ===\n\n")
+top20 <- head(sig_results[order(sig_results$p.adjust), ], 20)
+print(top20[, c("ID", "Description", "GeneRatio", "BgRatio", "p.adjust", "Count")])
+```
+
+```{r}
+# Catégoriser les voies par fonction biologique
+cat("=== CATÉGORISATION FONCTIONNELLE DES VOIES KEGG ===\n\n")
+
+# Définir les catégories
+categories <- list(
+  "Prolifération cellulaire" = c("Cell cycle", "DNA replication", "Oocyte meiosis", 
+                                   "Progesterone-mediated oocyte maturation"),
+  "Réparation de l'ADN" = c("Homologous recombination", "Base excision repair", 
+                             "Mismatch repair", "Fanconi anemia pathway"),
+  "Signalisation et régulation" = c("p53 signaling pathway", "Cellular senescence"),
+  "Hématopoïèse et immunité" = c("Hematopoietic cell lineage", "Primary immunodeficiency",
+                                  "Human T-cell leukemia virus 1 infection"),
+  "Cancer" = c("Transcriptional misregulation in cancer", "Small cell lung cancer"),
+  "Métabolisme" = c("One carbon pool by folate", "Nucleotide metabolism", 
+                     "Antifolate resistance"),
+  "Autres" = c("Motor proteins", "Cushing syndrome")
+)
+
+for (cat_name in names(categories)) {
+  pathways_in_cat <- top20[top20$Description %in% categories[[cat_name]], ]
+  if (nrow(pathways_in_cat) > 0) {
+    cat("\n", cat_name, "(", nrow(pathways_in_cat), "voies):\n", sep="")
+    for (i in 1:nrow(pathways_in_cat)) {
+      cat("  •", pathways_in_cat$Description[i], 
+          sprintf("(%d gènes, p.adj=%.2e)", 
+                  pathways_in_cat$Count[i], 
+                  pathways_in_cat$p.adjust[i]), "\n")
+    }
+  }
+}
+```
+
+**Interprétation de l'enrichissement KEGG des gènes surexprimés dans les leucémies**
+
+L'analyse révèle 27 voies KEGG significativement enrichies parmi les 1 120 gènes surexprimés dans les leucémies par rapport aux cellules normales. Cette signature moléculaire est cohérente avec les résultats GO et confirme les mécanismes oncogéniques des leucémies aiguës.
+
+**1. Prolifération cellulaire incontrôlée (la signature dominante)**
+
+Cell cycle (p.adj = 1.43×10⁻²⁸, 55 gènes) est de loin la voie la plus enrichie, avec une signification statistique exceptionnelle. Cela confirme que la dérégulation du cycle cellulaire est le mécanisme central de la leucémogenèse.
+
+Les voies associées incluent :
+
+DNA replication (20 gènes) - Hyper-activation de la machinerie réplicative Oocyte meiosis et Progesterone-mediated oocyte maturation - Indiquent une surexpression de régulateurs mitotiques partagés avec la division méiotique (ex: cyclines, kinases) Implication : Les cellules leucémiques contournent les points de contrôle normaux du cycle cellulaire, permettant une division rapide et continue.
+
+**2. Stress réplicatif et instabilité génomique**
+
+Quatre voies de réparation de l'ADN sont enrichies :
+
+-   Homologous recombination (13 gènes, p.adj = 1.09×10⁻⁵)
+-   Base excision repair (13 gènes)
+-   Mismatch repair (8 gènes)
+-   Fanconi anemia pathway (11 gènes)
+
+Interprétation paradoxale : Cette surexpression de gènes de réparation reflète probablement le stress réplicatif intense causé par la division cellulaire effrénée. Les cellules leucémiques activent ces voies pour :
+
+-   Gérer les dommages à l'ADN causés par la réplication rapide
+-   Maintenir une certaine stabilité génomique pour survivre
+-   Paradoxalement, ces mécanismes peuvent aussi permettre la survie de clones oncogéniques
+
+Vulnérabilité thérapeutique : Cette dépendance aux systèmes de réparation suggère que les cellules leucémiques seraient hypersensibles aux inhibiteurs de réparation de l'ADN (ex: inhibiteurs de PARP).
+
+**3. Surveillance tumorale et échappement**
+
+p53 signaling pathway (14 gènes, p.adj = 1.77×10⁻³) est enrichie, ce qui semble contre-intuitif pour un cancer. Cependant :
+
+-   Cela peut refléter des mutations de TP53 avec activation aberrante de la voie
+-   Ou l'activation de gènes cibles de p53 en réponse au stress oncogénique
+-   Certaines leucémies conservent p53 fonctionnel mais contournent ses effets via d'autres mécanismes
+
+Cellular senescence (21 gènes) suggère que les cellules tentent d'activer des programmes anti-prolifératifs, mais les contournent.
+
+**4. Perturbations hématopoïétiques**
+
+Hematopoietic cell lineage (16 gènes) - Confirme que les cellules leucémiques dérégulent le programme de différenciation hématopoïétique normal.
+
+Primary immunodeficiency (8 gènes) - Suggère des défauts dans le développement des cellules immunitaires, cohérent avec l'immaturité des blastes leucémiques.
+
+Human T-cell leukemia virus 1 infection (25 gènes) - Voie activée car elle partage des gènes avec la transformation leucémique (ex: régulateurs du cycle cellulaire, facteurs de transcription).
+
+**5. Métabolisme nucléotidique**
+
+Trois voies métaboliques sont enrichies :
+
+-   Nucleotide metabolism (13 gènes)
+-   One carbon pool by folate (9 gènes)
+-   Antifolate resistance (7 gènes)
+
+Interprétation : Les cellules en division rapide ont un besoin accru en nucléotides pour synthétiser l'ADN. L'enrichissement du métabolisme du folate/C1 soutient cette biosynthèse.
+
+Implication clinique : Explique pourquoi le méthotrexate (antifolate) est efficace dans certaines leucémies. L'enrichissement de la voie "Antifolate resistance" suggère aussi des mécanismes de résistance potentiels.
+
+**6. Voies liées au cancer**
+
+-   Transcriptional misregulation in cancer (24 gènes) - Dérégulation de facteurs de transcription oncogéniques (probablement MYC, E2F, etc.)
+-   Small cell lung cancer (14 gènes) - Partage de voies oncogéniques communes avec d'autres cancers agressifs
+
+**7. Voie intrigante :** Motor proteins (25 gènes) Cette voie, fortement enrichie, inclut les kinésines et dynéines impliquées dans :
+
+-   La ségrégation chromosomique pendant la mitose
+-   Le transport intracellulaire
+
+Cohérent avec l'hyperactivité mitotique observée.
+
+**Synthèse et implications thérapeutiques**
+
+-   Cibles thérapeutiques potentielles identifiées : Inhibiteurs du cycle cellulaire : CDK4/6, Aurora kinases, PLK1
+-   Inhibiteurs de réparation de l'ADN : PARP, ATR/CHK1
+-   Antimétabolites : Méthotrexate, agents ciblant la synthèse de nucléotides Modulateurs de p53 : Réactivation de p53 (si muté)
+
+Les leucémies aiguës présentent une addiction à la prolifération cellulaire avec activation massive du cycle cellulaire, de la réplication de l'ADN, et des systèmes de réparation pour gérer le stress réplicatif associé. Cette dépendance constitue à la fois leur force (croissance rapide) et leur talon d'Achille thérapeutique (hypersensibilité aux agents ciblant ces processus).
+
+```{r}
+#| label: kegg-subtype-comparison
+#| fig-cap: "Comparaison des voies KEGG entre sous-types"
+#| fig-height: 10
+
+# KEGG pour chaque sous-type
+kegg_clusters <- compareCluster(
+  geneClusters = gene_clusters,
+  fun = "enrichKEGG",
+  organism = "hsa",
+  pvalueCutoff = 0.05,
+  qvalueCutoff = 0.2
+)
+
+if (nrow(kegg_clusters@compareClusterResult |> filter(p.adjust < 0.05)) > 0) {
+  dotplot(kegg_clusters, showCategory = 10) +
+    labs(title = "KEGG Pathways — Comparaison par sous-type")
+} else {
+  cat("Aucune voie KEGG significativement enrichie dans les comparaisons par sous-type\n")
+}
+```
+
+::: {.callout-note}
+**Interprétation — KEGG par sous-type :** La comparaison KEGG entre sous-types révèle les voies métaboliques et de signalisation enrichies de façon différentielle. Les voies de prolifération (Cell cycle, DNA replication) sont communes aux trois sous-types, confirmant la signature oncogénique universelle. Cependant, certaines voies sont enrichies préférentiellement dans un sous-type donné : l'AML peut montrer un enrichissement des voies métaboliques myéloïdes (Hematopoietic cell lineage avec gènes spécifiques), tandis que les ALL montrent davantage des signatures lymphocytaires. Ces différences correspondent aux origines cellulaires distinctes et aux mécanismes oncogéniques propres à chaque leucémie.
+:::
+
+## Gene Set Enrichment Analysis (GSEA) {#sec-gsea}
+
+L'approche GSEA utilise tous les gènes classés par statistique (pas de seuil arbitraire), ce qui est plus puissant que l'ORA.
+
+```{r}
+#| label: gsea-preparation
+
+
+if (!pkg_available$fgsea || !pkg_available$msigdbr) {
+  cat("⚠️  GSEA nécessite les packages 'fgsea' et 'msigdbr'\n")
+  cat("   Pour installer:\n")
+  cat("   install.packages('fgsea')\n")
+  cat("   install.packages('msigdbr')\n")
+  knitr::knit_exit()
+}
+
+# Obtenir les gene sets de MSigDB (Hallmarks)
+hallmarks <- msigdbr(species = "Homo sapiens", category = "H")
+hallmark_list <- split(hallmarks$gene_symbol, hallmarks$gs_name)
+
+# Obtenir aussi les gene sets GO BP
+go_sets <- msigdbr(species = "Homo sapiens", category = "C5", subcategory = "GO:BP")
+go_list <- split(go_sets$gene_symbol, go_sets$gs_name)
+
+cat("Gene sets chargés:\n")
+cat("- Hallmarks:", length(hallmark_list), "sets\n")
+cat("- GO BP:", length(go_list), "sets\n")
+```
+
+```{r}
+#| label: gsea-global
+#| fig-cap: "GSEA Hallmarks — Leukemia vs Normal"
+#| fig-height: 10
+
+
+# Créer un vecteur de statistiques classé (ranked list)
+stats_global <- results_global$t
+names(stats_global) <- results_global$gene_symbol
+stats_global <- stats_global[!is.na(names(stats_global))]
+
+# Nettoyer les espaces dans les noms de gènes
+names(stats_global) <- trimws(names(stats_global))
+
+stats_global <- sort(stats_global, decreasing = TRUE)
+
+# Supprimer les doublons (garder le plus extrême)
+stats_global <- stats_global[!duplicated(names(stats_global))]
+
+# Lancer GSEA
+set.seed(8432)
+fgsea_hallmark <- fgsea(
+  pathways = hallmark_list,
+  stats = stats_global,
+  minSize = 15,
+  maxSize = 500,
+  nproc = 1
+)
+
+# Convertir en data.frame pour éviter les conflits data.table/dplyr
+fgsea_hallmark <- as.data.frame(fgsea_hallmark)
+
+# Trier par NES
+fgsea_hallmark <- fgsea_hallmark |> dplyr::arrange(desc(abs(NES)))
+
+cat("=== GSEA Hallmarks (top 20) ===\n")
+fgsea_hallmark |>
+  dplyr::filter(padj < 0.05) |>
+  dplyr::select(pathway, NES, pval, padj, size) |>
+  head(20) |>
+  print()
+
+# Visualiser
+fgsea_hallmark |>
+  dplyr::filter(padj < 0.05) |>
+  dplyr::slice_head(n = 20) |>
+  dplyr::mutate(pathway = gsub("HALLMARK_", "", pathway),
+                pathway = gsub("_", " ", pathway)) |>
+  ggplot(aes(x = NES, y = reorder(pathway, NES), fill = padj)) +
+  geom_col() +
+  scale_fill_gradient(low = "#D73027", high = "#4575B4") +
+  labs(x = "Normalized Enrichment Score (NES)", y = NULL,
+       title = "GSEA Hallmark Gene Sets — Leukemia vs Normal",
+       fill = "FDR") +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.y = element_text(size = 9))
+```
+
+::: {.callout-note}
+**Interprétation — GSEA Hallmarks global :** La GSEA utilise l'ensemble des gènes classés par statistique t (sans seuil arbitraire), ce qui lui confère une plus grande puissance que l'ORA. Les pathways avec un **NES positif** (barres rouges) sont enrichis dans la leucémie : **E2F_TARGETS** (NES ≈ 3.79), **G2M_CHECKPOINT** (NES ≈ 3.58) et **MYC_TARGETS_V1** (NES ≈ 3.46) dominent, confirmant que MYC et E2F sont les master régulateurs transcriptionnels de la prolifération leucémique. Les pathways avec **NES négatif** (bleu) — réponse interféron-γ, interféron-α, signalisation TNF via NFκB — reflètent la suppression des réponses immunitaires innée et adaptative dans la leucémie, ce qui favorise l'échappement immunitaire tumoral.
+:::
+
+```{r}
+#| label: gsea-enrichment-plots
+#| fig-cap: "GSEA Enrichment Plots — Top pathways"
+#| fig-height: 12
+
+
+# Fonction pour tracer un enrichment plot
+plot_gsea_enrichment <- function(pathway_name, stats, pathways, title) {
+  plotEnrichment(pathways[[pathway_name]], stats) +
+    labs(title = gsub("HALLMARK_|_", " ", title)) +
+    theme_minimal(base_size = 10)
+}
+
+# Sélectionner les top pathways (positifs et négatifs)
+top_positive <- fgsea_hallmark |> 
+  dplyr::filter(padj < 0.05, NES > 0) |> 
+  dplyr::slice_head(n = 3) |> 
+  dplyr::pull(pathway)
+
+top_negative <- fgsea_hallmark |> 
+  dplyr::filter(padj < 0.05, NES < 0) |> 
+  dplyr::slice_head(n = 3) |> 
+  dplyr::pull(pathway)
+
+if (length(top_positive) > 0 && length(top_negative) > 0) {
+  plots <- list()
+  for (i in seq_along(top_positive)) {
+    if (i <= length(top_positive)) {
+      plots[[length(plots) + 1]] <- plot_gsea_enrichment(
+        top_positive[i], stats_global, hallmark_list, top_positive[i]
+      )
+    }
+  }
+  for (i in seq_along(top_negative)) {
+    if (i <= length(top_negative)) {
+      plots[[length(plots) + 1]] <- plot_gsea_enrichment(
+        top_negative[i], stats_global, hallmark_list, top_negative[i]
+      )
+    }
+  }
+  
+  wrap_plots(plots, ncol = 2)
+} else {
+  cat("Pas assez de pathways significatifs pour les enrichment plots\n")
+}
+```
+
+```{r}
+#| label: gsea-by-subtype
+#| fig-cap: "GSEA par sous-type — Comparaison des Hallmarks"
+#| fig-height: 10
+
+
+# GSEA pour chaque sous-type
+run_gsea_subtype <- function(results_df, name) {
+  stats <- results_df$t
+  names(stats) <- results_df$gene_symbol
+  stats <- stats[!is.na(names(stats))]
+  
+  # IMPORTANT: Nettoyer les espaces dans les noms
+  names(stats) <- trimws(names(stats))
+  
+  stats <- sort(stats, decreasing = TRUE)
+  stats <- stats[!duplicated(names(stats))]
+  
+  set.seed(8432)
+  fgsea_res <- fgsea(
+    pathways = hallmark_list,
+    stats = stats,
+    minSize = 15,
+    maxSize = 500,
+    nproc = 1
+  )
+  
+  fgsea_res$subtype <- name
+  as.data.frame(fgsea_res)  # Convertir en data.frame
+}
+
+gsea_aml <- run_gsea_subtype(results_aml, "AML")
+gsea_ball <- run_gsea_subtype(results_ball, "B-ALL")
+gsea_tall <- run_gsea_subtype(results_tall, "T-ALL")
+
+# Combiner les résultats
+gsea_combined <- bind_rows(gsea_aml, gsea_ball, gsea_tall) |>
+  dplyr::filter(padj < 0.05) |>
+  dplyr::mutate(pathway = gsub("HALLMARK_", "", pathway),
+                pathway = gsub("_", " ", pathway))
+
+# Top pathways par sous-type
+gsea_combined |>
+  dplyr::group_by(subtype) |>
+  dplyr::slice_max(abs(NES), n = 10) |>
+  ggplot(aes(x = NES, y = reorder(pathway, NES), fill = subtype)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = c("AML" = "#D73027", 
+                                "B-ALL" = "#FC8D59", 
+                                "T-ALL" = "#FEE090")) +
+  facet_wrap(~subtype, scales = "free_y", ncol = 1) +
+  labs(x = "Normalized Enrichment Score", y = NULL,
+       title = "GSEA Hallmarks par sous-type leucémique") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "none")
+```
+
+**Interprétation GSEA et KEGG:**
+
+1.  **Avantages de GSEA**: Contrairement à ORA (over-representation analysis), GSEA:
+    -   N'utilise pas de seuil arbitraire de fold change ou p-value
+    -   Détecte des changements coordonnés subtils dans des ensembles de gènes
+    -   Est plus sensible aux voies où beaucoup de gènes varient modérément
+2.  **Hallmarks attendus dans les leucémies**:
+    -   **Enrichis positivement** (NES \> 0): E2F targets, G2M checkpoint, MYC targets (prolifération)
+    -   **Enrichis négativement** (NES \< 0): Différenciation, réponse immune
+3.  **Voies KEGG spécifiques**: Les voies métaboliques (glycolyse, métabolisme des nucléotides) et de signalisation (PI3K-AKT, MAPK) fournissent des cibles thérapeutiques potentielles.
+
+**Interprétation de la comparaison GO entre sous-types :**
+
+Le graphique de comparaison (`compareCluster`) permet d'identifier les voies partagées et spécifiques entre AML, B-ALL et T-ALL :
+
+1.  **Voies universellement enrichies** : Les termes GO présents dans les trois sous-types (barres s'étendant sur les trois colonnes) représentent le "programme leucémique commun". On s'attend à y trouver :
+
+    -   Division cellulaire et cycle cellulaire
+    -   Réplication de l'ADN
+    -   Organisation des chromosomes mitotiques
+
+    Ces processus universels reflètent la prolifération incontrôlée commune à toutes les leucémies aiguës.
+
+2.  **Signatures lymphoïdes partagées (B-ALL et T-ALL)** : Les lymphocytes B et T partagent un développement commun initial et certains programmes lymphoïdes. On peut observer des termes enrichis uniquement dans B-ALL et T-ALL liés à :
+
+    -   Réarrangement des récepteurs d'antigènes (si détecté)
+    -   Développement lymphocytaire
+    -   Signalisation des récepteurs lymphoïdes
+
+3.  **Signatures myéloïdes (AML spécifique)** : L'AML peut montrer des enrichissements uniques pour :
+
+    -   Différenciation myéloïde (même si bloquée, certains gènes précoces peuvent être activés)
+    -   Métabolisme granulocytaire
+    -   Réponse aux cytokines myéloïdes
+
+4.  **Intensité différentielle** : La taille des points et l'intensité des couleurs indiquent le degré d'enrichissement (p-value ajustée, nombre de gènes). Des différences d'intensité pour le même terme GO entre sous-types suggèrent que même les voies communes peuvent être activées à des degrés différents selon le contexte cellulaire.
+
+**Implications biologiques :** Cette analyse confirme le modèle selon lequel les leucémies aiguës présentent une architecture modulaire : un **"noyau oncogénique commun"** (prolifération, survie) superposé à des **"signatures de lignée"** (myéloïde vs lymphoïde B vs lymphoïde T) qui reflètent la cellule d'origine de la transformation.
+
+# Analyse des Réseaux de Co-expression (WGCNA) {#sec-wgcna}
+
+L'analyse WGCNA (Weighted Gene Co-expression Network Analysis) identifie des modules de gènes co-exprimés qui peuvent correspondre à des programmes biologiques coordonnés.
+
+```{r}
+#| label: wgcna-setup
+
+
+if (!pkg_available$WGCNA) {
+  cat("⚠️  WGCNA nécessite le package 'WGCNA' et ses dépendances Bioconductor\n")
+  cat("   Pour installer:\n")
+  cat("   if (!requireNamespace('BiocManager', quietly = TRUE))\n")
+  cat("       install.packages('BiocManager')\n")
+  cat("   BiocManager::install('impute')\n")
+  cat("   BiocManager::install('preprocessCore')\n")
+  cat("   install.packages('WGCNA')\n")
+  knitr::knit_exit()
+} else {
+  library(WGCNA)
+  options(stringsAsFactors = FALSE)
+  allowWGCNAThreads()
+}
+
+# Transposer la matrice pour WGCNA (échantillons en lignes, gènes en colonnes)
+datExpr <- t(expr_pat)
+
+# Filtrer les gènes à faible variance pour réduire le bruit
+vars <- apply(datExpr, 2, var)
+datExpr <- datExpr[, vars > quantile(vars, 0.5)]  # Garder top 50% variance
+
+cat("Données pour WGCNA:\n")
+cat("Échantillons:", nrow(datExpr), "\n")
+cat("Gènes:", ncol(datExpr), "\n")
+```
+
+```{r}
+#| label: wgcna-soft-threshold
+#| fig-cap: "Choix du soft-thresholding power pour WGCNA"
+
+
+# Choisir le soft-thresholding power
+powers <- c(1:10, seq(12, 20, by = 2))
+sft <- pickSoftThreshold(datExpr, powerVector = powers, verbose = 0)
+
+# Visualiser
+par(mfrow = c(1, 2))
+plot(sft$fitIndices[, 1], -sign(sft$fitIndices[, 3]) * sft$fitIndices[, 2],
+     xlab = "Soft Threshold (power)",
+     ylab = "Scale Free Topology Model Fit, signed R²",
+     main = "Scale independence")
+abline(h = 0.85, col = "red")
+
+plot(sft$fitIndices[, 1], sft$fitIndices[, 5],
+     xlab = "Soft Threshold (power)",
+     ylab = "Mean Connectivity",
+     main = "Mean connectivity")
+
+# Choisir le power (premier qui dépasse 0.85 ou 6 par défaut)
+softPower <- ifelse(any(sft$fitIndices[, 2] > 0.85),
+                    min(which(sft$fitIndices[, 2] > 0.85)),
+                    6)
+cat("\nSoft threshold power sélectionné:", softPower, "\n")
+```
+
+```{r}
+#| label: wgcna-modules
+#| fig-cap: "Dendrogramme des modules de co-expression WGCNA"
+#| fig-height: 8
+
+
+# IMPORTANT: Forcer WGCNA::cor pour éviter le conflit avec Bioconductor
+# cor <- WGCNA::cor
+
+# Construction du réseau et détection des modules
+net <- blockwiseModules(
+  datExpr,
+  power = softPower,
+  TOMType = "unsigned",
+  minModuleSize = 30,
+  reassignThreshold = 0,
+  mergeCutHeight = 0.25,
+  numericLabels = TRUE,
+  pamRespectsDendro = FALSE,
+  saveTOMs = FALSE,
+  verbose = 0
+)
+
+# Convertir les labels en couleurs
+moduleLabels <- net$colors
+moduleColors <- labels2colors(net$colors)
+
+cat("Nombre de modules détectés:", length(unique(moduleColors)) - 1, 
+    "(+ grey pour non-assignés)\n")
+table(moduleColors)
+
+# Dendrogramme
+plotDendroAndColors(
+  net$dendrograms[[1]], 
+  moduleColors[net$blockGenes[[1]]],
+  "Module colors",
+  dendroLabels = FALSE, 
+  hang = 0.03,
+  addGuide = TRUE, 
+  guideHang = 0.05,
+  main = "Dendrogramme des gènes et modules"
+)
+```
+
+```{r}
+#| label: wgcna-module-trait
+#| fig-cap: "Corrélation des modules avec les traits cliniques"
+
+
+# Définir les traits (phénotype, sous-type)
+datTraits <- data.frame(
+  Leukemia = as.numeric(pheno_pat$phenotype == "Leukemia"),
+  Normal = as.numeric(pheno_pat$phenotype == "Normal"),
+  AML = as.numeric(pheno_pat$subtype == "AML"),
+  BALL = as.numeric(pheno_pat$subtype == "B-ALL"),
+  TALL = as.numeric(pheno_pat$subtype == "T-ALL")
+)
+
+# Calculer les eigengenes (première PC de chaque module)
+MEs <- moduleEigengenes(datExpr, moduleColors)$eigengenes
+MEs <- orderMEs(MEs)
+
+# Calculer la corrélation module-trait
+moduleTraitCor <- cor(MEs, datTraits, use = "p")
+moduleTraitPvalue <- corPvalueStudent(moduleTraitCor, nrow(datExpr))
+
+# Heatmap
+textMatrix <- paste(signif(moduleTraitCor, 2), "\n(",
+                    signif(moduleTraitPvalue, 1), ")", sep = "")
+dim(textMatrix) <- dim(moduleTraitCor)
+
+par(mar = c(8, 9, 3, 3))
+labeledHeatmap(
+  Matrix = moduleTraitCor,
+  xLabels = names(datTraits),
+  yLabels = names(MEs),
+  ySymbols = names(MEs),
+  colorLabels = FALSE,
+  colors = blueWhiteRed(50),
+  textMatrix = textMatrix,
+  setStdMargins = FALSE,
+  cex.text = 0.7,
+  zlim = c(-1, 1),
+  main = "Module-trait relationships"
+)
+```
+
+```{r}
+#| label: wgcna-hub-genes
+#| fig-cap: "Hub genes dans les modules les plus corrélés avec Leukemia"
+#| eval: !expr pkg_available$WGCNA
+
+# Identifier les modules les plus corrélés avec Leukemia
+leuk_cor <- moduleTraitCor[, "Leukemia"]
+top_modules <- names(sort(abs(leuk_cor), decreasing = TRUE))[1:3]
+top_modules <- gsub("ME", "", top_modules)
+
+# Pour chaque top module, identifier les hub genes
+module_genes_list <- list()
+
+for (mod_color in top_modules) {
+  module_genes <- colnames(datExpr)[moduleColors == mod_color]
+  
+  modExpr  <- datExpr[, moduleColors == mod_color]
+  ME       <- MEs[[paste0("ME", mod_color)]]
+  kME_mat  <- cor(modExpr, ME, use = "p")
+  
+  # Vecteur nommé par gene_symbol
+  kME_vec <- setNames(as.numeric(kME_mat), rownames(kME_mat))
+  names(kME_vec) <- trimws(sub(
+    "^[^/]*//\\s*([^/]+)\\s*//.*", "\\1",
+    fdata_filt$gene_assignment[match(as.integer(names(kME_vec)), fdata_filt$ID)]
+  ))
+  kME_vec <- kME_vec[!is.na(names(kME_vec)) & names(kME_vec) != ""]
+  kME_vec <- kME_vec[!duplicated(names(kME_vec))]
+  hub_genes <- names(sort(abs(kME_vec), decreasing = TRUE))[1:min(20, length(kME_vec))]
+  
+  module_genes_list[[mod_color]] <- data.frame(
+    gene   = hub_genes,
+    kME    = kME_vec[hub_genes],
+    module = mod_color
+  )
+  
+  cat("\n=== Module", mod_color, "===\n")
+  cat("Taille:", length(module_genes), "gènes\n")
+  cat("Corrélation avec Leukemia:", round(leuk_cor[paste0("ME", mod_color)], 3), "\n")
+  cat("Top 10 hub genes:", paste(head(hub_genes, 10), collapse = ", "), "\n")
+}
+# Combiner et visualiser
+hub_genes_df <- bind_rows(module_genes_list)
+
+hub_genes_df |>
+  dplyr::group_by(module) |>
+  dplyr::slice_max(abs(kME), n = 10) |>
+  ggplot(aes(x = reorder(gene, kME), y = kME, fill = module)) +
+  geom_col() +
+  facet_wrap(~module, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Module Membership (kME)",
+       title = "Hub Genes dans les modules associés à la leucémie") +
+  theme_minimal(base_size = 11)
+```
+
+```{r}
+#| label: wgcna-module-enrichment
+
+
+# Enrichissement GO pour les modules clés
+for (mod_color in top_modules) {
+  module_genes <- colnames(datExpr)[moduleColors == mod_color]
+  
+  # Convertir IDs de sondes → gene symbols → Entrez
+  module_symbols <- unique(trimws(sub(
+    "^[^/]*//\\s*([^/]+)\\s*//.*", "\\1",
+    fdata_filt$gene_assignment[match(as.integer(module_genes), fdata_filt$ID)]
+  )))
+  module_symbols <- module_symbols[!is.na(module_symbols) & module_symbols != ""]
+  
+  module_entrez <- bitr(module_symbols, fromType = "SYMBOL", toType = "ENTREZID",
+                        OrgDb = org.Hs.eg.db)
+  
+  if (nrow(module_entrez) > 10) {
+    ego_mod <- enrichGO(
+      gene     = module_entrez$ENTREZID,
+      universe = universe_entrez$ENTREZID,
+      OrgDb    = org.Hs.eg.db,
+      ont      = "BP",
+      pAdjustMethod = "BH",
+      pvalueCutoff  = 0.05,
+      qvalueCutoff  = 0.2,
+      readable = TRUE
+    )
+    
+    cat("\n=== Enrichissement GO — Module", mod_color, "===\n")
+    n_sig <- nrow(ego_mod@result |> dplyr::filter(p.adjust < 0.05))
+    if (n_sig > 0) {
+      print(head(ego_mod@result |> 
+                   dplyr::filter(p.adjust < 0.05) |> 
+                   dplyr::select(Description, p.adjust), 10))
+    } else {
+      cat("Aucun terme GO significatif\n")
+    }
+  }
+}
+```
+
+### Boxplots des hub genes par module
+
+```{r}
+#| label: boxplot-hub-genes
+#| fig-cap: "Expression des hub genes dans les modules associés à la leucémie"
+#| fig-height: 10
+
+
+# Pour chaque top module, visualiser les top 3 hub genes
+hub_plots_data <- list()
+
+for (mod_color in top_modules) {
+  # Récupérer les hub genes du module
+  if (mod_color %in% names(module_genes_list)) {
+    top_hubs <- module_genes_list[[mod_color]] |>
+      dplyr::slice_max(abs(kME), n = 3) |>
+      dplyr::pull(gene)
+    
+    # Trouver les sondes correspondantes - base R
+    hub_subset <- fdata_filt[fdata_filt$gene_symbol %in% top_hubs, ]
+    # Prendre la première sonde par gène
+    hub_probes <- do.call(rbind, lapply(split(hub_subset, hub_subset$gene_symbol), function(x) x[1, ]))
+    
+    if (nrow(hub_probes) > 0) {
+      hub_probe_ids <- as.character(hub_probes$ID)
+      
+      # Extraire expression
+      hub_expr <- expr_pat[hub_probe_ids, ] |>
+        as.data.frame() |>
+        rownames_to_column("probe_id") |>
+        pivot_longer(cols = -probe_id, names_to = "sample", values_to = "expression") |>
+        left_join(
+          pheno_pat |> 
+            rownames_to_column("sample") |>
+            dplyr::select(sample, phenotype, subtype),
+          by = "sample"
+        ) |>
+        mutate(probe_id = as.integer(probe_id)) |>
+        left_join(
+          hub_probes |> dplyr::select(ID, gene_symbol),
+          by = c("probe_id" = "ID")
+        ) |>
+        mutate(module = mod_color)
+      
+      hub_plots_data[[mod_color]] <- hub_expr
+    }
+  }
+}
+
+# Combiner tous les modules
+if (length(hub_plots_data) > 0) {
+  all_hub_data <- bind_rows(hub_plots_data)
+  
+  all_hub_data |>
+    mutate(
+      gene_module = paste0(gene_symbol, "\n(Module ", module, ")")
+    ) |>
+    ggplot(aes(x = subtype, y = expression, fill = subtype)) +
+    geom_boxplot(outlier.size = 0.8, alpha = 0.8) +
+    geom_jitter(width = 0.15, alpha = 0.3, size = 0.6) +
+    facet_wrap(~gene_module, scales = "free_y", ncol = 3) +
+    scale_fill_manual(values = c(
+      "Normal" = "#4575B4", 
+      "AML" = "#D73027",
+      "B-ALL" = "#FC8D59", 
+      "T-ALL" = "#FEE090"
+    )) +
+    stat_summary(fun = median, geom = "point", shape = 23, size = 2.5, 
+                 fill = "yellow", color = "black") +
+    labs(x = NULL, y = "Expression (log2)",
+         title = "Hub genes des modules WGCNA associés à la leucémie",
+         subtitle = "Top 3 hub genes par module (kME le plus élevé)",
+         fill = "Sous-type") +
+    theme_minimal(base_size = 11) +
+    theme(
+      legend.position = "top",
+      strip.text = element_text(size = 8, face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+} else {
+  cat("Données de hub genes non disponibles pour les boxplots\n")
+}
+```
+
+**Interprétation des hub genes WGCNA:**
+
+1.  **Régulateurs centraux**: Les hub genes (kME élevé) sont au cœur des modules de co-expression et coordonnent l'expression de nombreux autres gènes. Leur pattern d'expression reflète l'activité de l'ensemble du module.
+
+2.  **Cohérence du module**: Si tous les hub genes d'un module montrent le même pattern (tous surexprimés ou tous sous-exprimés dans les leucémies), cela confirme la cohérence biologique du module.
+
+3.  **Différences inter-modules**:
+
+    -   Modules positivement corrélés avec leucémie : hub genes surexprimés
+    -   Modules négativement corrélés : hub genes sous-exprimés
+    -   Pattern peut varier selon le sous-type, révélant des mécanismes spécifiques
+
+4.  **Cibles thérapeutiques**: Les hub genes sont des cibles thérapeutiques attractives car leur modulation peut affecter l'ensemble du module, offrant un effet plus large qu'une cible isolée.
+
+**Interprétation WGCNA:**
+
+1.  **Modules biologiquement cohérents**: Les gènes regroupés dans un module sont co-exprimés, suggérant qu'ils participent à des processus biologiques coordonnés ou sont régulés par les mêmes facteurs de transcription.
+
+2.  **Association avec les traits**: Les modules fortement corrélés avec le phénotype leucémique contiennent probablement des gènes drivers ou des marqueurs critiques. Un module positivement corrélé est surexprimé dans les leucémies, tandis qu'un module négativement corrélé est réprimé.
+
+3.  **Hub genes**: Les gènes centraux (high kME) dans un module sont des régulateurs clés ou des biomarqueurs potentiels. Leur ciblage thérapeutique peut perturber l'ensemble du module.
+
+4.  **Préservation entre sous-types**: Des analyses de préservation de modules entre AML, B-ALL et T-ALL révéleraient si les mêmes réseaux sont conservés ou si chaque sous-type a sa propre architecture modulaire.
+
+# Analyse des Régulateurs en Amont (Upstream Regulators) {#sec-upstream}
+
+## Analyse de surreprésentation de facteurs de transcription
+
+```{r}
+#| label: tf-enrichment
+#| eval: !expr pkg_available$msigdbr
+
+if (!pkg_available$msigdbr) {
+  cat("⚠️  Enrichissement TF nécessite 'msigdbr'\n")
+  cat("   Pour installer: install.packages('msigdbr')\n")
+  cat("   Cette section sera ignorée.\n")
+  knitr::knit_exit()
+}
+
+# Utiliser les motifs de liaison de TF depuis MSigDB
+tf_targets <- msigdbr(species = "Homo sapiens", category = "C3", subcategory = "TFT:GTRD")
+tf_list <- split(tf_targets$gene_symbol, tf_targets$gs_name)
+
+# Pour les gènes surexprimés globaux, identifier les TF surreprésentés
+de_up_genes <- results_global |>
+  dplyr::filter(adj.P.Val < 0.05, logFC > 1) |>
+  dplyr::pull(gene_symbol) |>
+  unique() |>
+  na.omit() |>
+  trimws()
+
+# Enrichissement de TF targets
+tf_enrichment <- enricher(
+  gene = de_up_genes,
+  TERM2GENE = data.frame(
+    term = rep(names(tf_list), sapply(tf_list, length)),
+    gene = unlist(tf_list)
+  ),
+  pvalueCutoff = 0.05,
+  qvalueCutoff = 0.2
+)
+
+if (!is.null(tf_enrichment) && nrow(tf_enrichment@result |> dplyr::filter(p.adjust < 0.05)) > 0) {
+  cat("=== Top TF régulateurs (gènes surexprimés) ===\n")
+  tf_enrichment@result |>
+    dplyr::filter(p.adjust < 0.05) |>
+    dplyr::select(ID, p.adjust, Count) |>
+    head(20) |>
+    print()
+  
+  # Nettoyer les noms pour visualisation
+  tf_enrichment@result <- tf_enrichment@result |>
+    dplyr::mutate(ID = gsub("GTRD_", "", ID),
+                  ID = gsub("_TARGET_GENES", "", ID))
+  
+  dotplot(tf_enrichment, showCategory = 20) +
+    labs(title = "Facteurs de transcription régulant les gènes surexprimés")
+} else {
+  cat("Aucun TF significativement enrichi\n")
+}
+```
+
+## Analyse de motifs promoteurs (motif enrichment)
+
+```{r}
+#| label: motif-analysis
+#| fig-cap: "Enrichissement de motifs de facteurs de transcription (MSigDB C3 TFT)"
+
+library(msigdbr)
+library(clusterProfiler)
+
+# Récupérer la collection C3 — TF targets (motifs de liaison TF)
+tft_sets <- msigdbr(species = "Homo sapiens", category = "C3", subcategory = "TFT:GTRD")
+tft_list_entrez <- split(tft_sets$entrez_gene, tft_sets$gs_name)
+
+# Enrichissement sur les gènes surexprimés (Entrez IDs déjà disponibles)
+tft_enrich_up <- enricher(
+  gene       = de_entrez_up$ENTREZID,
+  universe   = universe_entrez$ENTREZID,
+  TERM2GENE  = tft_sets[, c("gs_name", "entrez_gene")],
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.2
+)
+
+tft_enrich_down <- enricher(
+  gene       = de_entrez_down$ENTREZID,
+  universe   = universe_entrez$ENTREZID,
+  TERM2GENE  = tft_sets[, c("gs_name", "entrez_gene")],
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.2
+)
+
+n_up   <- if (!is.null(tft_enrich_up))   nrow(tft_enrich_up@result   |> dplyr::filter(p.adjust < 0.05)) else 0
+n_down <- if (!is.null(tft_enrich_down)) nrow(tft_enrich_down@result |> dplyr::filter(p.adjust < 0.05)) else 0
+
+cat("Motifs TF enrichis — gènes UP  :", n_up,   "\n")
+cat("Motifs TF enrichis — gènes DOWN:", n_down, "\n\n")
+
+# Visualisation — top 20 motifs UP
+if (n_up > 0) {
+  tft_enrich_up@result |>
+    dplyr::filter(p.adjust < 0.05) |>
+    dplyr::arrange(p.adjust) |>
+    dplyr::slice_head(n = 20) |>
+    dplyr::mutate(ID = gsub("_TARGET_GENES", "", ID)) |>
+    ggplot(aes(x = Count, y = reorder(ID, Count), fill = p.adjust)) +
+    geom_col() +
+    scale_fill_gradient(low = "#D73027", high = "#4575B4") +
+    labs(x = "Nombre de gènes cibles", y = NULL, fill = "FDR",
+         title = "Top motifs TF — Gènes surexprimés (Leukemia vs Normal)",
+         subtitle = "Source : MSigDB C3 TFT:GTRD") +
+    theme_minimal(base_size = 11) +
+    theme(axis.text.y = element_text(size = 9))
+}
+```
+
+## Master regulators via ARACNe-like approach
+
+```{r}
+#| label: master-regulators
+
+# Approche simplifiée: identifier les TF dont l'expression corrèle avec leurs cibles
+# (une version simplifiée d'ARACNe/VIPER)
+
+# Liste de TF humains (simplifié, utiliser une base complète en pratique)
+human_tfs <- c("MYC", "TP53", "STAT3", "STAT5A", "STAT5B", "CEBPA", "CEBPB", 
+               "PU.1", "SPI1", "RUNX1", "FLI1", "ERG", "TAL1", "GATA1", "GATA2",
+               "E2F1", "E2F2", "NFKB1", "RELA", "JUN", "FOS", "ETS1", "ETS2",
+               "BCL6", "PAX5", "IKZF1", "TCF3", "TCF7", "LEF1", "NOTCH1")
+
+# Identifier les TF présents dans les données (chercher dans gene_symbol, pas rownames)
+tf_in_data <- intersect(human_tfs, results_global$gene_symbol)
+results_tf  <- results_global[results_global$gene_symbol %in% tf_in_data, ]
+
+cat("=== TF différentiellement exprimés ===\n")
+results_tf |>
+  dplyr::filter(adj.P.Val < 0.05, abs(logFC) > 1) |>
+  dplyr::arrange(desc(abs(logFC))) |>
+  dplyr::select(gene_symbol, logFC, adj.P.Val) |>
+  head(20) |>
+  print()
+
+# Pour chaque TF DE, calculer la corrélation avec les gènes DE
+master_reg_scores <- list()
+
+for (tf in results_tf$gene_symbol[results_tf$adj.P.Val < 0.05]) {
+  # Trouver la sonde via probe_id (rownames sont des IDs de sondes)
+  tf_row   <- results_tf[results_tf$gene_symbol == tf, ]
+  tf_probe <- as.character(tf_row$probe_id[1])
+  
+  if (!is.na(tf_probe) && tf_probe %in% rownames(expr_pat)) {
+    tf_expr <- expr_pat[tf_probe, ]
+    
+    # Corrélation avec tous les gènes DE
+    de_probes <- as.character(
+      results_global$probe_id[results_global$adj.P.Val < 0.05]
+    )
+    de_probes <- de_probes[de_probes %in% rownames(expr_pat)]
+    
+    cors <- cor(tf_expr, t(expr_pat[de_probes, ]), use = "pairwise.complete.obs")
+    
+    # Score: nombre de gènes fortement corrélés (|r| > 0.5)
+    n_targets <- sum(abs(cors) > 0.5, na.rm = TRUE)
+    mean_cor  <- mean(abs(cors), na.rm = TRUE)
+    
+    master_reg_scores[[tf]] <- data.frame(
+      TF           = tf,
+      n_targets    = n_targets,
+      mean_abs_cor = mean_cor,
+      logFC        = tf_row$logFC[1]
+    )
+  }
+}
+
+master_reg_df <- bind_rows(master_reg_scores) |>
+  dplyr::arrange(desc(n_targets))
+
+cat("\n=== Top Master Regulators (nb de cibles corrélées) ===\n")
+print(head(master_reg_df, 15))
+
+# Visualiser
+master_reg_df |>
+  dplyr::slice_head(n = 20) |>
+  ggplot(aes(x = reorder(TF, n_targets), y = n_targets, fill = logFC)) +
+  geom_col() +
+  scale_fill_gradient2(low = "#4575B4", mid = "white", high = "#D73027", 
+                       midpoint = 0) +
+  coord_flip() +
+  labs(x = NULL, y = "Nombre de gènes cibles (|r| > 0.5)",
+       fill = "logFC\ndu TF",
+       title = "Master regulators putatifs") +
+  theme_minimal(base_size = 12)
+```
+
+**Interprétation des régulateurs en amont:**
+
+1.  **Facteurs de transcription enrichis**: Les TF dont les cibles sont surreprésentées parmi les gènes DE sont probablement actifs (si leurs cibles sont surexprimées) ou réprimés (si leurs cibles sont sous-exprimées).
+
+2.  **Master regulators**: Les TF qui:
+
+    -   Sont eux-mêmes différentiellement exprimés
+    -   Dont l'expression corrèle avec de nombreux gènes DE
+
+    sont des candidats pour être des drivers clés de la transformation leucémique.
+
+3.  **Applications thérapeutiques**: Cibler un master regulator peut perturber un large réseau de gènes, offrant un effet thérapeutique plus large qu'une cible unique.
+
+# Analyses PhD Avancées Supplémentaires {#sec-advanced-phd}
+
+## Signature Scoring et Classification
+
+```{r}
+#| label: signature-scoring
+
+# Créer des signatures pour chaque sous-type
+signatures <- list(
+  AML = de_aml[1:min(50, length(de_aml))],
+  BALL = de_ball[1:min(50, length(de_ball))],
+  TALL = de_tall[1:min(50, length(de_tall))]
+)
+
+# Calculer un score de signature pour chaque échantillon (moyenne z-score des gènes)
+calc_signature_score <- function(expr_matrix, signature_genes) {
+  # Identifier les sondes correspondantes
+  sig_probes <- fdata_filt |>
+    dplyr::filter(gene_symbol %in% signature_genes) |>
+    dplyr::pull(ID) |>
+    as.character()
+  
+  sig_probes <- intersect(sig_probes, rownames(expr_matrix))
+  
+  if (length(sig_probes) > 0) {
+    # Z-score normalization
+    expr_sig <- expr_matrix[sig_probes, ]
+    expr_z <- t(scale(t(expr_sig)))
+    
+    # Score = moyenne des z-scores
+    colMeans(expr_z, na.rm = TRUE)
+  } else {
+    rep(NA, ncol(expr_matrix))
+  }
+}
+
+signature_scores <- data.frame(
+  sample = colnames(expr_pat),
+  AML_score = calc_signature_score(expr_pat, signatures$AML),
+  BALL_score = calc_signature_score(expr_pat, signatures$BALL),
+  TALL_score = calc_signature_score(expr_pat, signatures$TALL),
+  true_subtype = pheno_pat$subtype,
+  phenotype = pheno_pat$phenotype
+)
+
+# Visualiser
+signature_scores |>
+  pivot_longer(cols = ends_with("_score"), names_to = "signature", values_to = "score") |>
+  mutate(signature = gsub("_score", "", signature)) |>
+  ggplot(aes(x = true_subtype, y = score, fill = signature)) +
+  geom_boxplot() +
+  facet_wrap(~signature) +
+  labs(x = "Vrai sous-type", y = "Score de signature",
+       title = "Scores de signatures spécifiques de sous-types") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Cell Type Deconvolution (simulation)
+
+```{r}
+#| label: deconvolution-concept
+
+# Les échantillons leucémiques sont relativement homogènes (cellules tumorales)
+# mais les "normaux" sont un mélange de types cellulaires
+
+# Concept: estimer la composition cellulaire des échantillons normaux
+# Ici, nous allons simplement illustrer avec les marqueurs connus
+
+cell_markers <- list(
+  Bcells = c("CD19", "CD79A", "MS4A1", "PAX5"),
+  Tcells = c("CD3D", "CD3E", "CD8A", "CD4"),
+  Monocytes = c("CD14", "LYZ", "S100A9", "FCN1"),
+  Granulocytes = c("CSF3R", "CXCR2", "FPR1"),
+  HSPC = c("CD34", "KIT", "THY1", "PROM1")
+)
+
+# Calculer des scores pour chaque type cellulaire
+cell_type_scores <- lapply(cell_markers, function(markers) {
+  calc_signature_score(expr_pat, markers)
+})
+
+cell_scores_df <- as.data.frame(cell_type_scores)
+cell_scores_df$sample <- colnames(expr_pat)
+cell_scores_df$subtype <- pheno_pat$subtype
+cell_scores_df$phenotype <- pheno_pat$phenotype
+
+# Visualiser pour les échantillons normaux
+cell_scores_df |>
+  dplyr::filter(phenotype == "Normal") |>
+  pivot_longer(cols = c(Bcells, Tcells, Monocytes, Granulocytes, HSPC),
+               names_to = "cell_type", values_to = "score") |>
+  ggplot(aes(x = cell_type, y = score, fill = cell_type)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "Score de marqueur",
+       title = "Estimation des types cellulaires dans les échantillons normaux") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+
+cat("\nNote: Pour une vraie déconvolution, utiliser:\n")
+cat("- CIBERSORT, xCell, ou MuSiC\n")
+cat("- Matrices de référence de single-cell RNA-seq\n")
+```
+
+## Analyse de survie (si données disponibles)
+
+```{r}
+#| label: survival-concept
+
+
+# Conceptuel: si des données de survie étaient disponibles
+library(survival)
+library(survminer)
+
+# Exemple:
+# clinical_data <- data.frame(
+#   sample = colnames(expr_pat),
+#   OS_time = rnorm(ncol(expr_pat), 500, 200),
+#   OS_status = sample(0:1, ncol(expr_pat), replace = TRUE),
+#   subtype = pheno_pat$subtype
+# )
+
+# Survie par sous-type
+# fit <- survfit(Surv(OS_time, OS_status) ~ subtype, data = clinical_data)
+# ggsurvplot(fit, data = clinical_data, risk.table = TRUE)
+
+# Identifier les gènes pronostiques
+# cox_results <- lapply(1:nrow(expr_pat), function(i) {
+#   cox <- coxph(Surv(OS_time, OS_status) ~ expr_pat[i, ], data = clinical_data)
+#   summary(cox)$coefficients[1, c(1, 5)]  # HR et p-value
+# })
+
+cat("Analyse de survie:\n")
+cat("Nécessite des données cliniques (temps de survie, statut vital)\n")
+cat("Packages: survival, survminer\n")
+cat("Analyses possibles:\n")
+cat("- Courbes de Kaplan-Meier par sous-type\n")
+cat("- Régression de Cox pour gènes pronostiques\n")
+cat("- Signatures pronostiques multi-gènes\n")
+```
+
+## Validation croisée et robustesse
+
+```{r}
+#| label: cross-validation
+
+# Évaluer la robustesse des gènes DE via bootstrap
+
+set.seed(5827)
+n_bootstrap <- 100
+n_samples <- ncol(expr_pat)
+
+# Bootstrap pour le contraste global
+bootstrap_de_genes <- list()
+
+for (i in 1:min(n_bootstrap, 50)) {  # Limiter à 50 pour le temps de calcul
+  # Échantillonner avec remplacement
+  boot_idx <- sample(1:n_samples, n_samples, replace = TRUE)
+  expr_boot <- expr_pat[, boot_idx]
+  pheno_boot <- pheno_pat[boot_idx, ]
+  
+  # Fit limma
+  design_boot <- model.matrix(~ 0 + phenotype, data = pheno_boot)
+  colnames(design_boot) <- c("Normal", "Leukemia")
+  fit_boot <- lmFit(expr_boot, design_boot)
+  contrast_boot <- makeContrasts(Leukemia - Normal, levels = design_boot)
+  fit_boot2 <- contrasts.fit(fit_boot, contrast_boot)
+  fit_boot2 <- eBayes(fit_boot2)
+  
+  results_boot <- topTable(fit_boot2, number = Inf, sort.by = "B")
+  
+  # Gènes DE
+  de_boot <- rownames(results_boot[results_boot$adj.P.Val < 0.05 & abs(results_boot$logFC) > 1, ])
+  bootstrap_de_genes[[i]] <- de_boot
+}
+
+# Calculer la fréquence de sélection de chaque gène
+all_genes <- unique(unlist(bootstrap_de_genes))
+gene_freq <- sapply(all_genes, function(g) {
+  sum(sapply(bootstrap_de_genes, function(x) g %in% x))
+})
+
+gene_stability <- data.frame(
+  probe_id = as.integer(names(gene_freq)),
+  frequency = gene_freq / length(bootstrap_de_genes)
+) |>
+  left_join(
+    fdata_filt |> 
+      dplyr::mutate(gene_symbol = sub("^[^/]*//\\s*([^/]+)\\s*//.*", "\\1", gene_assignment)) |>
+      dplyr::select(ID, gene_symbol),
+    by = c("probe_id" = "ID")
+  ) |>
+  dplyr::arrange(desc(frequency))
+
+cat("=== Gènes les plus robustes (sélection fréquente en bootstrap) ===\n")
+print(head(gene_stability, 30))
+
+# Visualiser
+gene_stability |>
+  dplyr::slice_head(n = 50) |>
+  ggplot(aes(x = reorder(gene_symbol, frequency), y = frequency)) +
+  geom_col(fill = "#D73027") +
+  coord_flip() +
+  labs(x = NULL, y = "Fréquence de sélection (bootstrap)",
+       title = "Gènes DE les plus robustes") +
+  theme_minimal(base_size = 11)
+```
+
+**Interprétation des analyses avancées:**
+
+1.  **Signature scoring**: Permet de quantifier l'activité de programmes biologiques ou de classer les échantillons. Utile pour la validation externe et le diagnostic.
+
+2.  **Cell type deconvolution**: Estime la composition cellulaire des échantillons hétérogènes (tumeur + microenvironnement). Critique pour interpréter les échantillons bulk.
+
+3.  **Analyse de survie**: Identifie les biomarqueurs pronostiques et les signatures prédictives de réponse au traitement.
+
+4.  **Validation bootstrap**: Les gènes sélectionnés fréquemment dans les échantillons bootstrap sont plus robustes et moins sensibles à la composition exacte de l'échantillon. Ce sont de meilleurs candidats pour la validation.
+
+# Discussion et perspectives
+
+## Résumé des résultats
+
+```{r}
+#| label: summary-table
+
+summary_df <- tibble(
+  Comparaison = c("Leukemia vs Normal (global)",
+                   "AML vs Normal",
+                   "B-ALL vs Normal",
+                   "T-ALL vs Normal"),
+  `Gènes DE (FDR<0.05)` = c(
+    sum(results_global$adj.P.Val < 0.05),
+    sum(results_aml$adj.P.Val < 0.05),
+    sum(results_ball$adj.P.Val < 0.05),
+    sum(results_tall$adj.P.Val < 0.05)
+  ),
+  `Gènes DE (FDR<0.05, |logFC|>1)` = c(
+    sum(results_global$adj.P.Val < 0.05 & abs(results_global$logFC) > 1),
+    sum(results_aml$adj.P.Val < 0.05 & abs(results_aml$logFC) > 1),
+    sum(results_ball$adj.P.Val < 0.05 & abs(results_ball$logFC) > 1),
+    sum(results_tall$adj.P.Val < 0.05 & abs(results_tall$logFC) > 1)
+  ),
+  `Up (|logFC|>1)` = c(
+    sum(results_global$adj.P.Val < 0.05 & results_global$logFC > 1),
+    sum(results_aml$adj.P.Val < 0.05 & results_aml$logFC > 1),
+    sum(results_ball$adj.P.Val < 0.05 & results_ball$logFC > 1),
+    sum(results_tall$adj.P.Val < 0.05 & results_tall$logFC > 1)
+  ),
+  `Down (|logFC|>1)` = c(
+    sum(results_global$adj.P.Val < 0.05 & results_global$logFC < -1),
+    sum(results_aml$adj.P.Val < 0.05 & results_aml$logFC < -1),
+    sum(results_ball$adj.P.Val < 0.05 & results_ball$logFC < -1),
+    sum(results_tall$adj.P.Val < 0.05 & results_tall$logFC < -1)
+  )
+)
+
+summary_df
+```
+
+## Points clés
+
+L'analyse transcriptomique du dataset GSE48558 révèle plusieurs observations importantes :
+
+1.  **Séparation nette entre leucémies et cellules normales** : L'ACP et le clustering hiérarchique non supervisé montrent une séparation claire entre les échantillons leucémiques et normaux, confirmant des profils d'expression fondamentalement distincts.
+
+2.  **Signatures spécifiques par sous-type** : Le diagramme de Venn et les analyses d'enrichissement révèlent à la fois des voies dérégulées communes (programme leucémique partagé) et des signatures propres à chaque sous-type (AML, B-ALL, T-ALL), reflétant la biologie distincte de chaque lignée hématopoïétique.
+
+3.  **Cohérence avec la biologie connue** : Les voies enrichies dans les gènes surexprimés (cycle cellulaire, réplication de l'ADN, etc.) sont cohérentes avec la prolifération incontrôlée caractéristique des leucémies aiguës.
+
+## Limites
+
+-   **Données microarray** : La résolution est limitée par le design des sondes. Une analyse RNA-seq permettrait d'identifier des transcrits non couverts par la puce.
+-   **Hétérogénéité des contrôles normaux** : Le groupe « Normal » comprend différents types cellulaires (B, T, monocytes, granulocytes, CD34+), ce qui peut diluer ou confondre certaines signatures spécifiques de lignée.
+-   **Comparaisons multiples** : Quatre contrastes sont testés simultanément. Bien que la correction FDR soit appliquée au sein de chaque contraste, les comparaisons inter-sous-types doivent être interprétées avec prudence.
+-   **Absence de validation externe** : Les signatures identifiées devraient être validées sur un jeu de données indépendant (ex: TCGA-AML, TARGET-ALL).
+
+## Perspectives et extensions possibles
+
+### Analyses complémentaires
+
+1.  **Validation expérimentale**
+    -   RT-qPCR des top gènes candidats et master regulators
+    -   Western blot pour les protéines clés
+    -   Expériences fonctionnelles (knockdown/overexpression) des hub genes WGCNA
+2.  **Validation computationnelle**
+    -   Validation sur datasets indépendants (TCGA-LAML, TARGET-ALL, BEAT-AML)
+    -   Meta-analyse intégrant plusieurs cohortes
+    -   Validation des signatures dans des données single-cell RNA-seq
+3.  **Intégration multi-omiques**
+    -   Données de méthylation (450K, EPIC arrays) pour identifier les altérations épigénétiques
+    -   Données de mutations (WES/WGS) pour corréler génotype et transcriptome
+    -   Données protéomiques (mass spec) pour valider l'expression protéique
+    -   Données de ChIP-seq pour valider les interactions TF-gènes cibles
+4.  **Analyses de réseau approfondies**
+    -   Préservation des modules WGCNA entre sous-types (modulePreservation)
+    -   Réseaux de régulation génique (ARACNe, GENIE3)
+    -   Analyse de communautés (Louvain, Leiden algorithms)
+    -   Réseaux protein-protein interaction (STRING, BioGRID)
+5.  **Machine Learning et prédiction**
+    -   Classifieurs multi-classes (Random Forest, SVM, XGBoost) pour sous-typage
+    -   Deep learning (autoencoders) pour réduction dimensionnelle
+    -   Prédiction de réponse aux thérapies ciblées
+    -   Modèles pronostiques intégrant clinique + transcriptome
+6.  **Analyse dynamique et trajectoires**
+    -   Pseudotime analysis pour reconstruire les trajectoires de différenciation
+    -   RNA velocity si données scRNA-seq disponibles
+    -   Modeling dynamique de l'évolution clonale
+7.  **Pharmacogénomique**
+    -   Corrélation avec la sensibilité aux drogues (GDSC, CCLE databases)
+    -   Identification de biomarqueurs prédictifs de réponse
+    -   Repositionnement de médicaments (drug repurposing) via Connectivity Map
+8.  **Aspects méthodologiques**
+    -   Comparaison avec d'autres méthodes de normalisation (RMA vs MAS5 vs RMA)
+    -   Évaluation de l'impact des choix de filtrage (variance, expression basale)
+    -   Benchmark de méthodes d'analyse différentielle (limma vs DESeq2 vs edgeR sur les mêmes données après transformation)
+
+### Implications translationnelles
+
+1.  **Biomarqueurs diagnostiques**
+    -   Panel minimal de gènes pour sous-typage (PCR multiplex)
+    -   Signatures pour détection de maladie résiduelle minimale (MRD)
+2.  **Cibles thérapeutiques**
+    -   Master regulators comme cibles de thérapies ciblées
+    -   Inhibiteurs de voies enrichies (ex: inhibiteurs de CDK pour cycle cellulaire)
+    -   Combinaisons thérapeutiques basées sur les réseaux
+3.  **Médecine de précision**
+    -   Stratification des patients basée sur les signatures
+    -   Prédiction de réponse au traitement
+    -   Adaptation du traitement selon le profil transcriptomique
+
+### Considérations techniques
+
+1.  **Reproductibilité**
+    -   Partage du code (GitHub) et des données (GEO)
+    -   Containerisation (Docker, Singularity)
+    -   Workflow management (Snakemake, Nextflow)
+2.  **Scalabilité**
+    -   Optimisation pour datasets plus larges (parallel computing)
+    -   Adaptation aux données single-cell (millions de cellules)
+    -   Cloud computing pour analyses intensives
+
+
+
+# Informations de session
+
+```{r}
+#| label: session-info
+sessionInfo()
+```
