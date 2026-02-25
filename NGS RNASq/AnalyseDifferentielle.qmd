@@ -1,0 +1,138 @@
+---
+title: "Analyse différentielle"
+author: "Yimga Wandji Kevin"
+format:
+  html: 
+    code-fold: false
+execute: 
+  warning: false
+  message: false
+  
+editor: visual
+---
+
+## Realisation de l'analyse différentielle
+
+```{r}
+library(DESeq2)
+```
+
+### Paramétres des génes issus de l'analyse statistique DESEq2
+
+```{r}
+dds <- DESeq(dds)
+```
+
+L’analyse de l’expression différentielle a été réalisée à l’aide du package **DESeq2**, qui modélise les données de comptage à l’aide de modèles linéaires généralisés à distribution binomiale négative. Les comptages bruts ont été normalisés par l’estimation des facteurs de taille afin de corriger les différences de profondeur de séquençage entre les échantillons. Les dispersions ont ensuite été estimées pour chaque gène, puis ajustées selon une relation moyenne–dispersion. Les estimations finales des dispersions ont été obtenues par un rétrécissement de type bayésien empirique, permettant de stabiliser les estimations, en particulier pour les gènes faiblement exprimés. Enfin, le modèle statistique a été ajusté et des tests d’hypothèses ont été réalisés afin d’identifier les gènes différentiellement exprimés entre les conditions étudiées .
+
+```{r}
+res <- results(dds)
+res
+```
+
+Nous avons réalisé une analyse différentielle en fonction du facteur treatment et nous avons indiqué que la catégorie "control" de ce facteur evrait etre choisie comme reférence. Cependant on constate que l'affichage suivant:
+
+Log2 Fold Change(MLE): treatment OHT vs control montre bien que la catégorie control a bien été utilisé comme reférence , mais il est faut noter que c'est la catégorie OHT qui a été utilisé dans la comparaison.
+
+Nb: attention, cela ne veut pas dire que la catégorie "DPN" a été ignorée , elle a été prise en compte dans les estimations des paramétres du modéle de DESEq2. Les resultats sont simplement presentées ici en comparant "OHT" vs "Control".
+
+Voici la commande qui permet de changer la représentation des resultats
+
+```{r}
+res2 <- results(dds, contrast = c("treatment", "DPN", "Control"))
+res2
+```
+
+Cette fois la comparaison présentées concernent "DPN" vs "Control" ce qui as été demandé avec l'argument contrast de la fonction results.
+
+### Signification des paramétres obtenus pour chaque géne
+
+description des paramétres compilés dans la table de resultats.
+
+```{r}
+mcols(res, use.names = TRUE)
+```
+
+Description des paramétres du tableau de resultats de la méthode DESEq2
+
+-   **baseMean**\
+    *Moyenne intermédiaire des comptages normalisés pour un gène donné, calculée sur l’ensemble des échantillons, indépendamment des conditions expérimentales.*\
+    👉 Reflète le **niveau d’expression global** du gène.
+
+<!-- -->
+
+-   **log2FoldChange**\
+    *Variation d’expression estimée entre les conditions comparées, exprimée en logarithme base 2.*\
+    👉 Une valeur positive indique une **surexpression**, une valeur négative une **sous-expression** dans la condition testée par rapport à la condition de référence.
+
+<!-- -->
+
+-   **lfcSE**\
+    *Erreur standard associée à l’estimation du log2 fold change.*\
+    👉 Mesure l’**incertitude** autour de l’effet estimé.
+
+<!-- -->
+
+-   **stat**\
+    *Statistique de Wald associée au coefficient du log2 fold change.*\
+    👉 Utilisée pour tester l’hypothèse nulle selon laquelle le log2 fold change est égal à zéro.
+
+<!-- -->
+
+-   **pvalue**\
+    *Valeur de p issue du test de Wald pour chaque gène.*\
+    👉 Indique la **significativité statistique brute** de la différence d’expression.
+
+<!-- -->
+
+-   **padj**\
+    *Valeur de p ajustée pour les comparaisons multiples selon la méthode de Benjamini–Hochberg.*\
+    👉 Permet de contrôler le **taux de fausses découvertes (FDR)** et constitue le critère standard de sélection des gènes différentiellement exprimés.
+
+### Graphiques diagnostiques
+
+```{r}
+# graphique du paramétre de dispersion
+plotDispEsts(dds, ylim = c(1e-6, 1e1))
+```
+
+chaque géne est représenté par un point noir avec en abscisse la valeur des comptages des moyennes normalisées (basemean), et en ordonnée l'estimateur de la dispersion calculé calculé en utilisant uniquement les données des génes individuels. La courbe rouge est calculé a partir des point noir. Elle permet de modéliser la dépendance entre les mesures de dispersions et les valeurs de comptages normalisées aprés les procédure de shrinkage de DESEq2. Cette procédure consiste à réevaluer les valeurs de dispersion des génes en utilisant les modéles de dépendance entre la dispersion et la moyenne, estimé par la ligne rouge. Les points de couleurs bleu sont plus ressérés autour de la ligne rouge. Les génes qui sont entourés en bleu, sont les génes pour lequel les comptages ne sont pas cohérents, on les qualifient d'outliers et plus précisement de valeurs atypique.
+
+```{r}
+# Graphiques MA plot
+plotMA(res, ylim = c(-1, 1))
+```
+
+Le MA-plot montre que la majorité des gènes présente un log2 fold change proche de zéro, indiquant une expression globalement stable entre les conditions comparées. Les gènes significativement différentiellement exprimés, représentés en **bleu** sur le graphique et définis par une valeur de p ajustée significative (padj \< 0,05), se distinguent principalement parmi les gènes présentant des niveaux d’expression moyens à élevés. À l’inverse, les gènes faiblement exprimés présentent une forte variabilité du log2 fold change, mais atteignent rarement la significativité statistique après correction pour les comparaisons multiples. La distribution globalement symétrique des effets positifs et négatifs suggère une normalisation adéquate des données et l’absence de biais systématique entre les conditions.
+
+```{r}
+plotMA(res, ylim = c(-1, 1), alpha = 0.5)
+```
+
+### Extraction d'une liste de génes candidats
+
+les paramétres statistiques calculés avec la méthodologie DESEq2 permettent de sélectionner les génes interessant pour le suite des analyses. Ces génes sont les bons candidats pour etre différentiellent exprimées. A cette étape différents stratégies de sélection des génes sont possibles et dépendent de la sensibilité du chercheur qui réalise une analyse. Ainsi il est possible:
+
+-   Filtrage 1: sélectionner tous les génes dont la p value est inférieur a un seuil T.
+
+```{r}
+T <- 0.05
+DEgenes <- res[which(as.data.frame(res)$padj < T),]
+DEgenes
+dim(DEgenes)
+```
+
+-   Filtrage 2: sélectionner tous les génes dont la p-value ajustée est inférieure à un seuil donné (T1) et la valeur absolue du log2FoldChange est supérieur a une valeur donnée
+
+```{r}
+T1 <- 0.1
+T2 <- 0.5
+DEgenes <- res[intersect(which(as.data.frame(res)$padj < T1),
+                         which(abs(as.data.frame(res)$log2FoldChange)> T2)), ]
+DEgenes
+dim(DEgenes)
+```
+
+```{r}
+?DESeq2
+```
