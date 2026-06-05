@@ -1,0 +1,680 @@
+---
+title: "Cartographie de la malnutrition au Cameroun"
+subtitle: "Guide pratique avec ggplot2 et plotly"
+author: "kevin yimga"
+date: today
+lang: fr
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Table des matières"
+    number-sections: true
+    code-fold: false
+    self-contained: true
+  pdf:
+    toc: true
+    toc-depth: 3
+    toc-title: "Table des matières"
+    number-sections: true
+    geometry: "margin=2.5cm"
+    fontsize: 11pt
+    keep-tex: false
+    # Si TinyTeX n'est pas installé, remplacez "pdf" par "typst" ci-dessus
+    # typst ne nécessite pas LaTeX et est intégré à Quarto
+  docx:
+    toc: true
+    toc-depth: 3
+    toc-title: "Table des matières"
+    number-sections: true
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+# ceci est a fait lors du rendu du document quarto.
+# instaler tinytex pour avoir le rendu en pdf
+#install.packages("tinytex")
+# vérifier si tinytex est installé
+# quarto::quarto_render("carte_malnutrition_cameroun.qmd", output_format = "pdf")
+```
+
+## Introduction
+
+Ce document est un **guide pratique** pour produire des cartes de malnutrition au Cameroun en R. Il couvre deux approches complémentaires :
+
+- **ggplot2** : cartes statiques de haute qualité, exportables en image (PNG, PDF)
+- **plotly** : cartes interactives avec infobulles au survol, idéales pour les rapports HTML
+
+Les données utilisées proviennent d'une enquête nutritionnelle menée dans trois régions du Cameroun : **Adamaoua**, **Nord** et **Extrême-Nord**. Les principaux indicateurs cartographiés sont :
+
+| Indicateur   | Définition                                      |
+|--------------|-------------------------------------------------|
+| **GAM**      | Malnutrition aiguë globale (WHZ \< −2 ou œdème) |
+| **SAM**      | Malnutrition aiguë sévère (WHZ \< −3 ou œdème)  |
+| **MAM**      | Malnutrition aiguë modérée (−3 ≤ WHZ \< −2)     |
+| **Stunting** | Retard de croissance (HAZ \< −2)                |
+
+::: callout-tip
+## Prérequis
+
+Assurez-vous d'avoir installé les packages suivants avant d'exécuter ce document :
+
+``` r
+install.packages(c("sf", "dplyr", "ggplot2", "plotly", "knitr"))
+```
+
+Une **connexion internet** est nécessaire pour télécharger le fond de carte officiel du Cameroun (GADM).
+:::
+
+## Chargement des packages et des données
+
+### Packages
+
+```{r}
+#| label: load-packages
+
+library(sf)       # Lecture et manipulation des shapefiles (objets spatiaux)
+library(dplyr)    # Manipulation des données (group_by, summarise, left_join…)
+library(ggplot2)  # Cartes et graphiques statiques
+library(plotly)   # Cartes interactives
+library(knitr)    # Mise en forme des tableaux
+```
+
+### Palette de couleurs OMS
+
+L'OMS et ses partenaires (UNICEF, PAM) utilisent une palette standardisée pour la cartographie nutritionnelle, fondée sur quatre niveaux de sévérité. Ces couleurs sont alignées avec le cadre **IPC** (*Integrated Food Security Phase Classification*).
+
+```{r}
+#| label: palette-oms
+
+# ── Couleurs de référence OMS / IPC ──────────────────────────────────────────
+vert_oms        <- "#4dac26"  # Acceptable  (< 5 % GAM)
+jaune_oms       <- "#f9c734"  # Alerte      (5 – 9,9 %)
+orange_oms      <- "#e88400"  # Sérieux     (10 – 14,9 %)
+rouge_oms       <- "#c9161d"  # Critique    (>= 15 %)
+rouge_fonce_oms <- "#640000"  # Urgence max (>= 30 % / SAM élevé)
+
+# ── Palettes par indicateur ───────────────────────────────────────────────────
+pal_gam      <- c(vert_oms, jaune_oms, orange_oms, rouge_oms, rouge_fonce_oms)
+pal_sam      <- c(jaune_oms, orange_oms, rouge_oms, rouge_fonce_oms)
+pal_mam      <- c(vert_oms, jaune_oms, orange_oms)
+pal_stunting <- c(vert_oms, jaune_oms, orange_oms, rouge_oms)
+
+# ── Couleurs pour les statuts individuels (points GPS) ───────────────────────
+couleurs_statut <- c(
+  "Normal" = vert_oms,
+  "MAM"    = orange_oms,
+  "SAM"    = rouge_oms
+)
+```
+
+::: callout-note
+## Référence des seuils OMS pour la GAM
+
+| Couleur     | Niveau           | Prévalence GAM |
+|-------------|------------------|----------------|
+| Vert        | Acceptable       | \< 5 %         |
+| Jaune       | Alerte           | 5 – 9,9 %      |
+| Orange      | Sérieux          | 10 – 14,9 %    |
+| Rouge       | Critique         | \>= 15 %       |
+| Rouge foncé | Urgence maximale | \>= 30 %       |
+
+*Source : WHO, UNICEF, WFP — SMART methodology*
+:::
+
+### Données
+
+```{r}
+#| label: load-data
+
+df_map <- read.csv("data/donnees_malnutrition.csv", encoding = "UTF-8")
+```
+
+Les colonnes utilisées dans ce document sont les suivantes :
+
+- **Localisation** : `region`, `district`, `village`
+- **Coordonnées GPS** : `gps_latitude`, `gps_longitude`
+- **Indicateurs binaires** : `GAM`, `SAM`, `MAM`, `Stunting` (1 = cas, 0 = non)
+- **Statut agrégé** : `nutr_cat` — valeurs : `"SAM"`, `"MAM"`, `"Normal"`
+- **Scores continus** : `whz_score`, `muac_mm`
+
+## Préparation des données
+
+### Calcul des prévalences par région
+
+Pour la carte choroplèthe, nous avons besoin d'**un indicateur résumé par région**. Nous calculons le pourcentage d'enfants atteints de GAM, SAM, MAM et de retard de croissance.
+
+```{r}
+#| label: calcul-prevalences
+
+# mean() sur une colonne binaire (0/1) donne directement la proportion → x 100 pour le %
+donnees_region <- df_map |>
+  group_by(region) |>
+  summarise(
+    n_enfants    = n(),
+    GAM_pct      = mean(GAM,      na.rm = TRUE) * 100,
+    SAM_pct      = mean(SAM,      na.rm = TRUE) * 100,
+    MAM_pct      = mean(MAM,      na.rm = TRUE) * 100,
+    Stunting_pct = mean(Stunting, na.rm = TRUE) * 100,
+    .groups = "drop"
+  )
+
+donnees_region
+```
+
+Les prévalences de GAM dépassent **70 %** dans les trois régions enquêtées, ce qui reflète une situation nutritionnelle critique.
+
+## Fond de carte du Cameroun
+
+### Téléchargement depuis GADM
+
+**GADM** (*Global Administrative Areas*) fournit des shapefiles officiels pour tous les pays du monde. Nous utilisons le **niveau 1** (régions administratives), qui correspond aux 10 régions du Cameroun.
+
+```{r}
+#| label: download-gadm
+
+url_gadm <- "https://geodata.ucdavis.edu/gadm/gadm4.1/json/gadm41_CMR_1.json"
+
+# st_read() lit un fichier spatial (local ou en ligne)
+cameroun_sf <- st_read(url_gadm, quiet = TRUE) |>
+  rename(region = NAME_1)
+
+cameroun_sf |> select(region) |> st_drop_geometry()
+```
+
+::: callout-tip
+## Sauvegarder localement pour éviter le téléchargement répété
+
+``` r
+# Sauvegarder une fois
+st_write(cameroun_sf, "data/cameroun_regions.gpkg")
+
+# Recharger ensuite sans internet
+cameroun_sf <- st_read("data/cameroun_regions.gpkg", quiet = TRUE)
+```
+:::
+
+### Jointure shapefile avec les données de malnutrition
+
+Nous utilisons `left_join()` pour attacher nos statistiques régionales au shapefile. Les régions **non enquêtées** auront des `NA` et seront affichées en gris sur les cartes.
+
+```{r}
+#| label: join-data
+
+# left_join conserve TOUTES les régions du shapefile (y compris celles sans données)
+carte_sf <- cameroun_sf |>
+  left_join(donnees_region, by = "region")
+
+carte_sf |> select(region, GAM_pct) |> st_drop_geometry()
+```
+
+## Cartes statiques avec ggplot2
+
+### Principe de `geom_sf()`
+
+`ggplot2` peut dessiner directement des **objets sf** (polygones, points, lignes) grâce à `geom_sf()`. La logique est identique aux autres géométries :
+
+```         
+ggplot(data_sf) +
+  geom_sf(aes(fill = variable_numerique))
+```
+
+- `fill` colorie les polygones selon une variable numérique
+- `scale_fill_gradientn()` définit le dégradé de couleurs OMS (plus de 2 couleurs)
+- `theme_void()` supprime les axes et le quadrillage (adapté aux cartes)
+
+### Carte choroplèthe — prévalence du GAM
+
+```{r}
+#| label: carte-ggplot-choroplethe
+#| fig-width: 7
+#| fig-height: 8
+#| fig-cap: "Prévalence de la GAM par région. Les régions en gris n'ont pas été enquêtées."
+
+# Centroïdes pour placer les étiquettes au centre de chaque région
+centroides <- carte_sf |>
+  filter(!is.na(GAM_pct)) |>
+  st_centroid() |>
+  mutate(
+    lon = st_coordinates(geometry)[, 1],
+    lat = st_coordinates(geometry)[, 2]
+  ) |>
+  st_drop_geometry()
+
+ggplot(carte_sf) +
+  # Couche 1 : fond gris — TOUTES les régions du Cameroun
+  geom_sf(fill = "grey90", color = "white", linewidth = 0.4) +
+  # Couche 2 : régions enquêtées, colorées selon le taux de GAM
+  geom_sf(
+    data  = filter(carte_sf, !is.na(GAM_pct)),
+    aes(fill = GAM_pct),
+    color = "white", linewidth = 0.5
+  ) +
+  # Couche 3 : étiquettes (nom région + valeur GAM)
+  geom_text(
+    data = centroides,
+    aes(x = lon, y = lat,
+        label = paste0(region, "\n", round(GAM_pct, 1), "%")),
+    size = 3, fontface = "bold", color = "white"
+  ) +
+  # Palette OMS : vert (acceptable) → jaune → orange → rouge → rouge foncé (urgence)
+  scale_fill_gradientn(
+    colors   = pal_gam,
+    na.value = "grey90",
+    name     = "GAM (%)",
+    limits   = c(60, 80)
+  ) +
+  labs(
+    title    = "Prévalence de la Malnutrition Aiguë Globale (GAM) au Cameroun",
+    subtitle = "Régions enquêtées : Adamaoua, Nord, Extrême-Nord",
+    caption  = "Source : Enquête nutritionnelle 2024 | Fond de carte : GADM"
+  ) +
+  theme_void() +
+  theme(
+    plot.title      = element_text(hjust = 0.5, face = "bold", size = 13),
+    plot.subtitle   = element_text(hjust = 0.5, color = "grey40", size = 10),
+    plot.caption    = element_text(hjust = 1,   color = "grey50", size = 8),
+    legend.position = "right"
+  )
+```
+
+### Carte choroplèthe + points GPS individuels
+
+En superposant les coordonnées GPS de chaque ménage, on visualise simultanément la **prévalence régionale** (fond coloré) et la **répartition spatiale des cas individuels** (points).
+
+```{r}
+#| label: points-gps
+
+# Convertir les coordonnées GPS en objet sf (système WGS84)
+points_enquete <- df_map |>
+  filter(!is.na(gps_latitude), !is.na(gps_longitude)) |>
+  st_as_sf(coords = c("gps_longitude", "gps_latitude"), crs = 4326)
+```
+
+```{r}
+#| label: carte-ggplot-points
+#| fig-width: 7
+#| fig-height: 8
+#| fig-cap: "Carte combinée : choroplèthe régionale + statut nutritionnel individuel."
+
+ggplot() +
+  # Couche 1 : fond — toutes les régions
+  geom_sf(data = carte_sf, fill = "grey92", color = "white", linewidth = 0.4) +
+  # Couche 2 : régions enquêtées (semi-transparentes pour voir les points dessous)
+  geom_sf(
+    data  = filter(carte_sf, !is.na(GAM_pct)),
+    aes(fill = GAM_pct),
+    color = "white", linewidth = 0.5, alpha = 0.55
+  ) +
+  # Couche 3 : un point par ménage, coloré selon le statut nutritionnel
+  geom_sf(
+    data  = points_enquete,
+    aes(color = nutr_cat),
+    size  = 1.2, alpha = 0.75
+  ) +
+  # Choroplèthe : palette OMS pour la GAM
+  scale_fill_gradientn(
+    colors   = pal_gam,
+    na.value = "grey92",
+    name     = "GAM région (%)",
+    limits   = c(60, 80)
+  ) +
+  # Points : couleurs OMS par statut nutritionnel
+  scale_color_manual(
+    values = couleurs_statut,
+    name   = "Statut individuel"
+  ) +
+  labs(
+    title    = "Malnutrition au Cameroun : prévalence régionale et cas individuels",
+    subtitle = "Fond = taux de GAM régional  |  Points = statut nutritionnel de l'enfant",
+    caption  = "Source : Enquête nutritionnelle 2024 | Fond de carte : GADM"
+  ) +
+  theme_void() +
+  theme(
+    plot.title      = element_text(hjust = 0.5, face = "bold", size = 12),
+    plot.subtitle   = element_text(hjust = 0.5, color = "grey40", size = 9),
+    plot.caption    = element_text(hjust = 1,   color = "grey50", size = 8),
+    legend.position = "right"
+  )
+```
+
+## Cartes interactives avec plotly
+
+:::: {.content-visible unless-format="html"}
+::: callout-important
+## Section disponible uniquement en HTML
+
+Les cartes interactives de cette section nécessitent un navigateur web. Dans les versions **PDF** et **Word**, seules les cartes statiques des sections précédentes sont disponibles.
+:::
+::::
+
+:::: {.content-visible when-format="html"}
+### Méthode simple : `ggplotly()`
+
+La fonction `ggplotly()` **convertit automatiquement** une carte ggplot2 en carte interactive plotly. C'est la méthode la plus rapide car elle réutilise le code ggplot2 existant.
+
+**Astuce clé** : ajouter l'esthétique `text` dans `aes()` et préciser `tooltip = "text"` dans `ggplotly()` pour personnaliser les infobulles.
+
+```{r}
+#| label: carte-plotly-simple
+#| eval: !expr knitr::is_html_output()
+
+carte_pour_plotly <- ggplot(carte_sf) +
+  geom_sf(fill = "grey90", color = "white", linewidth = 0.4) +
+  geom_sf(
+    data = filter(carte_sf, !is.na(GAM_pct)),
+    aes(
+      fill = GAM_pct,
+      # L'esthétique "text" sera lue par plotly pour construire les infobulles
+      text = paste0(
+        "Région : ", region,                           "\n",
+        "GAM    : ", round(GAM_pct,      1), "%\n",
+        "SAM    : ", round(SAM_pct,      1), "%\n",
+        "MAM    : ", round(MAM_pct,      1), "%\n",
+        "Retard croissance : ", round(Stunting_pct, 1), "%\n",
+        "Enfants enquêtés : ", n_enfants
+      )
+    ),
+    color = "white", linewidth = 0.5
+  ) +
+  scale_fill_gradientn(
+    colors   = pal_gam,
+    na.value = "grey90",
+    name     = "GAM (%)",
+    limits   = c(60, 80)
+  ) +
+  labs(title = "Prévalence GAM au Cameroun — survolez une région pour les détails") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 11))
+
+# tooltip = "text" active notre infobulle personnalisée
+ggplotly(carte_pour_plotly, tooltip = "text")
+```
+
+::: callout-note
+## Avantages et limites de `ggplotly()`
+
+|   | Avantages | Limites |
+|----|----|----|
+| ✅ | Code très court, réutilise ggplot2 | Infobulles HTML limitées (pas de gras) |
+| ✅ | Fidèle à l'apparence ggplot2 | Moins de contrôle sur les interactions |
+| ✅ | Idéal pour des rapports rapides | Peut être lent avec beaucoup de points |
+:::
+
+### Méthode avancée : `plot_ly()` natif
+
+La méthode native `plot_ly()` offre **plus de contrôle** sur l'apparence et les interactions. On utilise `add_sf()` pour les polygones et `add_trace()` pour les points GPS.
+
+```{r}
+#| label: carte-plotly-complete
+#| eval: !expr knitr::is_html_output()
+
+points_df_plotly <- df_map |>
+  filter(!is.na(gps_latitude), !is.na(gps_longitude)) |>
+  mutate(
+    info = paste0(
+      "Village  : ", village,              "\n",
+      "District : ", district,             "\n",
+      "Région   : ", region,               "\n",
+      "Statut   : ", nutr_cat,             "\n",
+      "WHZ      : ", round(whz_score, 2),  "\n",
+      "MUAC     : ", muac_mm,              " mm"
+    )
+  )
+
+plot_ly() |>
+  # Couche 1 : fond gris — toutes les régions du Cameroun
+  add_sf(
+    data      = cameroun_sf,
+    color     = I("grey85"),
+    line      = list(color = "white", width = 1),
+    name      = "Cameroun",
+    hoverinfo = "none"
+  ) |>
+  # Couche 2 : régions enquêtées colorées selon le taux de GAM (palette OMS)
+  add_sf(
+    data          = filter(carte_sf, !is.na(GAM_pct)),
+    color         = ~GAM_pct,
+    colors        = pal_gam,
+    text          = ~paste0(
+      "<b>", region, "</b><br>",
+      "GAM : ", round(GAM_pct,      1), "%<br>",
+      "SAM : ", round(SAM_pct,      1), "%<br>",
+      "MAM : ", round(MAM_pct,      1), "%<br>",
+      "Retard croissance : ", round(Stunting_pct, 1), "%<br>",
+      "Enfants enquêtés : ", n_enfants
+    ),
+    hovertemplate = "%{text}<extra></extra>",
+    showlegend    = FALSE
+  ) |>
+  # Couche 3 : points GPS des ménages (couleurs OMS par statut)
+  add_trace(
+    data          = points_df_plotly,
+    type          = "scatter",
+    mode          = "markers",
+    x             = ~gps_longitude,
+    y             = ~gps_latitude,
+    color         = ~nutr_cat,
+    colors        = couleurs_statut,
+    marker        = list(size = 5, opacity = 0.75),
+    text          = ~info,
+    hovertemplate = "%{text}<extra></extra>",
+    name          = ~nutr_cat
+  ) |>
+  layout(
+    title  = list(
+      text = "<b>Malnutrition au Cameroun — carte interactive complète</b>",
+      x    = 0.5
+    ),
+    xaxis  = list(title = "", showgrid = FALSE, zeroline = FALSE),
+    yaxis  = list(title = "", showgrid = FALSE, zeroline = FALSE),
+    legend = list(title = list(text = "<b>Statut nutritionnel</b>")),
+    margin = list(l = 0, r = 0, t = 50, b = 0)
+  )
+```
+::::
+
+## Comparaison des indicateurs par onglets
+
+Cette section permet de **comparer visuellement** les quatre indicateurs de malnutrition. En HTML, cliquez sur les onglets. En PDF et Word, les indicateurs s'affichent à la suite sous forme de sous-sections.
+
+::: callout-note
+## Comment fonctionne un tabset en Quarto ?
+
+Un tabset se crée avec `::: {.panel-tabset}` et se ferme avec `:::`. Chaque titre `###` à l'intérieur devient un onglet cliquable en HTML. En PDF/Word, les onglets deviennent des sous-sections séquentielles.
+
+```         
+::: {.panel-tabset}
+
+### Nom de l'onglet 1
+Contenu de l'onglet 1
+
+### Nom de l'onglet 2
+Contenu de l'onglet 2
+
+:::
+```
+:::
+
+```{r}
+#| label: fonction-carte-indicateur
+
+# Fonction réutilisable : évite de répéter le même code pour chaque indicateur.
+# Paramètres :
+#   col_pct     : nom de la colonne (ex. "GAM_pct")
+#   titre       : titre de la carte
+#   nom_legende : label de la légende
+#   limites     : vecteur c(min, max) de l'échelle
+#   couleurs    : palette OMS propre à l'indicateur
+
+carte_indicateur <- function(col_pct, titre, nom_legende, limites, couleurs) {
+
+  valeurs <- carte_sf[[col_pct]]
+
+  carte_sf_temp <- carte_sf |>
+    mutate(
+      valeur    = valeurs,
+      infobulle = paste0(
+        "Région : ",    region,                          "\n",
+        nom_legende, " : ", round(valeur, 1),            "%\n",
+        "Enfants enquêtés : ", ifelse(is.na(n_enfants), "—", n_enfants)
+      )
+    )
+
+  p <- ggplot(carte_sf_temp) +
+    geom_sf(fill = "grey90", color = "white", linewidth = 0.4) +
+    geom_sf(
+      data  = filter(carte_sf_temp, !is.na(valeur)),
+      aes(fill = valeur, text = infobulle),
+      color = "white", linewidth = 0.5
+    ) +
+    # scale_fill_gradientn() accepte plus de 2 couleurs → idéal pour la palette OMS
+    scale_fill_gradientn(
+      colors   = couleurs,
+      na.value = "grey90",
+      name     = nom_legende,
+      limits   = limites
+    ) +
+    labs(title = titre) +
+    theme_void() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 11))
+
+  # En HTML  → carte interactive plotly avec infobulles
+  # En PDF/Word → carte statique ggplot2 (plotly ne fonctionne pas hors HTML)
+  if (knitr::is_html_output()) {
+    ggplotly(p, tooltip = "text")
+  } else {
+    p
+  }
+}
+```
+
+:::: panel-tabset
+### GAM — Malnutrition aiguë globale
+
+La **GAM** (Global Acute Malnutrition) regroupe tous les enfants avec un score WHZ \< −2 ou présentant des œdèmes. C'est l'indicateur de référence pour évaluer la situation nutritionnelle d'urgence.
+
+```{r}
+#| label: tab-gam
+#| fig-width: 6
+#| fig-height: 7
+
+carte_indicateur(
+  col_pct     = "GAM_pct",
+  titre       = "Prévalence de la GAM au Cameroun (%)",
+  nom_legende = "GAM (%)",
+  limites     = c(60, 80),
+  couleurs    = pal_gam
+)
+```
+
+### SAM — Malnutrition sévère
+
+La **SAM** (Severe Acute Malnutrition) concerne les enfants avec un score WHZ \< −3 ou un MUAC \< 115 mm. Ces cas nécessitent une prise en charge thérapeutique urgente.
+
+```{r}
+#| label: tab-sam
+#| fig-width: 6
+#| fig-height: 7
+
+carte_indicateur(
+  col_pct     = "SAM_pct",
+  titre       = "Prévalence de la SAM au Cameroun (%)",
+  nom_legende = "SAM (%)",
+  limites     = c(55, 70),
+  couleurs    = pal_sam
+)
+```
+
+### MAM — Malnutrition modérée
+
+La **MAM** (Moderate Acute Malnutrition) désigne les enfants avec −3 ≤ WHZ \< −2. Ils bénéficient de programmes d'alimentation supplémentaire (PASAM).
+
+```{r}
+#| label: tab-mam
+#| fig-width: 6
+#| fig-height: 7
+
+carte_indicateur(
+  col_pct     = "MAM_pct",
+  titre       = "Prévalence de la MAM au Cameroun (%)",
+  nom_legende = "MAM (%)",
+  limites     = c(0, 20),
+  couleurs    = pal_mam
+)
+```
+
+### Stunting — Retard de croissance
+
+Le **retard de croissance** (Stunting) correspond à un score HAZ \< −2. Il reflète une malnutrition chronique avec des effets durables sur le développement cognitif et physique de l'enfant.
+
+```{r}
+#| label: tab-stunting
+#| fig-width: 6
+#| fig-height: 7
+
+carte_indicateur(
+  col_pct     = "Stunting_pct",
+  titre       = "Prévalence du retard de croissance (Stunting) au Cameroun (%)",
+  nom_legende = "Stunting (%)",
+  limites     = c(10, 80),
+  couleurs    = pal_stunting
+)
+```
+
+### Tous les indicateurs
+
+Ce tableau récapitule l'ensemble des prévalences par région enquêtée. Il permet une **lecture comparative rapide** de tous les indicateurs côte à côte.
+
+```{r}
+#| label: tab-tous-indicateurs
+
+tableau_recap <- donnees_region |>
+  mutate(across(ends_with("_pct"), \(x) paste0(round(x, 1), " %"))) |>
+  rename(
+    "Région"                   = region,
+    "Enfants enquêtés"         = n_enfants,
+    "GAM (%)"                  = GAM_pct,
+    "SAM (%)"                  = SAM_pct,
+    "MAM (%)"                  = MAM_pct,
+    "Retard de croissance (%)" = Stunting_pct
+  )
+
+kable(
+  tableau_recap,
+  align   = c("l", "c", "c", "c", "c", "c"),
+  caption = "Tableau récapitulatif des prévalences de malnutrition par région (Enquête 2024)"
+)
+```
+
+::: callout-note
+## Lecture du tableau
+
+- **GAM** = SAM + MAM (malnutrition aiguë globale)
+- **SAM** : cas sévères nécessitant une prise en charge thérapeutique urgente
+- **MAM** : cas modérés relevant des programmes d'alimentation supplémentaire
+- **Retard de croissance** : malnutrition chronique (indicateur HAZ)
+:::
+::::
+
+## Résumé des fonctions clés
+
+Voici un tableau de référence rapide des fonctions utilisées dans ce document.
+
+| Fonction | Package | Rôle |
+|----|----|----|
+| `st_read(url)` | `sf` | Lire un shapefile ou GeoJSON (local ou en ligne) |
+| `st_as_sf(coords = ...)` | `sf` | Convertir un tableau de coordonnées GPS en objet sf |
+| `st_centroid()` | `sf` | Calculer le point central d'un polygone |
+| `st_drop_geometry()` | `sf` | Retirer la colonne géométrie pour obtenir un data frame |
+| `left_join()` | `dplyr` | Joindre les données au shapefile par une colonne commune |
+| `geom_sf()` | `ggplot2` | Dessiner des polygones ou points sf dans ggplot2 |
+| `aes(fill = variable)` | `ggplot2` | Colorier les polygones selon une variable |
+| `scale_fill_gradientn()` | `ggplot2` | Dégradé OMS multi-couleurs (plus de 2 couleurs) |
+| `theme_void()` | `ggplot2` | Supprimer axes et quadrillage (style carte) |
+| `ggplotly(carte, tooltip = "text")` | `plotly` | Convertir une carte ggplot2 en carte plotly interactive |
+| `add_sf()` | `plotly` | Ajouter des polygones sf à une figure plotly |
+| `add_trace()` | `plotly` | Ajouter des points (scatter) à une figure plotly |
+| `knitr::is_html_output()` | `knitr` | Détecter le format de sortie (HTML vs PDF/Word) |

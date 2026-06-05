@@ -1,0 +1,3420 @@
+---
+title: "Training day 3"
+author: "Njinga"
+format: html
+editor: visual
+---
+
+## Importation des données
+
+Pour installer un package, on utlise la commande **install.packages** Pour charger un package qui est déjà installé, on utilise la commande **library(nom du package)**
+
+### Importation des packages
+
+```{r}
+#Chargement du package
+library(tidyverse)
+```
+
+L7a meilleur façon d'installer un package est de le faire dans la console et de le charger ensuite dans la source
+
+### Importation du jeu de données
+
+L'importation des données est une étape cruciale pour toutes analyses. Selon le format du fichier, on peut utiliser différents packages
+
+1.  **Importation de fichiers au format text txt ou .csv (comma separated value)**
+
+    Pour les fichiers csv, on peut utiliser les fonctions de bases du package **readr** qui est inclut dans le package *tidyverse.* Le readr a pour avantage sa rapidité d'exécution.
+
+```{r}
+    #Pour un csv avec **virgule** comme séparateur
+    donnees <- read_csv("notre fichier.csv")
+
+    #Pour un csv avec **point virgule** comme séparateur
+    donnees <- read_csv2("notre fichier.csv")
+```
+
+2.  **Importation de fichiers au format excel (.xls, .xlsx)**
+
+    R ne lit pas nativement le format excel
+
+    Pour lire un fichier au format excel, on utilise le package **readxl**
+
+    ```{r}
+    install.packages("readxl")
+    library(readxl)
+
+    #Importer la premiere feuille d'un tableur excel
+    donnees <- read_excel("nom du fichier.xls ou .xlsx")
+
+    #Pour importer une feuille spécifique d'un tableur excel
+    donnees <- read_excel("nom du ficher.xls ou .xlsx",sheet = "le nom de la feuille selectionne") 
+    ```
+
+3.  **Importation de fichiers au format spss ou stata (.sav ou .dta)**
+
+lire un fichier au format excel, on utilise le package **haven**
+
+```{r}
+install.packages("haven")
+library(haven)
+
+#Importer spss
+donnees <- read_sav("nom du fichier.sav")
+
+#Importer stata
+donnees <- read_stata("nom du fichier.dta")
+```
+
+```{r}
+nutrition <- read.csv("data/nutrition_cameroon_synthetic_hierarchy (1).csv")
+```
+
+```{r}
+nutrition
+```
+
+## Manipulation du jeu de données
+
+1.  **Vérification de la dimension du jeu de données**
+
+```{r}
+dim(nutrition)
+```
+
+```{r}
+cat("Le jeu de données contient", nrow(nutrition), "lignes et", ncol(nutrition), "colonnes")
+```
+
+1.  **Verification de la structure du jeu de données**
+
+```{r}
+str(nutrition)
+```
+
+```{r}
+#glimpse se trouve dans le package tibble. On appelle le package pour activer glimpsz
+library(tibble)
+```
+
+```{r}
+glimpse(nutrition)
+```
+
+**chr** correspond à *chaine de caratère* et R ne le lit pas aisément. Du coup, il faut le transformer en **facteur: fct**
+
+Il faut aussi transformer les **doubles: dbl** et **integer: int** en **numérique: num**
+
+C'est l'argument **coltype** (appartient au package readr) qui permet de faire les transformations
+
+```{r}
+library(readr)
+```
+
+```{r}
+df <- read_csv("data/nutrition_cameroon_synthetic_hierarchy (1).csv", col_types="fffffddDfddfdffffffdddddfffdfdddfdddffffffddffddfffffffff")
+```
+
+```{r}
+df
+```
+
+```{r}
+glimpse(df)
+```
+
+```{r}
+#Voir quelques lignes du jeu de données
+head(df)
+```
+
+```{r}
+# Les dernières lignes du jeu de données
+tail(df)
+```
+
+##### Vérification des doublons
+
+```{r}
+#Verification des doublons
+duplicated(df)
+```
+
+```{r}
+sum(duplicated(df))
+```
+
+Ca veut dire qu'il n'y a pas de doublons dans le jeu de données
+
+##### Utilisation de la fonction "summary"
+
+Elle permet d'avoir une petite statistique descriptive du jeu de données
+
+Elle est plus adaptée pour les variables quantitative. Pour les variables qualitatives, c'est mieux *"**summarise**"*
+
+```{r}
+summary(df)
+```
+
+##### Vérification des valeurs manquantes
+
+## Manipulation des données avec **dplyr**
+
+Il y a beaucoup de verbes du *dplyr* notamment *select*, *filter*, *casewhen*, etc
+
+```{r}
+library(dplyr)
+```
+
+1.  **Select:** Sélectionne les colonnes. ("\|\>" c'est le pipe et se met avec l'option "ctrl shift m")
+
+```{r}
+df |> select(region,department)
+```
+
+##### Selection des 10 premières lignes
+
+"\[\]" se met avec "alt gras 5"
+
+```{r}
+df[1:10,]
+```
+
+##### Selection des 10 premières lignes et 50 premières colonnes
+
+```{r}
+df[1:10,1:50]
+```
+
+##### Choisir toutes les variables quantitatives
+
+```{r}
+df |> 
+  select(where(is.numeric))
+```
+
+2.  **Filter**: Permet de filtrer les lignes du dataframe
+
+##### Filtrer la region du Nord dans la variable "région"
+
+```{r}
+#Filtrer la region du Nord dans la variable région
+df |> 
+  filter(region=="Nord")
+```
+
+```{r}
+df |> 
+  filter(region=="Nord",number_children_u5<2)
+```
+
+3.  **Arrange**
+
+    ##### Classer par ordre décroissant
+
+```{r}
+df |> 
+  arrange(desc(height_cm))
+```
+
+##### Arranger (classer) la taille de la région du Nord uniquement par ordre décroissant
+
+```{r}
+df |> 
+  filter(region=="Nord") |> 
+  arrange(desc(height_cm))
+```
+
+##### Classer par ordre croissant
+
+```{r}
+df |> 
+  arrange(height_cm)
+```
+
+4.  **Mutate**: Permet de créer de nouvelles colonnes ou modifier
+
+    ```{r}
+    df <- df |> mutate(IMC=weight_kg/(height_cm/100)^2)
+    ```
+
+```{r}
+df
+```
+
+5.  **Case_when**: Permet d'enchainer plusieurs opérations
+
+```{r}
+summary(df$IMC)
+```
+
+```{r}
+df <- df |> 
+  mutate(statut_nutritionnel=case_when(
+    IMC<18.5~"Sous-poids",
+    IMC<25~"Normal",
+    IMC<30~"Surpoids",
+    IMC<35~"Obèse modéré",
+    TRUE~"Non renseigné"
+  ))
+```
+
+```{r}
+df
+```
+
+6.  **Distinct:** Permet de supprimer les doublons et compter le nombre de modalités uniques dans le jeu de données. Idéal sur les variables qualitatives
+
+    ```{r}
+    distinct(df)
+    ```
+
+```{r}
+df |> distinct(region,department)
+```
+
+7.  **Count:** Permet de compter le nombre de modalités
+
+```{r}
+df |> count(region)
+```
+
+```{r}
+df |> count(region,department)
+```
+
+8.  **Rename:** Permet de renommer les colonnes
+
+    ```{r}
+    df <- df |>
+      rename("bmi"=IMC)
+    ```
+
+```{r}
+df$bmi
+```
+
+9.  **Group_by et summarise:** *Group_by* permet de grouper et *summarise* permet de faire le calcul
+
+    Pour appeler une variable du dataframe, on n'a pas besoin de mettre les doubles cotes (guillemets)
+
+    Le *group_by* a permis de regrouper *region et sexe*. *Summarise* a permis de calculer la moyenne
+
+    **na.rm=TRUE** c'est pour enlever les valeurs manquantes (na=valeurs manquantes, rm=remove)
+
+    ```{r}
+    df |> 
+      group_by(region,child_sex) |> 
+      summarise(moyenne_IMC=mean(bmi, na.rm=TRUE),
+                Effectif=n()
+                )
+    ```
+
+```{r}
+df |> 
+  count(region,child_sex) |> 
+  mutate(prop=n/sum(n)*100)
+ 
+  
+```
+
+10. **Across:** Il ne remplace pas *summarise* mais le complète car summarise ne peut pas enchainer plusieurs fonctions (ex mean, SD, IQR...) au meme moment. Il permet d'appliquer les fonctions à plusieurs colonnes.
+
+    Le "c" c'est pour pouvoir lister les variables, genre créer une liste
+
+    Si le jeux de données avait les valeurs manquantes, on aurait mis après le .x, na.rm
+
+```{r}
+df |> 
+  summarise(across(c(bmi,height_cm,weight_kg),
+                   list(moyenne=mean,
+                                                 minimum=min,
+                                                   maximum=max,
+                                                   q1=~quantile(.x,0.25),
+                                                   q3=~quantile(.x,0.75),
+                                                   ecarttype=sd,
+                                                   mediane=median,
+                                                   Intervalle_interquartile=IQR))
+                                                   )
+          
+            
+```
+
+##### Statistique descriptive en fonction de la region et du sexe
+
+```{r}
+df |> 
+  group_by(region,child_sex) |> 
+  summarise(across(c(bmi,height_cm,weight_kg),
+                   list(moyenne=mean,
+                                                 minimum=min,
+                                                   maximum=max,
+                                                   q1=~quantile(.x,0.25),
+                                                   q3=~quantile(.x,0.75),
+                                                   ecarttype=sd,
+                                                   mediane=median,
+                                                   Intervalle_interquartile=IQR,
+                         etendu = ~ max(.x)-min(.x)))
+                                          )
+          
+```
+
+```{r}
+result <- df |> 
+  group_by(region,child_sex) |> 
+  summarise(across(c(bmi,height_cm,weight_kg),
+                   list(moyenne=mean,
+                                                 minimum=min,
+                                                   maximum=max,
+                                                   q1=~quantile(.x,0.25),
+                                                   q3=~quantile(.x,0.75),
+                                                   ecarttype=sd,
+                                                   mediane=median,
+                                                   Intervalle_interquartile=IQR,
+                         etendu = ~ max(.x)-min(.x)))
+                                          )
+          
+```
+
+##### Transpose
+
+```{r}
+result |> t()
+
+```
+
+## Statistique descriptive
+
+### Analyse univariée
+
+L'analyse univariée permet d'analyser une seule variable pour comprendre sa distribution, ses mesures de tendances centrales et de dispersion, la présence de valeurs abhérrantes (outliers)
+
+### Réalisation d'un bar plot
+
+Pour les variables qualitatives
+
+```{r}
+ggplot(data=df, aes(x=department))+
+  geom_bar()+
+  theme_classic()
+```
+
+```{r}
+ggplot(data=df, aes(x=department))+
+  geom_bar(fill="darkblue")+
+  theme_classic()
+```
+
+```{r}
+ggplot(data=df, aes(x=department))+
+  geom_bar(fill="darkblue")+
+  labs(x="repartition des departements", y="Effectif", title = "Effectif des départements")+
+  theme_classic()
+```
+
+```{r}
+#La fonction fct_infreq se trouve dans le package forcats
+library(forcats)
+```
+
+```{r}
+ggplot(data=df, aes(x=fct_infreq(department)))+
+  geom_bar(fill="darkblue")+
+  labs(x="repartition des departements", y="Effectif", title = "Effectif des départements")+
+  theme_classic()
+```
+
+```{r}
+
+ggplot(data=df, aes(x=fct_infreq(department)))+
+  geom_bar(fill="darkblue")+
+  labs(x="repartition des departements", y="Effectif", title = "Effectif des départements")+
+  theme_classic()+
+  theme(plot.title=element_text(hjust=0.5, face="bold", size=16),
+        axis.title.y=element_text(hjust=0.5, face ="bold", size = 16),
+        axis.title.x=element_text(hjust=0.5, face="bold",size=16))
+```
+
+```{r}
+ggplot(data=df, aes(x=fct_infreq(department)))+
+  geom_bar(fill="darkblue")+
+  labs(x="repartition des departements", y="Effectif", title = "Effectif des départements")+
+  theme_classic()+
+  theme(plot.title=element_text(hjust=0.5, face="bold", size=16),
+        axis.title.y=element_text(hjust=0.5, face ="bold", size = 16),
+        axis.title.x=element_text(hjust=0.5, face="bold",size=16, vjust=0.6))
+```
+
+```{r}
+ggplot(data=df, aes(x=fct_infreq(department)))+
+  geom_bar(fill="darkblue")+
+  geom_text(stat="count", aes(label=..count..),size = 4, vjust=-0.5)
+  labs(x="repartition des departements", y="Effectif", title = "Effectif des départements")+
+  theme_classic()+
+  theme(plot.title=element_text(hjust=0.5, face="bold", size=16),
+        axis.title.y=element_text(hjust=0.5, face ="bold", size =16),
+        axis.title.x=element_text(hjust=0.5, face="bold",size=16),
+        axis.text.x=element_text(hjust=0.5,face="bold",angle =90,size=16, vjust=0.6))
+```
+
+```{r}
+ggplot(data=df, aes(x=fct_infreq(department),fill = region))+
+  geom_bar(fill="darkblue")+
+  geom_text(stat="count", aes(label=..count..),size = 4, vjust=-0.5) 
+  labs(x="repartition des departements", y="Effectif", title = "Effectif des départements")+
+  theme_classic()+
+  theme(plot.title=element_text(hjust=0.5, face="bold", size=16),
+        axis.title.y=element_text(hjust=0.5, face ="bold", size = 16),
+        axis.title.x=element_text(hjust=0.5, face="bold",size=16),
+        axis.text.x=element_text(hjust=0.5, face="bold",angle = 90,size=16, vjust=0.6))
+```
+
+```{r}
+ggplot(data=df, aes(x=fct_infreq(department), fill = department))+
+  geom_bar()+
+  geom_text(stat="count", aes(label=..count..),size = 4, vjust=0.5)+
+              scale_fill_manual(values = c("Bénoué"="blue", "Vina"="yellow", "Mayo-Banyo"="red", "Mbéré"="darkgreen", "Mayo-Louti"="violet", "Mayo-Tsanaga"="orange", "Logone-et-Chari"="pink", "Mayo-Rey"="black","Diamaré"="grey", "Mayo-Danay"="darkblue", "Mayo-Sava"="darkred" ))+
+  labs(x="repartition des departements", y="Effectif", title = "Effectif des départements")+
+  theme_classic()+
+  theme(plot.title=element_text(hjust=0.5, face="bold", size=16),
+        axis.title.x=element_text(hjust=0.5, face = "bold", size=16),
+        axis.title.y=element_text(hjust=0.5, face = "bold", size = 16),
+        axis.text.x=element_text(hjust=0.5, face="bold",angle = 90,size=16))
+```
+
+##### **Utilisation du package *purr***
+
+Il permet d'appliquer une opération sur plusieurs éléments de manière "propre".
+
+Comme premier paramètre du package *purr*, il y a la fonction de base **map.**
+
+La fonction **map** permet d'appliquer une fonction à chaque élément d'une liste ou d'un vecteur
+
+La fonction **walk** permet d'afficher tous les graphiques
+
+##### Séléction de toutes les variables qualitatives
+
+```{r}
+var_cat <- df |> 
+  select(where(is.factor)) |> 
+  names()
+```
+
+```{r}
+var_cat
+```
+
+```{r}
+graphique <- map(var_cat,~
+                   ggplot(data=df, aes(x=fct_infreq(.data[[.x]])))+
+  geom_bar(fill="darkblue")+
+  geom_text(stat="count", aes(label=..count..),size = 4, vjust=0.5)+
+  labs(x=.x , y="Effectif", title = paste("Effectif de",.x))+
+  theme_classic()+
+  theme(plot.title=element_text(hjust=0.5, face="bold", size=16),
+        axis.title.y=element_text(hjust=0.5, face ="bold", size = 16),
+        axis.title.x=element_text(hjust=0.5, face="bold",size=16 ),
+          axis.text.x=element_text(hjust=0.5, face="bold",angle=90, size=16, vjust=0.6)))
+```
+
+```{r}
+walk(graphique,print)
+```
+
+```{r}
+?walk
+```
+
+```{r}
+graphique
+```
+
+```{r}
+varquant <- df |> 
+  select(where(is.numeric)) |> 
+  names()
+```
+
+```{r}
+varquant
+```
+
+**Le violin plot** :
+
+Pour les variables quantitatives. Ca ressemble à un box plot. La fonction qui permet de le réaliser c'est *geom_violin*
+
+```{r}
+graph <- map(varquant,~
+               ggplot(df, aes(y=.data[[.x]]))+
+               geom_boxplot(fill="blue")+
+               labs(title = paste("Distribution de",.x),
+                                  x=.x,y="effectif")+
+                     theme_classic())
+```
+
+```{r}
+walk(graph, print)
+```
+
+```{r}
+graphe <- map(varquant,~
+               ggplot(df, aes(x="", y=.data[[.x]]))+
+               #geom_boxplot(fill="blue")+
+               geom_violin(fill="pink")+
+               labs(title = paste("Distribution de",.x),
+                                  x=.x,y="effectif")+
+                     theme_classic())
+```
+
+```{r}
+graphe
+```
+
+ 
+
+```{r}
+graphe <- map(varquant,~
+               ggplot(df, aes(x="", y=.data[[.x]]))+
+               #geom_boxplot(fill="blue")+
+               geom_violin(fill="pink",trim = FALSE)+
+               labs(title = paste("Distribution de",.x),
+                                  x=.x,y="effectif")+
+                     theme_classic())
+```
+
+```{r}
+graphe
+```
+
+```{r}
+graphe <- map(varquant,~
+               ggplot(df, aes(x="", y=.data[[.x]]))+
+               geom_violin(fill="pink",trim = FALSE)+
+                geom_boxplot(fill="blue")+
+               labs(title = paste("Distribution de",.x),
+                                  x=.x,y="effectif")+
+                     theme_classic())
+```
+
+```{r}
+graphe
+```
+
+#### Les outliers: Détection et traitement
+
+Il y a plusieurs méthodes de detection des "outliers"
+
+1.  La méthode de l'IQR (intervalle interquartile): La première étape est de choisir toutes les variables quantitatives
+
+2.  La méthode du z-score: Les valeurs supérieurs à un z-score de 3 sont considérées comme outlier, cependant, ça dépend du chercheur.
+
+La distance de Cook
+
+**Traitement**
+
+1.  Suppression
+
+    Transformation (log)
+
+2.  Remplacer par la moyenne
+
+3.  La winsorisation: pas très conseillée. Ramener les valeurs dans l'IQR
+
+    Etapes de détection
+
+4.  "\|" s'appelle "et" zr se met avec "altgra 6"
+
+```{r}
+#Détecter et afficher les valeurs outliers pour toutes les variables numériques
+outliers <- df %>%
+  select(where(is.numeric)) %>%
+  summarise(across(everything(),
+                   ~ list(boxplot.stats(.x)$out)))
+
+outliers
+```
+
+```{r}
+# Voir les lignes complètes contenant des outliers
+df_outliers <- df %>%
+  filter(if_any(where(is.numeric),
+                ~ .x %in% boxplot.stats(.x)$out))
+
+df_outliers
+```
+
+```{r}
+#Détecter les outliers dans toutes les variables numériques
+outliers_df <- df %>%
+  mutate(across(where(is.numeric),
+                ~ ifelse(.x %in% boxplot.stats(.x)$out, "outlier", "normal"),
+                .names = "{.col}_flag"))
+```
+
+```{r}
+outliers_df
+```
+
+```{r}
+# supprimer les outliers
+
+df_sans_outliers <- df %>%
+  filter(if_all(where(is.numeric),
+                ~ .x >= quantile(.x, 0.25, na.rm = TRUE) - 1.5 * IQR(.x, na.rm = TRUE) &
+                  .x <= quantile(.x, 0.75, na.rm = TRUE) + 1.5 * IQR(.x, na.rm = TRUE)))
+```
+
+```{r}
+cat("Le dataset contient maintenant", nrow(df_sans_outliers), "lignes et", ncol(df_sans_outliers), "colonnes")
+```
+
+```{r}
+library(gtsummary)
+tbl_desc <- df %>%
+  select(region, child_age_months, child_sex, displacement_status,
+         food_consumption_score, household_hunger_scale, whz_score, haz_score,
+         waz_score, muac_mm, oedema, diarrhea_last_2w, fever_last_2w,
+         vaccination_status, mother_muac, anc_visits) %>%
+  tbl_summary(
+    by         = NULL,
+    statistic  = list(
+      all_continuous()  ~ "{mean} ± {sd} [{min}–{max}]",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits     = all_continuous() ~ 1,
+    label      = list(
+      child_age_months       ~ "Âge enfant (mois)",
+      child_sex              ~ "Sexe enfant",
+      displacement_status    ~ "Statut de déplacement",
+      food_consumption_score ~ "Score conso. alimentaire (FCS)",
+      household_hunger_scale ~ "Échelle faim ménage (HHS)",
+      whz_score              ~ "Score WHZ",
+      haz_score              ~ "Score HAZ",
+      waz_score              ~ "Score WAZ",
+      muac_mm                ~ "MUAC enfant (mm)",
+      oedema                 ~ "Œdèmes bilatéraux",
+      diarrhea_last_2w       ~ "Diarrhée (2 semaines)",
+      fever_last_2w          ~ "Fièvre (2 semaines)",
+      vaccination_status     ~ "Statut vaccinal",
+      mother_muac            ~ "MUAC mère (mm)",
+      anc_visits             ~ "Visites CPN"
+    )
+  ) %>%
+  bold_labels()
+
+print(tbl_desc)
+cat("  ✓ Tableau descriptif généré\n\n")
+```
+
+## CALCUL DES INDICATEURS NUTRITIONNELS (NORMES OMS 2006)
+
+```{r}
+cat("[3] Calcul des indicateurs nutritionnels...\n")
+
+
+df <- df %>%
+  mutate(
+    oedema = oedema == "Yes",
+    # ── Malnutrition aiguë (WHZ + œdèmes) ─────────────────────────────────
+    GAM          = (whz_score < -2) | oedema,
+    SAM          = (whz_score < -3) | oedema,
+    MAM          = (whz_score >= -3) & (whz_score < -2) & !oedema,
+    Oedema_seul  = (whz_score >= -2) & oedema,
+
+    # ── Retard de croissance ───────────────────────────────────────────────
+    Stunting     = haz_score < -2,
+    Sev_Stunting = haz_score < -3,
+    Mod_Stunting = (haz_score >= -3) & (haz_score < -2),
+
+    # ── Insuffisance pondérale ─────────────────────────────────────────────
+    Underweight     = waz_score < -2,
+    Sev_Underweight = waz_score < -3,
+
+    # ── MUAC ──────────────────────────────────────────────────────────────
+    MUAC_SAM = muac_mm < 115,
+    MUAC_MAM = muac_mm >= 115 & muac_mm < 125,
+    MUAC_GAM = muac_mm < 125,
+
+    # ── Catégorie nutritionnelle ───────────────────────────────────────────
+    nutr_cat = case_when(
+      SAM             ~ "SAM",
+      MAM             ~ "MAM",
+      TRUE            ~ "Normal"
+    ) %>% factor(levels = c("Normal", "MAM", "SAM"))
+  )
+
+cat("  ✓ Indicateurs calculés :\n")
+cat(sprintf("    GAM  : %d\n", sum(df$GAM)))
+cat(sprintf("    SAM  : %d\n", sum(df$SAM)))
+cat(sprintf("    MAM  : %d\n", sum(df$MAM)))
+cat(sprintf("    Stunting       : %d\n", sum(df$Stunting)))
+cat(sprintf("    Stunting sévère: %d\n", sum(df$Sev_Stunting)))
+cat(sprintf("    Insuff. pond.  : %d\n", sum(df$Underweight)))
+cat(sprintf("    MUAC SAM       : %d\n", sum(df$MUAC_SAM)))
+cat(sprintf("    MUAC MAM       : %d\n", sum(df$MUAC_MAM)))
+cat("\n")
+```
+
+```{r}
+# ── Calcul du groupe d'âge ─────────────────────────────────
+
+df <- df %>%
+  mutate(
+    age_group = cut(child_age_months,
+                    breaks = c(0, 11, 23, 35, 47, 59, Inf),
+                    labels = c("<12m", "12-23m", "24-35m", "36-47m", "48-59m", "60+m"),
+                    right = TRUE)
+  )
+
+
+# ── Statistiques enfants ───────────────────────────────────
+
+cat("\n  Enfants :\n")
+
+cat(sprintf("    Âge moyen       : %.1f ± %.1f mois (médiane : %.0f)\n",
+            mean(df$child_age_months, na.rm = TRUE),
+            sd(df$child_age_months, na.rm = TRUE),
+            median(df$child_age_months, na.rm = TRUE)))
+
+cat(sprintf("    Sexe féminin    : %d (%.1f%%)\n",
+            sum(df$child_sex == "Female", na.rm = TRUE),
+            100 * mean(df$child_sex == "Female", na.rm = TRUE)))
+
+cat("    Groupes d'âge :\n")
+print(table(df$age_group))
+```
+
+## PRÉVALENCES + INTERVALLES DE CONFIANCE 95% (MÉTHODE WILSON)
+
+```{r}
+cat("[4] Prévalences avec IC 95% (Wilson)...\n")
+
+library(binom)
+# ── Fonction utilitaire ──────────────────────────────────────────────────────
+calc_prev <- function(data, var, label = NULL) {
+  x <- sum(data[[var]], na.rm = TRUE)
+  n <- sum(!is.na(data[[var]]))
+  ic <- binom.confint(x, n, methods = "wilson")
+  tibble(
+    Indicateur     = if (is.null(label)) var else label,
+    n_total        = n,
+    n_cas          = x,
+    `Prévalence (%)` = round(100 * ic$mean, 1),
+    `IC95_bas (%)`   = round(100 * ic$lower, 1),
+    `IC95_haut (%)`  = round(100 * ic$upper, 1)
+  )
+}
+
+indicateurs <- list(
+  GAM          = "GAM (WHZ<-2 ou oedème)",
+  SAM          = "SAM (WHZ<-3 ou oedème)",
+  MAM          = "MAM (WHZ -3 à -2)",
+  Stunting     = "Stunting (HAZ<-2)",
+  Sev_Stunting = "Stunting sévère (HAZ<-3)",
+  Underweight  = "Insuff. pondérale (WAZ<-2)",
+  MUAC_SAM     = "MUAC SAM (<115 mm)",
+  MUAC_MAM     = "MUAC MAM (115–124 mm)",
+  MUAC_GAM     = "MUAC GAM (<125 mm)"
+)
+
+# ── 4.1 Globales ───────────────────────────────────────────────────────────
+results_global <- map2_dfr(names(indicateurs), indicateurs,
+                           ~ calc_prev(df, .x, .y))
+cat("\n  Prévalences globales :\n")
+print(results_global)
+
+# ── 4.2 Par région 
+results_region <- df %>%
+  group_by(region) %>%
+  group_modify(~ map2_dfr(names(indicateurs[1:6]), indicateurs[1:6],
+                           function(v, l) calc_prev(.x, v, l))) %>%
+  ungroup()
+# cat("\n  Prévalences par région :\n")
+results_region %>%
+  filter(Indicateur %in% indicateurs[c("GAM","SAM","Stunting")]) %>%
+  print()
+
+# ── 4.3 Par statut de déplacement ────────────────────────────────────────────
+results_depl <- df %>%
+  group_by(displacement_status) %>%
+  group_modify(~ map2_dfr(names(indicateurs[1:6]), indicateurs[1:6],
+                           function(v, l) calc_prev(.x, v, l))) %>%
+  ungroup()
+cat("\n  Prévalences par statut de déplacement :\n")
+results_depl %>%
+  filter(Indicateur %in% indicateurs[c("GAM","SAM","Stunting")]) %>%
+  print()
+
+# ── 4.4 Par sexe ─────────────────────────────────────────────────────────────
+results_sex <- df %>%
+  group_by(child_sex) %>%
+  group_modify(~ map2_dfr(names(indicateurs[1:6]), indicateurs[1:6],
+                           function(v, l) calc_prev(.x, v, l))) %>%
+  ungroup()
+cat("\n  Prévalences par sexe :\n")
+results_sex %>%
+  filter(Indicateur %in% indicateurs[c("GAM","SAM","Stunting")]) %>%
+  print()
+
+# ── 4.5 Par round ────────────────────────────────────────────────────────────
+results_round <- df %>%
+  group_by(survey_round) %>%
+  group_modify(~ map2_dfr(names(indicateurs[1:6]), indicateurs[1:6],
+                           function(v, l) calc_prev(.x, v, l))) %>%
+  ungroup()
+cat("\n  Prévalences par round :\n")
+results_round %>%
+  filter(Indicateur %in% indicateurs[c("GAM","SAM","Stunting")]) %>%
+  print()
+
+# ── 4.6 Par groupe d'âge ─────────────────────────────────────────────────────
+results_age <- df %>%
+  filter(!is.na(age_group)) %>%
+  group_by(age_group) %>%
+  group_modify(~ map2_dfr(c("GAM","SAM","Stunting"),
+                           c("GAM","SAM","Stunting"),
+                           function(v, l) calc_prev(.x, v, l))) %>%
+  ungroup()
+cat("\n  Prévalences par groupe d'âge :\n")
+print(results_age)
+
+
+```
+
+## STATISTIQUES INFÉRENTIELLES
+
+### Test de chi2
+
+```{r}
+cat("\n[5] Statistiques inférentielles...\n")
+
+# ── 5.1 Tests du Chi-2 — variables catégorielles ─────────────────────────────
+cat("\n  --- Tests du Chi-2 ---\n")
+
+vars_cat <- c(
+  "displacement_status", "head_gender", "head_education",
+  "water_source", "sanitation_type", "shelter_type",
+  "diarrhea_last_2w", "fever_last_2w", "malaria_test",
+  "vaccination_status", "food_aid_received", "climate_shock",
+  "conflict_exposure", "crop_failure", "livestock_loss", "price_shock"
+)
+```
+
+```{r}
+labels_cat <- c(
+  "Statut déplacement", "Genre chef ménage", "Éducation chef ménage",
+  "Source d'eau", "Assainissement", "Type d'abri",
+  "Diarrhée (2 sem.)", "Fièvre (2 sem.)", "Test paludisme",
+  "Statut vaccinal", "Aide alimentaire", "Choc climatique",
+  "Exposition conflit", "Échec récoltes", "Perte bétail", "Choc de prix"
+)
+```
+
+```{r}
+chi2_results <- map2_dfr(vars_cat, labels_cat, function(var, lbl) {
+  tryCatch({
+    for (outcome in c("GAM", "Stunting")) {
+      tbl <- table(df[[var]], df[[outcome]])
+      test <- chisq.test(tbl, correct = FALSE)
+      sig  <- case_when(
+        test$p.value < 0.001 ~ "***",
+        test$p.value < 0.01  ~ "**",
+        test$p.value < 0.05  ~ "*",
+        test$p.value < 0.10  ~ ".",
+        TRUE                 ~ "NS"
+      )
+      return(tibble(
+        Variable = lbl, Outcome = outcome,
+        Chi2     = round(test$statistic, 3),
+        ddl      = test$parameter,
+        p_valeur = round(test$p.value, 4),
+        Sig.     = sig
+      ))
+    }
+  }, error = function(e) tibble())
+})
+```
+
+```{r}
+# Reformater pour affichage large
+chi2_wide <- chi2_results %>%
+  pivot_wider(names_from = Outcome,
+              values_from = c(Chi2, ddl, p_valeur, Sig.),
+              names_glue  = "{.value}_{Outcome}")
+print(chi2_wide)
+```
+
+pour réaliser le test de chi2, il y a plusieurs conditions a mettre en place:
+
+- Les deux variables doivent être **catégorielles** (nominales ou ordinales).\
+  Exemple : `sex` (Male/Female), `GAM` (Oui/Non), `region`.
+
+<!-- -->
+
+- Les données doivent être **indépendantes** : une observation ne doit pas apparaître dans plusieurs catégories.
+
+<!-- -->
+
+- Le test du χ² **requiert des effectifs suffisants dans chaque cellule** :
+
+  - Idéal : **tous les effectifs ≥ 5**
+
+  - Minimum acceptable : **80% des cellules ≥ 5 et aucune cellule = 0**
+
+<!-- -->
+
+- Si cette condition n’est pas respectée, **utiliser le test exact de Fisher** (`fisher.test()` en R).
+
+- Les observations doivent être **indépendantes** les unes des autres.
+
+- Plus le **tableau est grand (plus de catégories)**, plus il faut un **échantillon important** pour que le test soit valide.
+
+- Si les effectifs sont très petits, le χ² **peut donner des p-values biaisées**.
+
+```{r}
+# Etape 1: création du tableau de contingence
+tab <- table(df$GAM, df$child_sex)
+tab
+# Appliquer le test du χ²
+chi_res <- chisq.test(tab) 
+chi_res
+# Vérifier les éffectifs attendus
+chi_res$expected
+
+```
+
+- [**Interprétation:**]{.underline}
+
+- **p-value \< 0.05** → association significative entre `GAM` et `Sex`.
+
+<!-- -->
+
+- **p-value ≥ 0.05** → pas d’association significative.
+
+### Test de Mann withney
+
+C’est un test **non paramétrique** utilisé pour comparer **deux groupes indépendants** sur une variable continue ou ordinale quand les conditions du t-test **ne sont pas respectées** (par exemple, distribution non normale ou petites tailles d’échantillon).
+
+1.  
+
+- Variable dépendante : **continue ou ordinale** (ex. `weight`, `child_age_months`)
+
+- Variable indépendante : **catégorielle à 2 niveaux** (ex. `child_sex` = Male / Female)
+
+2.  Indépendance des observations
+
+- Les deux groupes doivent être **indépendants** :
+
+  - chaque observation appartient à un seul groupe
+
+  - pas de répétition des mêmes individus dans les deux groupe
+
+  ```         
+  3.  Distribution
+  ```
+
+<!-- -->
+
+- Le test de Mann‑Whitney **ne suppose pas de normalité**, donc il peut être utilisé
+
+4.  Hypothéses des tests
+
+    - **H0 (null)** : les distributions des deux groupes sont identiques
+
+    <!-- -->
+
+    - **H1 (alternative)** : les distributions sont différentes
+
+    <!-- -->
+
+    - Le test compare **les rangs** et non directement les valeurs.
+
+```{r}
+wilcox.test(whz_score ~ child_sex, data = df)
+```
+
+```{r}
+cat("\n  --- Tests de Mann-Whitney (GAM) ---\n")
+
+vars_num <- c(
+  "child_age_months", "food_consumption_score", "household_hunger_scale",
+  "months_food_insecurity", "coping_strategy_index", "muac_mm",
+  "mother_muac", "mother_age", "anc_visits", "health_facility_distance_km",
+  "household_size"
+)
+labels_num <- c(
+  "Âge enfant (mois)", "FCS", "HHS (faim ménage)",
+  "Mois insécurité", "CSI (stratégies)", "MUAC enfant (mm)",
+  "MUAC mère (mm)", "Âge mère (ans)", "Visites CPN",
+  "Distance centre santé (km)", "Taille ménage"
+)
+
+mw_results <- map2_dfr(vars_num, labels_num, function(var, lbl) {
+  g0   <- df[[var]][!df$GAM]
+  g1   <- df[[var]][df$GAM]
+  test <- wilcox.test(g0, g1, exact = FALSE)
+  sig  <- case_when(
+    test$p.value < 0.001 ~ "***",
+    test$p.value < 0.01  ~ "**",
+    test$p.value < 0.05  ~ "*",
+    test$p.value < 0.10  ~ ".",
+    TRUE                 ~ "NS"
+  )
+  tibble(
+    Variable          = lbl,
+    `Médiane Non-GAM` = round(median(g0, na.rm = TRUE), 2),
+    `Médiane GAM`     = round(median(g1, na.rm = TRUE), 2),
+    W_stat            = round(test$statistic, 1),
+    p_valeur          = round(test$p.value, 4),
+    Sig.              = sig
+  )
+})
+print(mw_results)
+
+# ── 5.3 Kruskal-Wallis — WHZ par région ──────────────────────────────────────
+cat("\n  --- Kruskal-Wallis ---\n")
+kw_whz <- kruskal.test(whz_score ~ region, data = df)
+cat(sprintf("  WHZ ~ Région : H = %.3f, p = %.4f\n", kw_whz$statistic, kw_whz$p.value))
+
+kw_haz <- kruskal.test(haz_score ~ region, data = df)
+cat(sprintf("  HAZ ~ Région : H = %.3f, p = %.4f\n", kw_haz$statistic, kw_haz$p.value))
+
+kw_waz <- kruskal.test(waz_score ~ displacement_status, data = df)
+cat(sprintf("  WAZ ~ Déplacement : H = %.3f, p = %.4f\n", kw_waz$statistic, kw_waz$p.value))
+```
+
+### Test de kruskall-wallis
+
+1.  **Variable dépendante** : continue ou ordinale (ex. `whz_score`, `child_age_months`).
+
+2.  **Variable indépendante** : catégorielle avec **≥ 2 groupes** (ex. `region`, `age_group`).
+
+3.  **Groupes indépendants** : chaque observation appartient à **un seul groupe**.
+
+4.  **Distribution** : pas besoin de normalité, mais on suppose des distributions **similaires en forme** pour comparer les médianes.
+
+5.  **Hypothèses** :
+
+- **H0** : toutes les distributions sont identiques
+
+- **H1** : au moins un groupe diffère
+
+```{r}
+# Comparer whz_score entre différents age_group :
+kruskal.test(whz_score ~ age_group, data = df)
+```
+
+pas de différence significative entre les deux groupes. Si le test était significatif:
+
+```{r}
+pairwise.wilcox.test(df$whz_score, df$age_group,
+                     p.adjust.method = "BH") 
+```
+
+```{r}
+ggplot(df, aes(x = age_group, y = whz_score)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Distribution de WHZ par groupe d'âge")
+```
+
+### Test de correlation
+
++--------------+----------------------+----------------------+-------------------+--------------------------------------------------------------------+
+| Type         | Variable 1           | Variable 2           | Hypothèse         | Conditions principales                                             |
++==============+======================+======================+===================+====================================================================+
+| **Pearson**  | Continue             | Continue             | Relation linéaire | \- Les deux variables sont **quantitatives**                       |
+|              |                      |                      |                   |                                                                    |
+|              |                      |                      |                   | \- Relation **linéaire**                                           |
+|              |                      |                      |                   |                                                                    |
+|              |                      |                      |                   | \- Données **normales** (ou grande taille n \> 30)                 |
++--------------+----------------------+----------------------+-------------------+--------------------------------------------------------------------+
+| **Spearman** | Ordinale ou continue | Ordinale ou continue | Relation monotone | \- Relation **monotone** (croissante ou décroissante)              |
+|              |                      |                      |                   |                                                                    |
+|              |                      |                      |                   | \- Pas besoin de normalité                                         |
++--------------+----------------------+----------------------+-------------------+--------------------------------------------------------------------+
+| **Kendall**  | Ordinale ou continue | Ordinale ou continue | Relation monotone | \- Comme Spearman, robuste aux petits échantillons et aux ex aequo |
++--------------+----------------------+----------------------+-------------------+--------------------------------------------------------------------+
+
+#### Etape 1: Vérification de l'hypothése de normalité
+
+```{r}
+
+library(ggpubr)
+library(nortest)
+
+# Variables numériques clés pour les corrélations nutritionnelles
+vars_num_corr <- c("waz_score", "haz_score", "whz_score", "muac_mm",
+                   "food_consumption_score", "household_hunger_scale",
+                   "coping_strategy_index", "child_age_months",
+                   "mother_muac", "months_food_insecurity",
+                   "household_size", "number_children_u5")
+
+# Test de normalité de Shapiro-Wilk pour chaque variable
+normalite <- map_dfr(vars_num_corr, function(v) {
+  x <- df[[v]]
+  x <- x[!is.na(x)]
+  sw <- shapiro.test(x)
+  tibble(
+    Variable    = v,
+    Moyenne     = round(mean(x), 2),
+    Écart_type  = round(sd(x), 2),
+    W_stat      = round(sw$statistic, 4),
+    p_value     = round(sw$p.value, 4),
+    Normale     = ifelse(sw$p.value > 0.05, "Oui", "Non")
+  )
+})
+
+normalite
+```
+
+Toutes les variables sont non normales (p \< 0.05) → **Spearman** est le test approprié pour toutes les paires. Je vais maintenant définir les paires pertinentes, effectuer les tests, puis tracer les graphiques.
+
+```{r}
+
+# Paires de corrélations pertinentes dans le contexte nutritionnel
+paires <- list(
+  c("waz_score",              "food_consumption_score"),
+  c("waz_score",              "household_hunger_scale"),
+  c("waz_score",              "muac_mm"),
+  c("haz_score",              "child_age_months"),
+  c("whz_score",              "muac_mm"),
+  c("waz_score",              "mother_muac"),
+  c("food_consumption_score", "coping_strategy_index"),
+  c("food_consumption_score", "months_food_insecurity")
+)
+
+# Test de Spearman pour chaque paire
+resultats_corr <- map_dfr(paires, function(p) {
+  x <- df[[p[1]]]
+  y <- df[[p[2]]]
+  test <- cor.test(x, y, method = "spearman", exact = FALSE)
+  tibble(
+    Variable_1 = p[1],
+    Variable_2 = p[2],
+    rho        = round(test$estimate, 3),
+    S_stat     = round(test$statistic, 2),
+    p_value    = round(test$p.value, 4),
+    Significatif = ifelse(test$p.value < 0.05, "Oui *", "Non")
+  )
+})
+
+resultats_corr
+```
+
+Aucune corrélation n'atteint le seuil de significativité (p \< 0.05). Traçons maintenant les graphiques de vérification des hypothèses et les nuages de points.
+
+```{r}
+
+library(ggplot2)
+library(patchwork)
+
+# Vérification de la normalité : Q-Q plots pour les principales variables
+vars_qq <- c("waz_score", "haz_score", "whz_score", "muac_mm",
+             "food_consumption_score", "household_hunger_scale",
+             "coping_strategy_index", "child_age_months")
+
+plots_qq <- map(vars_qq, function(v) {
+  ggplot(df, aes(sample = .data[[v]])) +
+    stat_qq(size = 1, alpha = 0.5) +
+    stat_qq_line(color = "red", linewidth = 0.8) +
+    labs(title = v, x = "Quantiles théoriques", y = "Quantiles observés") +
+    theme_bw(base_size = 8)
+})
+
+wrap_plots(plots_qq, ncol = 4) +
+  plot_annotation(
+    title = "Q-Q plots — Vérification de la normalité",
+    subtitle = "Si les points s'alignent sur la droite rouge → distribution normale",
+    theme = theme(plot.title = element_text(face = "bold", size = 12))
+  )
+```
+
+```{r}
+
+library(ggpubr)
+
+# Scatter plots avec rho de Spearman affiché
+scatter_plots <- map(paires, function(p) {
+  ggplot(df, aes(x = .data[[p[1]]], y = .data[[p[2]]])) +
+    geom_point(alpha = 0.4, size = 1.2) +
+    geom_smooth(method = "loess", se = TRUE, color = "#E63946", linewidth = 0.8) +
+    stat_cor(method = "spearman",
+             label.x.npc = "left", label.y.npc = "top",
+             size = 3.2) +
+    labs(x = p[1], y = p[2]) +
+    theme_bw(base_size = 9)
+})
+
+wrap_plots(scatter_plots, ncol = 2) +
+  plot_annotation(
+    title = "Tests de corrélation de Spearman",
+    subtitle = "ρ = coefficient de Spearman | Courbe LOESS en rouge",
+    theme = theme(plot.title = element_text(face = "bold", size = 13))
+  )
+```
+
+```{r}
+
+# Heatmap de la matrice de corrélation de Spearman
+library(corrplot)
+
+vars_mat <- c("waz_score", "haz_score", "whz_score", "muac_mm",
+              "food_consumption_score", "household_hunger_scale",
+              "coping_strategy_index", "child_age_months",
+              "mother_muac", "months_food_insecurity")
+
+# 2️⃣ Création de la matrice de corrélation de Spearman
+mat_corr <- df %>%
+  select(all_of(vars_mat)) %>%  # sélectionner les colonnes
+  drop_na() %>%                 # supprimer les lignes avec NA
+  cor(method = "spearman")      # calcul de la corrélation
+
+# 3️⃣ Visualisation avec corrplot
+corrplot(
+  mat_corr,
+  method      = "color",          # type de représentation
+  type        = "upper",          # afficher seulement la partie supérieure
+  addCoef.col = "black",          # ajouter les coefficients en noir
+  number.cex  = 0.8,              # taille des chiffres
+  tl.cex      = 0.8,              # taille des labels
+  tl.col      = "black",           # couleur des labels
+  tl.srt      = 45,               # rotation des labels pour lisibilité
+  col         = colorRampPalette(c("blue", "white", "red"))(200), # palette RdBu
+  mar         = c(0, 0, 2, 0),    # marges
+  title       = "Matrice de corrélation de Spearman"
+)
+```
+
+## **Résultats des tests de corrélation**
+
+### **Vérification des hypothèses**
+
+Le test de Shapiro-Wilk confirme que **toutes les variables sont non normales** (p \< 0,05). Les Q-Q plots le montrent visuellement : les points s'écartent nettement de la droite théorique. Le **test de Spearman** (non paramétrique) est donc justifié pour l'ensemble des paires.
+
+**Aucune corrélation n'est statistiquement significative** à α = 0,05 (les p-valeurs les plus proches du seuil sont `waz_score ~ mother_muac` à 0,056 et `food_consumption_score ~ months_food_insecurity` à 0,050). Les coefficients ρ sont tous très proches de zéro, ce qui confirme l'absence d'association linéaire monotone entre ces variables dans cet échantillon.
+
+La matrice de corrélation confirme ce constat globalement : aucune paire ne dépasse \|ρ\| = 0,12.
+
+## Cartographie interactive des données d'enquête
+
+Cette section présente deux cartes interactives pour explorer la hiérarchie géographique de l'enquête :
+
+**Régions** (3) → **Départements** (11) → **Zones/Districts** (23) → **Villages** (140) → **Points de collecte** (300)
+
+> 💡 Utilisez le panneau de droite pour afficher ou masquer chaque niveau. Cliquez sur n'importe quel marqueur pour voir le détail complet.
+
+> 🎨 **Principe de couleur :** les nuances de **rouge** = Extrême-Nord, **bleu** = Adamaoua, **vert** = Nord. Chaque département a sa propre teinte à l'intérieur de sa région.
+
+------------------------------------------------------------------------
+
+### Version 1 : Carte `leaflet` — palette hiérarchique par département
+
+```{r}
+#| label: carte-leaflet
+#| message: false
+#| warning: false
+
+# ============================================================
+# PACKAGES
+# ============================================================
+library(leaflet)
+library(dplyr)
+
+# ============================================================
+# ÉTAPE 1 : DONNÉES AGRÉGÉES PAR NIVEAU GÉOGRAPHIQUE
+# Pour chaque niveau on calcule le centroïde (moyenne lat/lon)
+# et le nombre d'enfants enquêtés.
+# ============================================================
+
+# Centroïdes des RÉGIONS (3)
+regions_df <- df |>
+  group_by(region) |>
+  summarise(
+    lat   = mean(gps_latitude,  na.rm = TRUE),
+    lon   = mean(gps_longitude, na.rm = TRUE),
+    n_obs = n(),
+    .groups = "drop"
+  )
+
+# Centroïdes des DÉPARTEMENTS (11)
+depart_df <- df |>
+  group_by(region, department) |>
+  summarise(
+    lat   = mean(gps_latitude,  na.rm = TRUE),
+    lon   = mean(gps_longitude, na.rm = TRUE),
+    n_obs = n(),
+    .groups = "drop"
+  )
+
+# Centroïdes des VILLAGES (140)
+villages_df <- df |>
+  group_by(region, department, village) |>
+  summarise(
+    lat   = mean(gps_latitude,  na.rm = TRUE),
+    lon   = mean(gps_longitude, na.rm = TRUE),
+    n_obs = n(),
+    .groups = "drop"
+  )
+
+# Centroïdes des ZONES / DISTRICTS (23)
+districts_df <- df |>
+  group_by(region, department, district) |>
+  summarise(
+    lat   = mean(gps_latitude,  na.rm = TRUE),
+    lon   = mean(gps_longitude, na.rm = TRUE),
+    n_obs = n(),
+    .groups = "drop"
+  )
+
+# POINTS DE COLLECTE individuels (300 ménages)
+points_df <- df |>
+  select(region, department, district, village,
+         household_id, gps_latitude, gps_longitude)
+
+# ============================================================
+# ÉTAPE 2 : PALETTES DE COULEURS
+# ============================================================
+
+# Palette par RÉGION (3 couleurs)
+pal_region <- colorFactor(
+  palette = c("#E41A1C", "#377EB8", "#4DAF4A"),
+  domain  = levels(df$region)
+)
+
+# Palette hiérarchique par DÉPARTEMENT (11 nuances)
+# Extrême-Nord → nuances de ROUGE
+# Adamaoua     → nuances de BLEU
+# Nord         → nuances de VERT
+# Ainsi on identifie d'un coup d'œil la région ET le département
+couleurs_dept <- c(
+  "Mayo-Sava"       = "#FF0000",   # rouge vif
+  "Diamaré"         = "#FF6600",   # orange-rouge
+  "Mayo-Tsanaga"    = "#CC0000",   # rouge foncé
+  "Logone-et-Chari" = "#FF9933",   # orange
+  "Mayo-Danay"      = "#990000",   # bordeaux
+  "Vina"            = "#0066CC",   # bleu vif
+  "Mbéré"           = "#003399",   # bleu foncé
+  "Mayo-Banyo"      = "#66B2FF",   # bleu clair
+  "Mayo-Rey"        = "#00AA00",   # vert vif
+  "Mayo-Louti"      = "#006600",   # vert foncé
+  "Bénoué"          = "#66CC66"    # vert clair
+)
+
+pal_dept <- colorFactor(
+  palette = couleurs_dept,
+  domain  = names(couleurs_dept)
+)
+
+# ============================================================
+# ÉTAPE 3 : CONSTRUCTION DE LA CARTE
+# 5 couches superposées — chacune représente un niveau géo.
+# addLayersControl() permet d'activer / désactiver chaque couche.
+# ============================================================
+
+leaflet() |>
+
+  # --- FONDS DE CARTE ---
+  # CartoDB clair par défaut : met mieux en valeur les couleurs
+  addProviderTiles("CartoDB.Positron",   group = "CartoDB (clair)") |>
+  addTiles(                              group = "OpenStreetMap") |>
+  addProviderTiles("Esri.WorldImagery",  group = "Satellite") |>
+
+  # --- COUCHE 1 : RÉGIONS ---
+  # Grands cercles semi-transparents avec contour pointillé
+  # Servent de zones visuelles pour délimiter les 3 régions
+  addCircleMarkers(
+    data        = regions_df,
+    lat         = ~lat, lng = ~lon,
+    radius      = 30,
+    color       = ~pal_region(region),
+    fillColor   = ~pal_region(region),
+    fillOpacity = 0.10,
+    weight      = 3,
+    dashArray   = "8,4",
+    label       = ~region,
+    popup       = ~paste0(
+      "<div style='font-family:Arial'>",
+      "<b style='font-size:14px'>🗺️ Région : ", region, "</b>",
+      "<hr style='margin:4px 0'>",
+      "👶 Enfants enquêtés : <b>", n_obs, "</b>",
+      "</div>"
+    ),
+    group = "🗺️ Régions"
+  ) |>
+
+  # --- COUCHE 2 : DÉPARTEMENTS ---
+  # Couleur propre à chaque département (palette hiérarchique)
+  addCircleMarkers(
+    data        = depart_df,
+    lat         = ~lat, lng = ~lon,
+    radius      = 16,
+    color       = ~pal_dept(department),
+    fillColor   = ~pal_dept(department),
+    fillOpacity = 0.50,
+    weight      = 2.5,
+    label       = ~paste0(department, " (", region, ")"),
+    popup       = ~paste0(
+      "<div style='font-family:Arial'>",
+      "<b style='font-size:13px'>🏛️ Département : ", department, "</b>",
+      "<hr style='margin:4px 0'>",
+      "🗺️ Région : <b>", region, "</b><br>",
+      "👶 Enfants enquêtés : <b>", n_obs, "</b>",
+      "</div>"
+    ),
+    group = "🏛️ Départements"
+  ) |>
+
+  # --- COUCHE 3 : VILLAGES ---
+  # Couleur héritée du département → identification immédiate
+  addCircleMarkers(
+    data        = villages_df,
+    lat         = ~lat, lng = ~lon,
+    radius      = 7,
+    color       = ~pal_dept(department),
+    fillColor   = ~pal_dept(department),
+    fillOpacity = 0.80,
+    weight      = 1.5,
+    label       = ~paste0(village, " — ", department),
+    popup       = ~paste0(
+      "<div style='font-family:Arial'>",
+      "<b style='font-size:13px'>🏘️ Village : ", village, "</b>",
+      "<hr style='margin:4px 0'>",
+      "🏛️ Département : <b>", department, "</b><br>",
+      "🗺️ Région : <b>", region, "</b><br>",
+      "👶 Enquêtés : <b>", n_obs, "</b>",
+      "</div>"
+    ),
+    group = "🏘️ Villages"
+  ) |>
+
+  # --- COUCHE 4 : ZONES / DISTRICTS ---
+  # Contour NOIR pour les distinguer des villages,
+  # remplissage couleur du département pour la cohérence visuelle
+  addCircleMarkers(
+    data        = districts_df,
+    lat         = ~lat, lng = ~lon,
+    radius      = 11,
+    color       = "black",
+    fillColor   = ~pal_dept(department),
+    fillOpacity = 0.75,
+    weight      = 2.5,
+    label       = ~paste0("Zone : ", district, " — ", department),
+    popup       = ~paste0(
+      "<div style='font-family:Arial'>",
+      "<b style='font-size:13px'>📌 Zone : ", district, "</b>",
+      "<hr style='margin:4px 0'>",
+      "🏛️ Département : <b>", department, "</b><br>",
+      "🗺️ Région : <b>", region, "</b><br>",
+      "👶 Enquêtés : <b>", n_obs, "</b>",
+      "</div>"
+    ),
+    group = "📌 Zones (Districts)"
+  ) |>
+
+  # --- COUCHE 5 : POINTS DE COLLECTE (300 ménages) ---
+  # clusterOptions : les points proches se regroupent en cluster.
+  # En zoomant, les clusters se séparent jusqu'aux points individuels.
+  addCircleMarkers(
+    data        = points_df,
+    lat         = ~gps_latitude, lng = ~gps_longitude,
+    radius      = 5,
+    color       = ~pal_dept(department),
+    fillColor   = ~pal_dept(department),
+    fillOpacity = 1,
+    weight      = 0.8,
+    label       = ~paste0(household_id, " — ", village),
+    popup       = ~paste0(
+      "<div style='font-family:Arial;min-width:200px'>",
+      "<b style='font-size:13px'>🏠 Point de collecte</b>",
+      "<hr style='margin:4px 0'>",
+      "🆔 Ménage : <b>",      household_id, "</b><br>",
+      "🏘️ Village : <b>",     village,      "</b><br>",
+      "📌 Zone : <b>",        district,     "</b><br>",
+      "🏛️ Département : <b>", department,   "</b><br>",
+      "🗺️ Région : <b>",      region,       "</b>",
+      "</div>"
+    ),
+    clusterOptions = markerClusterOptions(disableClusteringAtZoom = 12),
+    group = "🏠 Points de collecte"
+  ) |>
+
+  # --- LÉGENDE RÉGIONS (bas gauche) ---
+  addLegend(
+    position = "bottomleft",
+    colors   = c("#E41A1C", "#377EB8", "#4DAF4A"),
+    labels   = c("Extrême-Nord", "Adamaoua", "Nord"),
+    title    = "Régions",
+    opacity  = 0.8
+  ) |>
+
+  # --- LÉGENDE DÉPARTEMENTS (bas droite) ---
+  addLegend(
+    position = "bottomright",
+    colors   = unname(couleurs_dept),
+    labels   = names(couleurs_dept),
+    title    = "Départements",
+    opacity  = 0.85
+  ) |>
+
+  # --- CONTRÔLE DES COUCHES ---
+  # baseGroups    : un seul fond actif à la fois
+  # overlayGroups : plusieurs couches simultanément possibles
+  addLayersControl(
+    baseGroups    = c("CartoDB (clair)", "OpenStreetMap", "Satellite"),
+    overlayGroups = c(
+      "🗺️ Régions",
+      "🏛️ Départements",
+      "🏘️ Villages",
+      "📌 Zones (Districts)",
+      "🏠 Points de collecte"
+    ),
+    options = layersControlOptions(collapsed = FALSE)
+  ) |>
+
+  # Par défaut : villages + points de collecte visibles
+  hideGroup("🗺️ Régions") |>
+  hideGroup("🏛️ Départements") |>
+  hideGroup("📌 Zones (Districts)")
+```
+
+------------------------------------------------------------------------
+
+### Version 2 : Carte avec `sf` + marqueurs icônes (style avancé)
+
+Cette version utilise `sf` pour convertir les données en objets spatiaux, et des icônes FontAwesome pour distinguer chaque niveau géographique visuellement (globe = région, bâtiment = département, maison = village, pin = zone).
+
+```{r}
+#| label: carte-sf-avancee
+#| message: false
+#| warning: false
+
+# ============================================================
+# PACKAGES
+# ============================================================
+library(sf)      # données spatiales
+library(leaflet) # carte interactive (déjà chargé, rappel explicite)
+
+# ============================================================
+# ÉTAPE 1 : CONVERSION EN OBJETS SPATIAUX (sf)
+# st_as_sf() crée un objet géospatial à partir des colonnes GPS.
+# CRS 4326 = WGS84, le système de coordonnées GPS standard.
+# ============================================================
+
+points_sf    <- points_df    |> st_as_sf(coords = c("gps_longitude", "gps_latitude"), crs = 4326)
+villages_sf  <- villages_df  |> st_as_sf(coords = c("lon", "lat"), crs = 4326)
+districts_sf <- districts_df |> st_as_sf(coords = c("lon", "lat"), crs = 4326)
+depart_sf    <- depart_df    |> st_as_sf(coords = c("lon", "lat"), crs = 4326)
+regions_sf   <- regions_df   |> st_as_sf(coords = c("lon", "lat"), crs = 4326)
+
+# ============================================================
+# ÉTAPE 2 : ICÔNES FONTAWESOME PAR NIVEAU GÉOGRAPHIQUE
+# makeAwesomeIcon() crée des marqueurs "pin" colorés avec icône.
+# Chaque niveau a une icône différente → lecture intuitive.
+# ============================================================
+icon_region  <- makeAwesomeIcon(icon = "globe",    library = "fa",
+                                markerColor = "red",    iconColor = "white")
+icon_dept    <- makeAwesomeIcon(icon = "building", library = "fa",
+                                markerColor = "blue",   iconColor = "white")
+icon_village <- makeAwesomeIcon(icon = "home",     library = "fa",
+                                markerColor = "green",  iconColor = "white")
+icon_zone    <- makeAwesomeIcon(icon = "map-pin",  library = "fa",
+                                markerColor = "orange", iconColor = "white")
+
+# ============================================================
+# ÉTAPE 3 : CONSTRUCTION DE LA CARTE
+# ============================================================
+
+leaflet() |>
+
+  # Trois fonds de carte disponibles (dont vue satellite)
+  addProviderTiles("CartoDB.Positron",     group = "CartoDB (clair)") |>
+  addProviderTiles("OpenStreetMap.Mapnik", group = "OpenStreetMap") |>
+  addProviderTiles("Esri.WorldImagery",    group = "ESRI Satellite") |>
+
+  # --- COUCHE 1 : RÉGIONS (icône globe rouge) ---
+  addAwesomeMarkers(
+    data  = regions_sf,
+    icon  = icon_region,
+    label = ~region,
+    popup = ~paste0(
+      "<div style='font-family:Arial;min-width:180px'>",
+      "<h4 style='color:#c0392b;margin:0'>🌍 ", region, "</h4><hr>",
+      "<b>Niveau :</b> Région<br>",
+      "<b>Enfants enquêtés :</b> ", n_obs,
+      "</div>"
+    ),
+    group = "🌍 Régions"
+  ) |>
+
+  # --- COUCHE 2 : DÉPARTEMENTS (icône bâtiment bleu) ---
+  addAwesomeMarkers(
+    data  = depart_sf,
+    icon  = icon_dept,
+    label = ~paste0(department, " (", region, ")"),
+    popup = ~paste0(
+      "<div style='font-family:Arial;min-width:180px'>",
+      "<h4 style='color:#2980b9;margin:0'>🏛️ ", department, "</h4><hr>",
+      "<b>Région :</b> ", region, "<br>",
+      "<b>Enfants enquêtés :</b> ", n_obs,
+      "</div>"
+    ),
+    group = "🏛️ Départements"
+  ) |>
+
+  # --- COUCHE 3 : VILLAGES (icône maison verte + clustering) ---
+  addAwesomeMarkers(
+    data  = villages_sf,
+    icon  = icon_village,
+    label = ~paste0(village, " — ", department),
+    popup = ~paste0(
+      "<div style='font-family:Arial;min-width:200px'>",
+      "<h4 style='color:#27ae60;margin:0'>🏘️ ", village, "</h4><hr>",
+      "<b>Département :</b> ", department, "<br>",
+      "<b>Région :</b> ", region, "<br>",
+      "<b>Enfants enquêtés :</b> ", n_obs,
+      "</div>"
+    ),
+    clusterOptions = markerClusterOptions(disableClusteringAtZoom = 11),
+    group = "🏘️ Villages"
+  ) |>
+
+  # --- COUCHE 4 : ZONES / DISTRICTS (icône pin orange) ---
+  addAwesomeMarkers(
+    data  = districts_sf,
+    icon  = icon_zone,
+    label = ~paste0("Zone : ", district, " — ", department),
+    popup = ~paste0(
+      "<div style='font-family:Arial;min-width:200px'>",
+      "<h4 style='color:#e67e22;margin:0'>📌 ", district, "</h4><hr>",
+      "<b>Département :</b> ", department, "<br>",
+      "<b>Région :</b> ", region, "<br>",
+      "<b>Enfants enquêtés :</b> ", n_obs,
+      "</div>"
+    ),
+    group = "📌 Zones (Districts)"
+  ) |>
+
+  # --- COUCHE 5 : POINTS DE COLLECTE ---
+  # Cercles colorés par département (palette hiérarchique)
+  # Le popup affiche aussi les coordonnées GPS exactes
+  addCircleMarkers(
+    data        = points_sf,
+    radius      = 6,
+    color       = ~pal_dept(department),
+    fillColor   = ~pal_dept(department),
+    fillOpacity = 0.9,
+    weight      = 1.2,
+    label       = ~paste0(household_id, " — ", village),
+    popup       = ~paste0(
+      "<div style='font-family:Arial;min-width:210px'>",
+      "<h4 style='color:#8e44ad;margin:0'>🏠 Point de collecte</h4><hr>",
+      "<b>ID Ménage :</b> ",   household_id, "<br>",
+      "<b>Village :</b> ",     village,      "<br>",
+      "<b>Zone :</b> ",        district,     "<br>",
+      "<b>Département :</b> ", department,   "<br>",
+      "<b>Région :</b> ",      region,       "<br>",
+      "<b>Lat / Lon :</b> ",
+        round(sf::st_coordinates(geometry)[, 2], 4), "° N, ",
+        round(sf::st_coordinates(geometry)[, 1], 4), "° E",
+      "</div>"
+    ),
+    clusterOptions = markerClusterOptions(disableClusteringAtZoom = 13),
+    group = "🏠 Points de collecte"
+  ) |>
+
+  # --- LÉGENDE RÉGIONS (bas gauche) ---
+  addLegend(
+    position = "bottomleft",
+    colors   = c("#E41A1C", "#377EB8", "#4DAF4A"),
+    labels   = c("Extrême-Nord", "Adamaoua", "Nord"),
+    title    = "Régions",
+    opacity  = 0.8
+  ) |>
+
+  # --- LÉGENDE DÉPARTEMENTS (bas droite) ---
+  addLegend(
+    position = "bottomright",
+    colors   = unname(couleurs_dept),
+    labels   = names(couleurs_dept),
+    title    = "Départements",
+    opacity  = 0.85
+  ) |>
+
+  # --- CONTRÔLE DES COUCHES ---
+  addLayersControl(
+    baseGroups    = c("CartoDB (clair)", "OpenStreetMap", "ESRI Satellite"),
+    overlayGroups = c(
+      "🌍 Régions",
+      "🏛️ Départements",
+      "🏘️ Villages",
+      "📌 Zones (Districts)",
+      "🏠 Points de collecte"
+    ),
+    options = layersControlOptions(collapsed = FALSE)
+  ) |>
+
+  # Par défaut : zones + points de collecte visibles
+  hideGroup("🌍 Régions") |>
+  hideGroup("🏛️ Départements") |>
+  hideGroup("🏘️ Villages")
+```
+
+------------------------------------------------------------------------
+
+### Bonus : Version `mapview` (après installation)
+
+`mapview` est une alternative plus concise : une ligne par couche, popups automatiques avec toutes les colonnes, syntaxe `+` pour superposer les couches.
+
+```{r}
+#| label: carte-mapview
+#| eval: true
+# Pour activer : install.packages("mapview") puis mettre eval: true
+install.packages("mapview")
+library(mapview)
+
+# zcol       = variable utilisée pour la couleur des points
+mapview(regions_sf,   zcol = "region", layer.name = "Régions",           cex = 14) +
+mapview(depart_sf,    zcol = "region", layer.name = "Départements",       cex = 10) +
+# cex        = taille des points (plus grand = niveau macro)
+# layer.name = nom affiché dans le panneau de la carte
+
+mapview(regions_sf,   zcol = "region", layer.name = "Régions",           cex = 14) +
+mapview(depart_sf,    zcol = "region", layer.name = "Départements",       cex = 10) +
+mapview(villages_sf,  zcol = "region", layer.name = "Villages",           cex = 6)  +
+mapview(districts_sf, zcol = "region", layer.name = "Zones (Districts)",  cex = 8)  +
+mapview(points_sf,    zcol = "region", layer.name = "Points de collecte", cex = 4)
+
+# Avantages de mapview :
+# - Popups automatiques (toutes les colonnes s'affichent au clic)
+# - Code très court (5 lignes vs ~150 pour leaflet)
+# - Synchronisation côte à côte : sync(carte1, carte2)
+# - Export HTML : mapshot(carte, file = "carte.html")
+```
+
+------------------------------------------------------------------------
+
+## TESTS STATISTIQUES INFÉRENTIELS (VERSION STRUCTURÉE)
+
+> **Logique adoptée pour chaque test :** **① Principe** → **② Hypothèses** → **③ Conditions** → **④ Vérification** → **⑤ Application** → **⑥ Interprétation**
+
+------------------------------------------------------------------------
+
+## 1. Test du Chi² — Association entre deux variables catégorielles
+
+### Principe
+
+Le test du **Chi² (χ²)** évalue s'il existe une **association significative** entre deux variables catégorielles. Il compare les **effectifs observés** dans un tableau de contingence aux **effectifs attendus** si les deux variables étaient totalement indépendantes.
+
+### Hypothèses
+
+|        |                                                                |
+|--------|----------------------------------------------------------------|
+| **H₀** | Les deux variables sont **indépendantes** (aucune association) |
+| **H₁** | Les deux variables sont **associées**                          |
+
+→ On rejette H₀ si **p-value \< 0,05**.
+
+### Conditions de réalisation
+
+Avant d'appliquer le Chi², **4 conditions** doivent être vérifiées :
+
+1.  Les deux variables sont **catégorielles** (nominales ou ordinales)
+2.  Les observations sont **indépendantes** (un enfant = une seule ligne)
+3.  **Effectifs attendus ≥ 5** dans toutes les cellules du tableau *(condition principale)*
+4.  Si la condition 3 n'est pas respectée → utiliser le **test exact de Fisher**
+
+```{r}
+#| label: chi2-conditions-v2
+#| message: false
+#| warning: false
+
+library(dplyr)
+library(purrr)
+
+# ============================================================
+# ÉTAPE 1 : VÉRIFICATION DES CONDITIONS AVANT LE TEST
+# On construit le tableau de contingence, puis on examine
+# les effectifs ATTENDUS calculés sous H₀.
+# Règle : toutes les cellules attendues doivent être ≥ 5.
+# ============================================================
+
+# Tableau de contingence observé : GAM × Sexe de l'enfant
+tab_chi2_v2 <- table(df$child_sex, df$GAM)
+
+cat("=== Tableau OBSERVÉ : GAM × Sexe ===\n")
+print(tab_chi2_v2)
+
+# chisq.test() calcule les effectifs attendus sous H₀
+verif_chi2_v2 <- chisq.test(tab_chi2_v2, correct = FALSE)
+
+cat("\n=== Effectifs ATTENDUS sous H₀ ===\n")
+cat("(Règle : toutes les cellules doivent être ≥ 5)\n\n")
+print(round(verif_chi2_v2$expected, 1))
+
+# Vérification automatique de la condition
+min_att <- min(verif_chi2_v2$expected)
+cat(sprintf(
+  "\nEffectif attendu minimum : %.1f  →  Condition %s\n",
+  min_att,
+  ifelse(min_att >= 5,
+         "✓ REMPLIE : Chi² valide",
+         "✗ NON REMPLIE : utiliser le test exact de Fisher")
+))
+```
+
+```{r}
+#| label: chi2-application-v2
+#| message: false
+#| warning: false
+
+# ============================================================
+# ÉTAPE 2 : APPLICATION DU TEST
+# Fonction automatique : applique Chi² si effectifs ≥ 5,
+# sinon bascule sur Fisher.
+# ============================================================
+
+vars_chi2_v2   <- c("child_sex", "displacement_status", "head_gender",
+                    "diarrhea_last_2w", "vaccination_status", "food_aid_received")
+labels_chi2_v2 <- c("Sexe enfant", "Statut déplacement", "Genre chef ménage",
+                    "Diarrhée (2 sem.)", "Statut vaccinal", "Aide alimentaire")
+
+tester_chi2 <- function(var, lbl, outcome = "GAM") {
+  tbl     <- table(df[[var]], df[[outcome]])
+  res_chi <- chisq.test(tbl, correct = FALSE)
+  min_exp <- min(res_chi$expected)
+
+  # Basculer vers Fisher si les effectifs attendus sont < 5
+  if (min_exp < 5) {
+    res  <- fisher.test(tbl)
+    test <- "Fisher"
+    stat <- NA
+  } else {
+    res  <- res_chi
+    test <- "Chi²"
+    stat <- round(res$statistic, 3)
+  }
+
+  sig <- case_when(
+    res$p.value < 0.001 ~ "***",
+    res$p.value < 0.01  ~ "**",
+    res$p.value < 0.05  ~ "*",
+    res$p.value < 0.10  ~ ".",
+    TRUE                ~ "NS"
+  )
+
+  tibble(
+    Variable    = lbl,
+    Test        = test,
+    Min_attendu = round(min_exp, 1),
+    Chi2_stat   = stat,
+    p_value     = round(res$p.value, 4),
+    Sig         = sig
+  )
+}
+
+resultats_chi2_v2 <- map2_dfr(vars_chi2_v2, labels_chi2_v2, tester_chi2)
+resultats_chi2_v2
+```
+
+```{r}
+#| label: chi2-graphique-v2
+#| message: false
+#| warning: false
+#| fig-width: 9
+#| fig-height: 4
+
+library(ggplot2)
+
+# Barplot empilé : proportion de GAM selon le sexe
+df |>
+  count(child_sex, GAM) |>
+  group_by(child_sex) |>
+  mutate(prop = n / sum(n)) |>
+  ggplot(aes(x = child_sex, y = prop, fill = GAM)) +
+  geom_col(width = 0.55) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 1)),
+            position = position_stack(vjust = 0.5), size = 3.5) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(
+    values = c("FALSE" = "#2ECC71", "TRUE" = "#E74C3C"),
+    labels = c("Non-GAM", "GAM")
+  ) +
+  labs(
+    title    = "Prévalence de la GAM selon le sexe de l'enfant",
+    subtitle = "Test du Chi² — H₀ : pas d'association entre sexe et GAM",
+    x = "Sexe de l'enfant", y = "Proportion (%)", fill = "Statut GAM"
+  ) +
+  theme_bw()
+```
+
+### Interprétation
+
+- **p-value \< 0,05** → association **significative** entre les deux variables
+- **p-value ≥ 0,05** → **pas d'association** détectée dans cet échantillon
+- `Min_attendu` ≥ 5 dans toutes les lignes → Chi² valide ; sinon Fisher est utilisé automatiquement
+
+------------------------------------------------------------------------
+
+## 2. Test de Mann-Whitney — Comparaison de 2 groupes indépendants
+
+### Principe
+
+Le test de **Mann-Whitney** compare la **distribution d'une variable continue** entre **deux groupes indépendants**. Alternative non paramétrique au **t-test**, il compare les **rangs** des observations et est robuste aux distributions asymétriques.
+
+### Hypothèses
+
+|        |                                                        |
+|--------|--------------------------------------------------------|
+| **H₀** | Les distributions des deux groupes sont **identiques** |
+| **H₁** | Les distributions sont **différentes**                 |
+
+### Conditions de réalisation
+
+1.  Variable dépendante **continue ou ordinale**
+2.  Variable de groupement à **exactement 2 modalités**
+3.  Les deux groupes sont **indépendants**
+4.  La normalité **n'est pas requise** — avantage sur le t-test
+
+> **Règle de choix :** Shapiro-Wilk p \< 0,05 dans au moins un groupe → Mann-Whitney. Si les deux groupes sont normaux → t-test.
+
+```{r}
+#| label: mw-normalite-v2
+#| message: false
+#| warning: false
+
+# ============================================================
+# ÉTAPE 1 : VÉRIFICATION DE LA NORMALITÉ PAR GROUPE
+# Shapiro-Wilk séparément dans chaque groupe.
+# p < 0.05 dans au moins un groupe → Mann-Whitney justifié.
+# ============================================================
+
+vars_mw_v2 <- c("muac_mm", "whz_score", "waz_score", "haz_score")
+
+verif_norm_v2 <- map_dfr(vars_mw_v2, function(v) {
+  garcon <- df[[v]][df$child_sex == "Male"   & !is.na(df[[v]])]
+  fille  <- df[[v]][df$child_sex == "Female" & !is.na(df[[v]])]
+  sw_g   <- shapiro.test(garcon)
+  sw_f   <- shapiro.test(fille)
+  tibble(
+    Variable        = v,
+    N_Garçon        = length(garcon),
+    W_Garçon        = round(sw_g$statistic, 4),
+    p_Garçon        = round(sw_g$p.value, 4),
+    N_Fille         = length(fille),
+    W_Fille         = round(sw_f$statistic, 4),
+    p_Fille         = round(sw_f$p.value, 4),
+    Test_recommandé = ifelse(
+      sw_g$p.value > 0.05 & sw_f$p.value > 0.05,
+      "t-test (normale)", "Mann-Whitney (non normale)"
+    )
+  )
+})
+
+verif_norm_v2
+```
+
+```{r}
+#| label: mw-application-v2
+#| message: false
+#| warning: false
+
+# ============================================================
+# ÉTAPE 2 : APPLICATION DU TEST DE MANN-WHITNEY
+# Toutes les variables sont non normales → Mann-Whitney justifié.
+# Comparaison des indicateurs anthropométriques Garçon vs Fille.
+# ============================================================
+
+resultats_mw_v2 <- map_dfr(vars_mw_v2, function(v) {
+  med_g <- median(df[[v]][df$child_sex == "Male"],   na.rm = TRUE)
+  med_f <- median(df[[v]][df$child_sex == "Female"], na.rm = TRUE)
+  test  <- wilcox.test(df[[v]] ~ df$child_sex, exact = FALSE)
+  sig   <- case_when(
+    test$p.value < 0.001 ~ "***",
+    test$p.value < 0.01  ~ "**",
+    test$p.value < 0.05  ~ "*",
+    test$p.value < 0.10  ~ ".",
+    TRUE                 ~ "NS"
+  )
+  tibble(
+    Variable       = v,
+    Médiane_Garçon = round(med_g, 2),
+    Médiane_Fille  = round(med_f, 2),
+    W_stat         = round(test$statistic, 1),
+    p_value        = round(test$p.value, 4),
+    Sig            = sig
+  )
+})
+
+resultats_mw_v2
+```
+
+```{r}
+#| label: mw-graphique-v2
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 4
+
+library(patchwork)
+
+p_muac <- ggplot(df, aes(x = child_sex, y = muac_mm, fill = child_sex)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21, width = 0.5) +
+  labs(title = "MUAC selon le sexe",
+       subtitle = "Test de Mann-Whitney",
+       x = "Sexe", y = "MUAC (mm)") +
+  theme_bw() + theme(legend.position = "none")
+
+p_whz <- ggplot(df, aes(x = child_sex, y = whz_score, fill = child_sex)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21, width = 0.5) +
+  geom_hline(yintercept = -2, linetype = "dashed", color = "red", linewidth = 0.8) +
+  annotate("text", x = 0.6, y = -1.85,
+           label = "Seuil GAM (WHZ < -2)", size = 3, color = "red") +
+  labs(title = "Score WHZ selon le sexe",
+       subtitle = "Test de Mann-Whitney",
+       x = "Sexe", y = "Score WHZ") +
+  theme_bw() + theme(legend.position = "none")
+
+p_muac + p_whz
+```
+
+### Interprétation
+
+- **p-value \< 0,05** → différence **significative** de distribution entre garçons et filles
+- **p-value ≥ 0,05** → **aucune différence** significative détectée
+- La ligne pointillée rouge représente le seuil de la GAM (WHZ \< −2)
+
+------------------------------------------------------------------------
+
+## 3. Test de Kruskal-Wallis — Comparaison de ≥ 3 groupes
+
+### Principe
+
+Extension du Mann-Whitney à **3 groupes ou plus**. Si le test global est significatif → **test post-hoc par paires** (Wilcoxon avec correction Benjamini-Hochberg) pour identifier quels groupes diffèrent.
+
+### Hypothèses
+
+|        |                                                         |
+|--------|---------------------------------------------------------|
+| **H₀** | Toutes les distributions de groupes sont **identiques** |
+| **H₁** | **Au moins un groupe** diffère des autres               |
+
+### Conditions de réalisation
+
+1.  Variable dépendante **continue ou ordinale**
+2.  Variable de groupement avec **≥ 3 modalités**
+3.  Groupes **indépendants** — chaque enfant dans un seul groupe
+4.  Chaque groupe contient **au moins 5 observations**
+5.  **Pas de condition de normalité**
+
+```{r}
+#| label: kw-conditions-v2
+#| message: false
+#| warning: false
+
+# ============================================================
+# ÉTAPE 1 : VÉRIFICATION DES CONDITIONS
+# ============================================================
+
+cat("=== Effectifs par région (N ≥ 5 requis) ===\n")
+df |>
+  count(region) |>
+  mutate(Condition = ifelse(n >= 5, "✓ OK", "✗ Insuffisant")) |>
+  print()
+
+cat("\n=== Normalité du WHZ par région (Shapiro-Wilk) ===\n")
+df |>
+  group_by(region) |>
+  summarise(
+    N       = n(),
+    W_stat  = round(shapiro.test(whz_score)$statistic, 4),
+    p_value = round(shapiro.test(whz_score)$p.value, 4),
+    Normale = ifelse(shapiro.test(whz_score)$p.value > 0.05,
+                     "Oui", "Non → KW justifié")
+  ) |>
+  print()
+```
+
+```{r}
+#| label: kw-application-v2
+#| message: false
+#| warning: false
+
+# ============================================================
+# ÉTAPE 2 : APPLICATION DU TEST DE KRUSKAL-WALLIS
+# Variable : score WHZ  |  Groupes : 3 régions
+# ============================================================
+
+kw_v2 <- kruskal.test(whz_score ~ region, data = df)
+
+cat("=== Résultat du test de Kruskal-Wallis ===\n")
+cat(sprintf("Variable        : WHZ score\n"))
+cat(sprintf("Groupes         : Région (%d groupes)\n", nlevels(df$region)))
+cat(sprintf("Statistique H   : %.3f\n", kw_v2$statistic))
+cat(sprintf("Degrés de lib.  : %d\n",   kw_v2$parameter))
+cat(sprintf("p-value         : %.4f\n", kw_v2$p.value))
+cat(sprintf("Décision        : %s\n",
+  ifelse(kw_v2$p.value < 0.05,
+    "Rejet H₀ : au moins une région diffère",
+    "Non-rejet H₀ : pas de différence entre régions")))
+
+cat("\n=== Statistiques descriptives par région ===\n")
+df |>
+  group_by(region) |>
+  summarise(
+    N       = n(),
+    Médiane = round(median(whz_score, na.rm = TRUE), 3),
+    Q1      = round(quantile(whz_score, 0.25, na.rm = TRUE), 3),
+    Q3      = round(quantile(whz_score, 0.75, na.rm = TRUE), 3),
+    IQR     = round(IQR(whz_score, na.rm = TRUE), 3)
+  ) |> print()
+```
+
+```{r}
+#| label: kw-posthoc-v2
+#| message: false
+#| warning: false
+
+# ============================================================
+# ÉTAPE 3 : TEST POST-HOC (comparaisons par paires)
+# À utiliser si le Kruskal-Wallis est significatif.
+# Correction BH (Benjamini-Hochberg) : contrôle le taux de
+# faux positifs lors de comparaisons multiples.
+# ============================================================
+
+cat("=== Post-hoc : comparaisons par paires (correction BH) ===\n")
+posthoc_v2 <- pairwise.wilcox.test(
+  df$whz_score, df$region,
+  p.adjust.method = "BH", exact = FALSE
+)
+print(posthoc_v2$p.value)
+cat("\np < 0,05 entre deux régions = différence significative.\n")
+```
+
+```{r}
+#| label: kw-graphique-v2
+#| message: false
+#| warning: false
+#| fig-width: 9
+#| fig-height: 4
+
+ggplot(df, aes(x = region, y = whz_score, fill = region)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21, width = 0.5) +
+  geom_hline(yintercept = -2, linetype = "dashed",
+             color = "red", linewidth = 0.8) +
+  annotate("text", x = 0.6, y = -1.85,
+           label = "Seuil GAM (WHZ < -2)", size = 3, color = "red") +
+  scale_fill_manual(values = c("#E41A1C", "#377EB8", "#4DAF4A")) +
+  labs(
+    title    = "Distribution du score WHZ par région",
+    subtitle = "Kruskal-Wallis — H₀ : distributions identiques entre régions",
+    x = "Région", y = "Score WHZ"
+  ) +
+  theme_bw() + theme(legend.position = "none")
+```
+
+### Interprétation
+
+- **p-value \< 0,05** → au moins une région diffère → consulter le post-hoc
+- **Post-hoc BH** : p \< 0,05 entre deux régions = différence significative
+- La correction BH évite les faux positifs lors de comparaisons multiples
+
+------------------------------------------------------------------------
+
+## 4. Test de corrélation de Spearman
+
+### Principe
+
+Mesure la **force et la direction** de l'association entre deux variables continues. Le **coefficient ρ** est basé sur les rangs — pas de condition de normalité.
+
+| Type         | Quand l'utiliser                         | Hypothèse         |
+|--------------|------------------------------------------|-------------------|
+| **Pearson**  | Les DEUX variables sont normales         | Relation linéaire |
+| **Spearman** | Au moins une variable non normale        | Relation monotone |
+| **Kendall**  | Petits échantillons ou nombreux ex-aequo | Relation monotone |
+
+### Hypothèses
+
+|        |                                       |
+|--------|---------------------------------------|
+| **H₀** | ρ = 0 → **aucune corrélation**        |
+| **H₁** | ρ ≠ 0 → **corrélation significative** |
+
+### Conditions de réalisation
+
+1.  Variables **continues ou ordinales**
+2.  Relation **monotone** (pas forcément linéaire)
+3.  Observations **indépendantes**
+
+```{r}
+#| label: spearman-normalite-v2
+#| message: false
+#| warning: false
+
+# ============================================================
+# ÉTAPE 1 : VÉRIFICATION DE LA NORMALITÉ (Shapiro-Wilk)
+# p < 0.05 → non normale → Spearman justifié.
+# ============================================================
+
+vars_corr_v2 <- c("waz_score", "haz_score", "whz_score", "muac_mm",
+                  "food_consumption_score", "household_hunger_scale",
+                  "coping_strategy_index", "child_age_months",
+                  "mother_muac", "months_food_insecurity")
+
+normalite_v2 <- map_dfr(vars_corr_v2, function(v) {
+  x  <- na.omit(df[[v]])
+  sw <- shapiro.test(x)
+  tibble(
+    Variable   = v,
+    N          = length(x),
+    Moyenne    = round(mean(x), 2),
+    Ecart_type = round(sd(x),   2),
+    W_Shapiro  = round(sw$statistic, 4),
+    p_Shapiro  = round(sw$p.value, 4),
+    Normale    = ifelse(sw$p.value > 0.05, "Oui", "Non → Spearman")
+  )
+})
+
+normalite_v2
+```
+
+```{r}
+#| label: spearman-qqplot-v2
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 5
+
+library(patchwork)
+
+# Q-Q plots : points alignés sur la droite rouge = normale
+# Ecart aux extrêmes = non normale → Spearman justifié
+vars_qq_v2 <- c("waz_score", "haz_score", "whz_score", "muac_mm",
+                "food_consumption_score", "child_age_months",
+                "coping_strategy_index", "household_hunger_scale")
+
+plots_qq_v2 <- map(vars_qq_v2, function(v) {
+  ggplot(df, aes(sample = .data[[v]])) +
+    stat_qq(size = 0.8, alpha = 0.5) +
+    stat_qq_line(color = "red", linewidth = 0.8) +
+    labs(title = v, x = "Théorique", y = "Observé") +
+    theme_bw(base_size = 8)
+})
+
+wrap_plots(plots_qq_v2, ncol = 4) +
+  plot_annotation(
+    title    = "Q-Q plots — Vérification de la normalité",
+    subtitle = "Aligné sur la droite rouge = normale | Ecart = non normale → Spearman",
+    theme    = theme(plot.title = element_text(face = "bold", size = 12))
+  )
+```
+
+```{r}
+#| label: spearman-tests-v2
+#| message: false
+#| warning: false
+
+# ============================================================
+# ÉTAPE 2 : TESTS DE CORRÉLATION DE SPEARMAN
+# Paires choisies selon la pertinence nutritionnelle.
+# ============================================================
+
+paires_v2 <- list(
+  c("waz_score",              "food_consumption_score"),
+  c("waz_score",              "household_hunger_scale"),
+  c("waz_score",              "muac_mm"),
+  c("haz_score",              "child_age_months"),
+  c("whz_score",              "muac_mm"),
+  c("waz_score",              "mother_muac"),
+  c("food_consumption_score", "coping_strategy_index"),
+  c("food_consumption_score", "months_food_insecurity")
+)
+
+resultats_spearman_v2 <- map_dfr(paires_v2, function(p) {
+  test <- cor.test(df[[p[1]]], df[[p[2]]],
+                   method = "spearman", exact = FALSE)
+  sig  <- case_when(
+    test$p.value < 0.001 ~ "***",
+    test$p.value < 0.01  ~ "**",
+    test$p.value < 0.05  ~ "*",
+    test$p.value < 0.10  ~ ".",
+    TRUE                 ~ "NS"
+  )
+  tibble(
+    Variable_1 = p[1],
+    Variable_2 = p[2],
+    rho        = round(test$estimate, 3),
+    p_value    = round(test$p.value, 4),
+    Sig        = sig
+  )
+})
+
+resultats_spearman_v2
+```
+
+```{r}
+#| label: spearman-nuages-v2
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 10
+
+library(ggpubr)
+
+# Nuages de points avec courbe LOESS + ρ et p-value affichés
+scatter_v2 <- map(paires_v2, function(p) {
+  ggplot(df, aes(x = .data[[p[1]]], y = .data[[p[2]]])) +
+    geom_point(alpha = 0.35, size = 1.2) +
+    geom_smooth(method = "loess", se = TRUE,
+                color = "#E63946", linewidth = 0.8) +
+    stat_cor(method = "spearman",
+             label.x.npc = "left", label.y.npc = "top", size = 3.2) +
+    labs(x = p[1], y = p[2]) +
+    theme_bw(base_size = 9)
+})
+
+wrap_plots(scatter_v2, ncol = 2) +
+  plot_annotation(
+    title    = "Corrélations de Spearman — Indicateurs nutritionnels",
+    subtitle = "rho = coefficient de Spearman | Courbe LOESS en rouge",
+    theme    = theme(plot.title = element_text(face = "bold", size = 13))
+  )
+```
+
+```{r}
+#| label: spearman-heatmap-v2
+#| message: false
+#| warning: false
+#| fig-width: 8
+#| fig-height: 7
+
+library(corrplot)
+
+# Matrice de corrélation : vue d'ensemble de toutes les paires
+# Rouge foncé = corrélation positive | Bleu foncé = négative | Blanc = nulle
+mat_spearman_v2 <- df |>
+  select(all_of(vars_corr_v2)) |>
+  drop_na() |>
+  cor(method = "spearman")
+
+corrplot(
+  mat_spearman_v2,
+  method      = "color",
+  type        = "upper",
+  addCoef.col = "black",
+  number.cex  = 0.75,
+  tl.cex      = 0.8,
+  tl.col      = "black",
+  tl.srt      = 45,
+  col         = colorRampPalette(c("#2C7BB6", "white", "#D7191C"))(200),
+  mar         = c(0, 0, 2, 0),
+  title       = "Matrice de corrélation de Spearman"
+)
+```
+
+### Interprétation
+
+- **\|ρ\| proche de 1** → corrélation forte \| **\|ρ\| proche de 0** → pas de corrélation
+- **ρ \> 0** → les deux variables augmentent ensemble \| **ρ \< 0** → relation inverse
+- On rejette H₀ uniquement si **p-value \< 0,05**
+- Shapiro-Wilk confirme que toutes les variables sont **non normales** → Spearman est le bon choix
+
+------------------------------------------------------------------------
+
+## Courbes de densité — Distribution des indicateurs nutritionnels
+
+> Les courbes de densité (ou courbes de densité de probabilité) permettent de visualiser la **forme de la distribution** d'une variable continue : symétrique, asymétrique, bimodale, etc. Elles complètent les boxplots et les histogrammes en montrant où les valeurs se concentrent.
+
+------------------------------------------------------------------------
+
+### 1. Distribution des scores Z (WAZ, HAZ, WHZ) et du MUAC
+
+```{r}
+#| label: densite-globale
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 8
+
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+
+# ============================================================
+# Courbes de densité globales pour les 4 indicateurs clés
+# La ligne verticale pointillée rouge représente le seuil
+# de malnutrition (Z-score < -2 pour GAM, MUAC < 125 mm)
+# ============================================================
+
+# WAZ (Poids-pour-Âge)
+p_waz <- ggplot(df, aes(x = waz_score)) +
+  geom_density(fill = "#3498DB", alpha = 0.4, color = "#2980B9", linewidth = 0.8) +
+  geom_vline(xintercept = -2, linetype = "dashed", color = "red", linewidth = 0.8) +
+  geom_vline(xintercept = -3, linetype = "dashed", color = "darkred", linewidth = 0.8) +
+  annotate("text", x = -2.2, y = Inf, vjust = 1.5, hjust = 1,
+           label = "-2 SD", size = 3, color = "red") +
+  annotate("text", x = -3.2, y = Inf, vjust = 1.5, hjust = 1,
+           label = "-3 SD", size = 3, color = "darkred") +
+  labs(title = "WAZ (Poids-pour-Âge)",
+       subtitle = "Insuffisance pondérale",
+       x = "Score WAZ", y = "Densité") +
+  theme_bw()
+
+# HAZ (Taille-pour-Âge)
+p_haz <- ggplot(df, aes(x = haz_score)) +
+  geom_density(fill = "#2ECC71", alpha = 0.4, color = "#27AE60", linewidth = 0.8) +
+  geom_vline(xintercept = -2, linetype = "dashed", color = "red", linewidth = 0.8) +
+  geom_vline(xintercept = -3, linetype = "dashed", color = "darkred", linewidth = 0.8) +
+  annotate("text", x = -2.2, y = Inf, vjust = 1.5, hjust = 1,
+           label = "-2 SD", size = 3, color = "red") +
+  annotate("text", x = -3.2, y = Inf, vjust = 1.5, hjust = 1,
+           label = "-3 SD", size = 3, color = "darkred") +
+  labs(title = "HAZ (Taille-pour-Âge)",
+       subtitle = "Retard de croissance (Stunting)",
+       x = "Score HAZ", y = "Densité") +
+  theme_bw()
+
+# WHZ (Poids-pour-Taille)
+p_whz <- ggplot(df, aes(x = whz_score)) +
+  geom_density(fill = "#E74C3C", alpha = 0.4, color = "#C0392B", linewidth = 0.8) +
+  geom_vline(xintercept = -2, linetype = "dashed", color = "red", linewidth = 0.8) +
+  geom_vline(xintercept = -3, linetype = "dashed", color = "darkred", linewidth = 0.8) +
+  annotate("text", x = -2.2, y = Inf, vjust = 1.5, hjust = 1,
+           label = "MAG (-2 SD)", size = 3, color = "red") +
+  annotate("text", x = -3.2, y = Inf, vjust = 1.5, hjust = 1,
+           label = "MAS (-3 SD)", size = 3, color = "darkred") +
+  labs(title = "WHZ (Poids-pour-Taille)",
+       subtitle = "Malnutrition aiguë (GAM/MAG)",
+       x = "Score WHZ", y = "Densité") +
+  theme_bw()
+
+# MUAC (Périmètre brachial)
+p_muac <- ggplot(df, aes(x = muac_mm)) +
+  geom_density(fill = "#9B59B6", alpha = 0.4, color = "#8E44AD", linewidth = 0.8) +
+  geom_vline(xintercept = 125, linetype = "dashed", color = "red", linewidth = 0.8) +
+  geom_vline(xintercept = 115, linetype = "dashed", color = "darkred", linewidth = 0.8) +
+  annotate("text", x = 124, y = Inf, vjust = 1.5, hjust = 1,
+           label = "MAM < 125 mm", size = 3, color = "red") +
+  annotate("text", x = 114, y = Inf, vjust = 1.5, hjust = 1,
+           label = "MAS < 115 mm", size = 3, color = "darkred") +
+  labs(title = "MUAC (Périmètre brachial)",
+       subtitle = "Malnutrition aiguë par MUAC",
+       x = "MUAC (mm)", y = "Densité") +
+  theme_bw()
+
+# Assemblage des 4 graphiques
+(p_waz + p_haz) / (p_whz + p_muac) +
+  plot_annotation(
+    title    = "Distribution des indicateurs anthropométriques",
+    subtitle = "Lignes rouges = seuils OMS de malnutrition modérée (-2 SD) et sévère (-3 SD)",
+    theme    = theme(plot.title    = element_text(face = "bold", size = 14),
+                     plot.subtitle = element_text(size = 10))
+  )
+```
+
+------------------------------------------------------------------------
+
+### 2. Densité des scores Z par région
+
+```{r}
+#| label: densite-region
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 9
+
+# ============================================================
+# Courbes de densité superposées par région
+# Permet de comparer visuellement les distributions entre
+# Extrême-Nord, Adamaoua et Nord
+# Chaque région a sa propre couleur (cohérence avec la carte)
+# ============================================================
+
+couleurs_region <- c(
+  "Extrême-Nord" = "#E41A1C",
+  "Adamaoua"     = "#377EB8",
+  "Nord"         = "#4DAF4A"
+)
+
+# Fonction pour créer une courbe de densité par région
+densite_region <- function(var, titre, seuil_2 = -2, seuil_3 = -3, unité = "") {
+  ggplot(df, aes(x = .data[[var]], fill = region, color = region)) +
+    geom_density(alpha = 0.3, linewidth = 0.8) +
+    geom_vline(xintercept = seuil_2, linetype = "dashed",
+               color = "red", linewidth = 0.7) +
+    geom_vline(xintercept = seuil_3, linetype = "dashed",
+               color = "darkred", linewidth = 0.7) +
+    scale_fill_manual(values  = couleurs_region) +
+    scale_color_manual(values = couleurs_region) +
+    labs(title = titre,
+         x     = paste0(var, if (nchar(unité) > 0) paste0(" (", unité, ")") else ""),
+         y     = "Densité",
+         fill  = "Région", color = "Région") +
+    theme_bw() +
+    theme(legend.position = "bottom")
+}
+
+p_waz_reg  <- densite_region("waz_score",  "WAZ par région",
+                              seuil_2 = -2, seuil_3 = -3)
+p_haz_reg  <- densite_region("haz_score",  "HAZ par région",
+                              seuil_2 = -2, seuil_3 = -3)
+p_whz_reg  <- densite_region("whz_score",  "WHZ par région",
+                              seuil_2 = -2, seuil_3 = -3)
+p_muac_reg <- ggplot(df, aes(x = muac_mm, fill = region, color = region)) +
+  geom_density(alpha = 0.3, linewidth = 0.8) +
+  geom_vline(xintercept = 125, linetype = "dashed", color = "red",     linewidth = 0.7) +
+  geom_vline(xintercept = 115, linetype = "dashed", color = "darkred", linewidth = 0.7) +
+  scale_fill_manual(values  = couleurs_region) +
+  scale_color_manual(values = couleurs_region) +
+  labs(title = "MUAC par région",
+       x = "MUAC (mm)", y = "Densité",
+       fill = "Région", color = "Région") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+(p_waz_reg + p_haz_reg) / (p_whz_reg + p_muac_reg) +
+  plot_annotation(
+    title    = "Distribution des indicateurs anthropométriques par région",
+    subtitle = "Ligne rouge = seuil modéré (-2 SD / 125 mm) | Ligne bordeaux = seuil sévère (-3 SD / 115 mm)",
+    theme    = theme(plot.title    = element_text(face = "bold", size = 14),
+                     plot.subtitle = element_text(size = 10))
+  )
+```
+
+------------------------------------------------------------------------
+
+### 3. Densité des scores Z par sexe
+
+```{r}
+#| label: densite-sexe
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 9
+
+# ============================================================
+# Courbes de densité par sexe de l'enfant
+# Permet de visualiser s'il existe des différences de
+# distribution entre garçons et filles — complément visuel
+# du test de Mann-Whitney réalisé précédemment.
+# ============================================================
+
+couleurs_sexe <- c("Male" = "#2980B9", "Female" = "#E74C3C")
+
+densite_sexe <- function(var, titre, seuil_2 = -2, seuil_3 = -3) {
+  ggplot(df, aes(x = .data[[var]], fill = child_sex, color = child_sex)) +
+    geom_density(alpha = 0.35, linewidth = 0.8) +
+    geom_vline(xintercept = seuil_2, linetype = "dashed",
+               color = "gray30", linewidth = 0.7) +
+    geom_vline(xintercept = seuil_3, linetype = "dashed",
+               color = "black", linewidth = 0.7) +
+    scale_fill_manual(values  = couleurs_sexe,
+                      labels  = c("Male" = "Garçon", "Female" = "Fille")) +
+    scale_color_manual(values = couleurs_sexe,
+                       labels = c("Male" = "Garçon", "Female" = "Fille")) +
+    labs(title = titre, x = var, y = "Densité",
+         fill = "Sexe", color = "Sexe") +
+    theme_bw() +
+    theme(legend.position = "bottom")
+}
+
+p_waz_sex  <- densite_sexe("waz_score",  "WAZ : Garçons vs Filles")
+p_haz_sex  <- densite_sexe("haz_score",  "HAZ : Garçons vs Filles")
+p_whz_sex  <- densite_sexe("whz_score",  "WHZ : Garçons vs Filles")
+
+p_muac_sex <- ggplot(df, aes(x = muac_mm, fill = child_sex, color = child_sex)) +
+  geom_density(alpha = 0.35, linewidth = 0.8) +
+  geom_vline(xintercept = 125, linetype = "dashed", color = "gray30", linewidth = 0.7) +
+  geom_vline(xintercept = 115, linetype = "dashed", color = "black",  linewidth = 0.7) +
+  scale_fill_manual(values  = couleurs_sexe,
+                    labels  = c("Male" = "Garçon", "Female" = "Fille")) +
+  scale_color_manual(values = couleurs_sexe,
+                     labels = c("Male" = "Garçon", "Female" = "Fille")) +
+  labs(title = "MUAC : Garçons vs Filles",
+       x = "MUAC (mm)", y = "Densité",
+       fill = "Sexe", color = "Sexe") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+(p_waz_sex + p_haz_sex) / (p_whz_sex + p_muac_sex) +
+  plot_annotation(
+    title    = "Distribution des indicateurs par sexe de l'enfant",
+    subtitle = "Complément visuel du test de Mann-Whitney — les courbes superposées montrent le degré de chevauchement",
+    theme    = theme(plot.title    = element_text(face = "bold", size = 14),
+                     plot.subtitle = element_text(size = 10))
+  )
+```
+
+------------------------------------------------------------------------
+
+### 4. Densité du WHZ par statut de déplacement
+
+```{r}
+#| label: densite-deplacement
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 5
+
+# ============================================================
+# Courbes de densité du WHZ selon le statut de déplacement
+# (IDP = Déplacé interne, Host = Population hôte,
+#  Refugee = Réfugié)
+# ============================================================
+
+couleurs_depl <- c(
+  "IDP"     = "#E67E22",
+  "Host"    = "#1ABC9C",
+  "Refugee" = "#8E44AD"
+)
+
+p_whz_depl <- ggplot(df, aes(x = whz_score, fill = displacement_status,
+                              color = displacement_status)) +
+  geom_density(alpha = 0.3, linewidth = 0.8) +
+  geom_vline(xintercept = -2, linetype = "dashed", color = "red",     linewidth = 0.8) +
+  geom_vline(xintercept = -3, linetype = "dashed", color = "darkred", linewidth = 0.8) +
+  scale_fill_manual(values  = couleurs_depl) +
+  scale_color_manual(values = couleurs_depl) +
+  labs(title    = "Distribution du WHZ selon le statut de déplacement",
+       subtitle = "IDP = Déplacé interne | Host = Population hôte | Refugee = Réfugié",
+       x = "Score WHZ", y = "Densité",
+       fill = "Statut", color = "Statut") +
+  theme_bw() +
+  theme(legend.position = "right")
+
+p_muac_depl <- ggplot(df, aes(x = muac_mm, fill = displacement_status,
+                               color = displacement_status)) +
+  geom_density(alpha = 0.3, linewidth = 0.8) +
+  geom_vline(xintercept = 125, linetype = "dashed", color = "red",     linewidth = 0.8) +
+  geom_vline(xintercept = 115, linetype = "dashed", color = "darkred", linewidth = 0.8) +
+  scale_fill_manual(values  = couleurs_depl) +
+  scale_color_manual(values = couleurs_depl) +
+  labs(title    = "Distribution du MUAC selon le statut de déplacement",
+       subtitle = "Seuils OMS : MAM < 125 mm | MAS < 115 mm",
+       x = "MUAC (mm)", y = "Densité",
+       fill = "Statut", color = "Statut") +
+  theme_bw() +
+  theme(legend.position = "right")
+
+p_whz_depl + p_muac_depl +
+  plot_annotation(
+    title = "WHZ et MUAC selon le statut de déplacement",
+    theme = theme(plot.title = element_text(face = "bold", size = 13))
+  )
+```
+
+------------------------------------------------------------------------
+
+### 5. Densité avec référence OMS (courbe de population de référence)
+
+```{r}
+#| label: densite-reference-oms
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 5
+
+# ============================================================
+# Comparaison de la distribution observée avec la distribution
+# de référence OMS (N(0,1) : moyenne = 0, écart-type = 1).
+# Un décalage vers la gauche indique une sous-nutrition.
+# ============================================================
+
+# Grille de valeurs pour la courbe de référence OMS
+x_ref <- seq(-5, 5, length.out = 300)
+ref_oms <- data.frame(
+  x       = x_ref,
+  densité = dnorm(x_ref, mean = 0, sd = 1)
+)
+
+# WHZ observé vs référence OMS
+p_whz_oms <- ggplot(df, aes(x = whz_score)) +
+  geom_density(aes(fill = "Observé", color = "Observé"),
+               alpha = 0.4, linewidth = 0.8) +
+  geom_line(data = ref_oms, aes(x = x, y = densité,
+            color = "Référence OMS", linetype = "Référence OMS"),
+            linewidth = 0.9) +
+  geom_vline(xintercept = -2, linetype = "dashed",
+             color = "red", linewidth = 0.7) +
+  scale_fill_manual(name   = "",
+                    values = c("Observé" = "#E74C3C")) +
+  scale_color_manual(name  = "",
+                     values = c("Observé" = "#E74C3C",
+                                "Référence OMS" = "#2C3E50")) +
+  scale_linetype_manual(name   = "",
+                        values = c("Référence OMS" = "solid")) +
+  labs(title    = "WHZ : distribution observée vs référence OMS",
+       subtitle = "Un décalage vers la gauche indique une prévalence élevée de malnutrition aiguë",
+       x = "Score WHZ", y = "Densité") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# HAZ observé vs référence OMS
+p_haz_oms <- ggplot(df, aes(x = haz_score)) +
+  geom_density(aes(fill = "Observé", color = "Observé"),
+               alpha = 0.4, linewidth = 0.8) +
+  geom_line(data = ref_oms, aes(x = x, y = densité,
+            color = "Référence OMS", linetype = "Référence OMS"),
+            linewidth = 0.9) +
+  geom_vline(xintercept = -2, linetype = "dashed",
+             color = "red", linewidth = 0.7) +
+  scale_fill_manual(name   = "",
+                    values = c("Observé" = "#2ECC71")) +
+  scale_color_manual(name  = "",
+                     values = c("Observé" = "#2ECC71",
+                                "Référence OMS" = "#2C3E50")) +
+  scale_linetype_manual(name   = "",
+                        values = c("Référence OMS" = "solid")) +
+  labs(title    = "HAZ : distribution observée vs référence OMS",
+       subtitle = "Un décalage vers la gauche indique un retard de croissance important",
+       x = "Score HAZ", y = "Densité") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+p_whz_oms + p_haz_oms +
+  plot_annotation(
+    title    = "Comparaison avec la population de référence OMS 2006",
+    subtitle = "Courbe noire = distribution d'une population bien nourrie (N(0,1))",
+    theme    = theme(plot.title    = element_text(face = "bold", size = 13),
+                     plot.subtitle = element_text(size = 10))
+  )
+```
+
+### Lecture des courbes de densité
+
+| Forme observée | Interprétation |
+|----|----|
+| Courbe décalée vers la **gauche** | Prévalence élevée de malnutrition (scores négatifs dominants) |
+| Courbe **aplatie et étalée** | Grande variabilité nutritionnelle dans l'échantillon |
+| Courbe **bimodale** (deux pics) | Deux sous-groupes de niveaux nutritionnels distincts |
+| Courbe **proche de la référence OMS** | Population globalement bien nourrie |
+| **Aire sous le seuil -2 SD** | Proportion d'enfants malnutris (GAM, Stunting, Underweight) |
+
+------------------------------------------------------------------------
+
+## Histogrammes avec courbe de Gauss
+
+> Un **histogramme** montre la fréquence des observations dans des intervalles (classes). La **courbe de Gauss** (ou courbe normale) tracée par-dessus est la loi normale théorique **N(μ, σ)** ajustée aux données, c'est-à-dire construite avec la **moyenne** (μ) et l'**écart-type** (σ) observés dans l'échantillon.
+>
+> Si les barres de l'histogramme suivent la courbe → la distribution est **approximativement normale**. Si elles s'en écartent → la distribution est **non normale** (asymétrique, bimodale, etc.).
+
+------------------------------------------------------------------------
+
+### 1. Les 4 indicateurs anthropométriques
+
+```{r}
+#| label: histo-gauss-global
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 9
+
+library(ggplot2)
+library(patchwork)
+
+# ============================================================
+# PRINCIPE DU GRAPHIQUE
+# - geom_histogram avec y = after_stat(density) met l'axe Y
+#   en densité (et non en effectif), ce qui permet de superposer
+#   la courbe de Gauss (qui est aussi exprimée en densité).
+# - stat_function(dnorm, ...) trace la courbe normale théorique
+#   N(mean, sd) calculée à partir des données observées.
+# - Les lignes pointillées représentent les seuils OMS.
+# ============================================================
+
+# Paramètres de chaque indicateur
+indicateurs_gauss <- list(
+  list(var     = "waz_score",
+       titre   = "WAZ — Poids-pour-Âge",
+       couleur = "#3498DB",
+       seuil2  = -2, seuil3 = -3,
+       xlab    = "Score WAZ",
+       unite   = ""),
+  list(var     = "haz_score",
+       titre   = "HAZ — Taille-pour-Âge",
+       couleur = "#2ECC71",
+       seuil2  = -2, seuil3 = -3,
+       xlab    = "Score HAZ",
+       unite   = ""),
+  list(var     = "whz_score",
+       titre   = "WHZ — Poids-pour-Taille (GAM)",
+       couleur = "#E74C3C",
+       seuil2  = -2, seuil3 = -3,
+       xlab    = "Score WHZ",
+       unite   = ""),
+  list(var     = "muac_mm",
+       titre   = "MUAC — Périmètre brachial",
+       couleur = "#9B59B6",
+       seuil2  = 125, seuil3 = 115,
+       xlab    = "MUAC (mm)",
+       unite   = " mm")
+)
+
+# Créer un histogramme + courbe de Gauss pour chaque indicateur
+plots_gauss <- lapply(indicateurs_gauss, function(ind) {
+  m <- mean(df[[ind$var]], na.rm = TRUE)
+  s <- sd(df[[ind$var]],   na.rm = TRUE)
+
+  ggplot(df, aes(x = .data[[ind$var]])) +
+
+    # Histogramme en densité (pas en effectif)
+    geom_histogram(aes(y = after_stat(density)),
+                   bins    = 25,
+                   fill    = ind$couleur,
+                   color   = "white",
+                   alpha   = 0.7) +
+
+    # Courbe de Gauss N(μ, σ) ajustée aux données
+    stat_function(
+      fun  = dnorm,
+      args = list(mean = m, sd = s),
+      color     = "black",
+      linewidth = 1.1
+    ) +
+
+    # Seuil de malnutrition modérée (MAM / retard modéré)
+    geom_vline(xintercept = ind$seuil2,
+               linetype = "dashed", color = "red", linewidth = 0.8) +
+
+    # Seuil de malnutrition sévère (MAS / retard sévère)
+    geom_vline(xintercept = ind$seuil3,
+               linetype = "dashed", color = "darkred", linewidth = 0.8) +
+
+    labs(
+      title    = ind$titre,
+      # Afficher μ et σ dans le sous-titre
+      subtitle = paste0("μ = ", round(m, 2), ind$unite,
+                        "  |  σ = ", round(s, 2), ind$unite),
+      x = ind$xlab,
+      y = "Densité"
+    ) +
+    theme_bw()
+})
+
+# Assembler les 4 graphiques en grille 2×2
+wrap_plots(plots_gauss, ncol = 2) +
+  plot_annotation(
+    title    = "Histogrammes avec courbe de Gauss — Indicateurs anthropométriques",
+    subtitle = paste0("Courbe noire = loi normale N(μ, σ) ajustée aux données\n",
+                      "Ligne rouge pointillée = seuil modéré | Ligne bordeaux = seuil sévère (OMS)"),
+    theme    = theme(
+      plot.title    = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 10)
+    )
+  )
+```
+
+### Lecture du graphique
+
+| Ce qu'on observe | Interprétation |
+|----|----|
+| Barres suivent la courbe noire | Distribution **approximativement normale** |
+| Barres décalées vers la **gauche** | Distribution asymétrique : **malnutrition fréquente** |
+| Barres décalées vers la **droite** | Distribution asymétrique : **valeurs élevées dominantes** |
+| Deux bosses visibles | Distribution **bimodale** : deux sous-groupes distincts |
+| Beaucoup de barres sous le seuil rouge | **Prévalence élevée** de malnutrition dans l'échantillon |
+
+------------------------------------------------------------------------
+
+### 2. Histogrammes par région
+
+```{r}
+#| label: histo-gauss-region
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 9
+
+# ============================================================
+# Histogrammes du WHZ et du MUAC séparés par région
+# (facet_wrap crée un panneau par région)
+# La courbe de Gauss est calculée région par région avec
+# les paramètres μ et σ propres à chaque groupe.
+# ============================================================
+
+# Calculer μ et σ par région pour chaque indicateur
+params_region <- df |>
+  group_by(region) |>
+  summarise(
+    m_whz  = mean(whz_score, na.rm = TRUE),
+    s_whz  = sd(whz_score,   na.rm = TRUE),
+    m_muac = mean(muac_mm,   na.rm = TRUE),
+    s_muac = sd(muac_mm,     na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Construire les courbes de Gauss par région (WHZ)
+courbes_gauss_whz <- do.call(rbind, lapply(1:nrow(params_region), function(i) {
+  x   <- seq(min(df$whz_score, na.rm = TRUE) - 0.5,
+              max(df$whz_score, na.rm = TRUE) + 0.5,
+              length.out = 200)
+  data.frame(
+    whz_score = x,
+    dens      = dnorm(x, params_region$m_whz[i], params_region$s_whz[i]),
+    region    = params_region$region[i]
+  )
+}))
+
+# WHZ par région avec courbe de Gauss propre à chaque région
+p_whz_reg <- ggplot(df, aes(x = whz_score)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 20, fill = "#E74C3C", color = "white", alpha = 0.65) +
+  geom_line(data = courbes_gauss_whz,
+            aes(x = whz_score, y = dens),
+            color = "black", linewidth = 1) +
+  geom_vline(xintercept = -2, linetype = "dashed",
+             color = "red", linewidth = 0.7) +
+  facet_wrap(~region, ncol = 3) +
+  labs(title    = "WHZ par région — histogramme + courbe de Gauss",
+       subtitle = "La courbe est ajustée aux μ et σ de chaque région",
+       x = "Score WHZ", y = "Densité") +
+  theme_bw()
+
+# Construire les courbes de Gauss par région (MUAC)
+courbes_gauss_muac <- do.call(rbind, lapply(1:nrow(params_region), function(i) {
+  x <- seq(min(df$muac_mm, na.rm = TRUE) - 5,
+           max(df$muac_mm, na.rm = TRUE) + 5,
+           length.out = 200)
+  data.frame(
+    muac_mm = x,
+    dens    = dnorm(x, params_region$m_muac[i], params_region$s_muac[i]),
+    region  = params_region$region[i]
+  )
+}))
+
+# MUAC par région avec courbe de Gauss
+p_muac_reg <- ggplot(df, aes(x = muac_mm)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 20, fill = "#9B59B6", color = "white", alpha = 0.65) +
+  geom_line(data = courbes_gauss_muac,
+            aes(x = muac_mm, y = dens),
+            color = "black", linewidth = 1) +
+  geom_vline(xintercept = 125, linetype = "dashed",
+             color = "red", linewidth = 0.7) +
+  geom_vline(xintercept = 115, linetype = "dashed",
+             color = "darkred", linewidth = 0.7) +
+  facet_wrap(~region, ncol = 3) +
+  labs(title    = "MUAC par région — histogramme + courbe de Gauss",
+       subtitle = "La courbe est ajustée aux μ et σ de chaque région",
+       x = "MUAC (mm)", y = "Densité") +
+  theme_bw()
+
+p_whz_reg / p_muac_reg
+```
+
+------------------------------------------------------------------------
+
+### 3. Histogrammes par sexe
+
+```{r}
+#| label: histo-gauss-sexe
+#| message: false
+#| warning: false
+#| fig-width: 12
+#| fig-height: 5
+
+# ============================================================
+# WHZ et MUAC séparés par sexe (facet_wrap ~ child_sex)
+# La courbe de Gauss est recalculée pour chaque sexe.
+# ============================================================
+
+# Paramètres μ et σ par sexe
+params_sexe <- df |>
+  group_by(child_sex) |>
+  summarise(
+    m_whz  = mean(whz_score, na.rm = TRUE),
+    s_whz  = sd(whz_score,   na.rm = TRUE),
+    m_muac = mean(muac_mm,   na.rm = TRUE),
+    s_muac = sd(muac_mm,     na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Courbes de Gauss WHZ par sexe
+courbes_sexe_whz <- do.call(rbind, lapply(1:nrow(params_sexe), function(i) {
+  x <- seq(min(df$whz_score, na.rm = TRUE) - 0.5,
+            max(df$whz_score, na.rm = TRUE) + 0.5,
+            length.out = 200)
+  data.frame(whz_score = x,
+             dens      = dnorm(x, params_sexe$m_whz[i], params_sexe$s_whz[i]),
+             child_sex = params_sexe$child_sex[i])
+}))
+
+p_whz_sex <- ggplot(df, aes(x = whz_score)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 20, fill = "#E74C3C", color = "white", alpha = 0.65) +
+  geom_line(data = courbes_sexe_whz,
+            aes(x = whz_score, y = dens),
+            color = "black", linewidth = 1) +
+  geom_vline(xintercept = -2, linetype = "dashed",
+             color = "red", linewidth = 0.7) +
+  facet_wrap(~child_sex, ncol = 2,
+             labeller = labeller(child_sex = c("Male" = "Garçon", "Female" = "Fille"))) +
+  labs(title    = "WHZ par sexe",
+       subtitle = "Courbe de Gauss ajustée par groupe",
+       x = "Score WHZ", y = "Densité") +
+  theme_bw()
+
+# Courbes de Gauss MUAC par sexe
+courbes_sexe_muac <- do.call(rbind, lapply(1:nrow(params_sexe), function(i) {
+  x <- seq(min(df$muac_mm, na.rm = TRUE) - 5,
+            max(df$muac_mm, na.rm = TRUE) + 5,
+            length.out = 200)
+  data.frame(muac_mm   = x,
+             dens      = dnorm(x, params_sexe$m_muac[i], params_sexe$s_muac[i]),
+             child_sex = params_sexe$child_sex[i])
+}))
+
+p_muac_sex <- ggplot(df, aes(x = muac_mm)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 20, fill = "#9B59B6", color = "white", alpha = 0.65) +
+  geom_line(data = courbes_sexe_muac,
+            aes(x = muac_mm, y = dens),
+            color = "black", linewidth = 1) +
+  geom_vline(xintercept = 125, linetype = "dashed",
+             color = "red", linewidth = 0.7) +
+  facet_wrap(~child_sex, ncol = 2,
+             labeller = labeller(child_sex = c("Male" = "Garçon", "Female" = "Fille"))) +
+  labs(title    = "MUAC par sexe",
+       subtitle = "Courbe de Gauss ajustée par groupe",
+       x = "MUAC (mm)", y = "Densité") +
+  theme_bw()
+
+p_whz_sex + p_muac_sex +
+  plot_annotation(
+    title = "Histogrammes + courbe de Gauss — WHZ et MUAC par sexe",
+    theme = theme(plot.title = element_text(face = "bold", size = 13))
+  )
+```
+
+# Cartographie interactive des indicateurs de malnutrition
+
+Cette section présente deux cartes interactives affichant les indicateurs de malnutrition aux trois niveaux géographiques : **région**, **département** et **district**. Le même format s'applique au clic (Leaflet) et au survol (ggplot2 + plotly).
+
+## Packages nécessaires
+
+```{r}
+#| label: packages-carto
+#| message: false
+#| warning: false
+
+library(leaflet)      # Cartes interactives
+library(ggplot2)      # Visualisation statique
+library(plotly)       # Interactivité ggplot2
+library(dplyr)        # Manipulation des données
+library(htmltools)    # HTML pour les popups
+library(scales)       # Mise à l'échelle
+library(sf)           # Objets spatiaux
+```
+
+## Agrégation des indicateurs par niveau géographique
+
+```{r}
+#| label: agregation-niveaux
+
+# Fonction générique d'agrégation applicable à n'importe quel niveau
+agregat <- function(data, ...) {
+  data |>
+    group_by(...) |>
+    summarise(
+      n_enfants              = n(),
+      GAM_pct                = mean(GAM,         na.rm = TRUE) * 100,
+      SAM_pct                = mean(SAM,         na.rm = TRUE) * 100,
+      MAM_pct                = mean(MAM,         na.rm = TRUE) * 100,
+      Stunting_pct           = mean(Stunting,    na.rm = TRUE) * 100,
+      Underweight_pct        = mean(Underweight, na.rm = TRUE) * 100,
+      haz_score              = mean(haz_score,   na.rm = TRUE),
+      waz_score              = mean(waz_score,   na.rm = TRUE),
+      whz_score              = mean(whz_score,   na.rm = TRUE),
+      muac_mm                = mean(muac_mm,     na.rm = TRUE),
+      food_consumption_score = mean(food_consumption_score, na.rm = TRUE),
+      household_hunger_scale = mean(household_hunger_scale, na.rm = TRUE),
+      coping_strategy_index  = mean(coping_strategy_index,  na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+# Agrégation aux 3 niveaux
+reg_ind  <- agregat(df, region)
+dept_ind <- agregat(df, region, department)
+dist_ind <- agregat(df, region, department, district)
+
+# Fusion avec les centroïdes spatiaux
+reg_sf  <- regions_sf   |> left_join(reg_ind,  by = "region")
+dept_sf <- depart_sf    |> left_join(dept_ind, by = c("region", "department"))
+dist_sf <- districts_sf |> left_join(dist_ind, by = c("region", "department", "district"))
+
+# Extraction des coordonnées lng / lat
+coords <- function(sf_obj) {
+  co <- st_coordinates(sf_obj)
+  sf_obj |> st_drop_geometry() |> mutate(lng = co[, 1], lat = co[, 2])
+}
+
+reg_df  <- coords(reg_sf)
+dept_df <- coords(dept_sf)
+dist_df <- coords(dist_sf)
+```
+
+## Fonction popup / tooltip unifiée
+
+```{r}
+#| label: fonction-popup
+
+# Une seule fonction génère le même contenu pour leaflet ET plotly
+make_info <- function(d, niveau, format = "html") {
+
+  # En-tête adapté au niveau géographique
+  entete <- if (niveau == "region") {
+    paste0("🗺️ <b>Région : ", d$region, "</b><br>",
+           "👶 Enquêtés : <b>", d$n_enfants, "</b>")
+  } else if (niveau == "department") {
+    paste0("🏛️ <b>Département : ", d$department, "</b><br>",
+           "🗺️ Région : ", d$region, "<br>",
+           "👶 Enquêtés : <b>", d$n_enfants, "</b>")
+  } else {
+    paste0("📌 <b>District : ", d$district, "</b><br>",
+           "🏛️ Département : ", d$department, "<br>",
+           "🗺️ Région : ", d$region, "<br>",
+           "👶 Enquêtés : <b>", d$n_enfants, "</b>")
+  }
+
+  # Corps des indicateurs (identique pour tous les niveaux)
+  corps <- paste0(
+    "────────────────────────<br>",
+    "🔴 <b>Malnutrition aiguë</b><br>",
+    "&nbsp;&nbsp;• GAM : <b>", round(d$GAM_pct, 1), " %</b><br>",
+    "&nbsp;&nbsp;• SAM : ",    round(d$SAM_pct, 1), " %<br>",
+    "&nbsp;&nbsp;• MAM : ",    round(d$MAM_pct, 1), " %<br>",
+    "🟣 <b>Malnutrition chronique &amp; globale</b><br>",
+    "&nbsp;&nbsp;• Stunting : <b>",    round(d$Stunting_pct, 1),    " %</b><br>",
+    "&nbsp;&nbsp;• Underweight : <b>", round(d$Underweight_pct, 1), " %</b><br>",
+    "🔵 <b>Scores z moyens</b><br>",
+    "&nbsp;&nbsp;• HAZ : ",  round(d$haz_score, 2), "<br>",
+    "&nbsp;&nbsp;• WAZ : ",  round(d$waz_score, 2), "<br>",
+    "&nbsp;&nbsp;• WHZ : ",  round(d$whz_score, 2), "<br>",
+    "&nbsp;&nbsp;• MUAC : <b>", round(d$muac_mm, 1), " mm</b><br>",
+    "🟠 <b>Indicateurs ménage</b><br>",
+    "&nbsp;&nbsp;• FCS : ", round(d$food_consumption_score, 1), "<br>",
+    "&nbsp;&nbsp;• HHS : ", round(d$household_hunger_scale, 2), "<br>",
+    "&nbsp;&nbsp;• CSI : ", round(d$coping_strategy_index, 1)
+  )
+
+  contenu <- paste0(
+    "<div style='font-family:Arial,sans-serif; font-size:13px;
+                  min-width:260px; line-height:1.8;'>",
+    entete, "<br>", corps, "</div>"
+  )
+
+  if (format == "html") HTML(contenu) else contenu
+}
+
+# Popups leaflet (format HTML cliquable)
+popups_reg  <- lapply(split(reg_df,  seq_len(nrow(reg_df))),
+                      make_info, niveau = "region",     format = "html")
+popups_dept <- lapply(split(dept_df, seq_len(nrow(dept_df))),
+                      make_info, niveau = "department", format = "html")
+popups_dist <- lapply(split(dist_df, seq_len(nrow(dist_df))),
+                      make_info, niveau = "district",   format = "html")
+
+# Tooltips plotly (format texte au survol)
+reg_df  <- reg_df  |> rowwise() |>
+  mutate(tooltip = make_info(pick(everything()), "region",     "text"),
+         niveau = "🗺️ Région",      nom = region)     |> ungroup()
+dept_df <- dept_df |> rowwise() |>
+  mutate(tooltip = make_info(pick(everything()), "department", "text"),
+         niveau = "🏛️ Département", nom = department) |> ungroup()
+dist_df <- dist_df |> rowwise() |>
+  mutate(tooltip = make_info(pick(everything()), "district",   "text"),
+         niveau = "📌 District",    nom = district)   |> ungroup()
+```
+
+## Carte 1 — Leaflet (clic → popup complète)
+
+```{r}
+#| label: carte-leaflet-niveaux
+
+# Palette couleur OMS commune aux 3 niveaux
+pal <- colorBin(
+  palette  = c("#2ECC71", "#F1C40F", "#E67E22", "#E74C3C"),
+  domain   = c(reg_df$GAM_pct, dept_df$GAM_pct, dist_df$GAM_pct),
+  bins     = c(0, 5, 10, 15, 100),
+  na.color = "grey"
+)
+
+carte_niveaux <- leaflet() |>
+  addProviderTiles(providers$CartoDB.Positron,  group = "CartoDB (clair)") |>
+  addProviderTiles(providers$OpenStreetMap,     group = "OpenStreetMap")   |>
+  addProviderTiles(providers$Esri.WorldImagery, group = "Satellite")       |>
+
+  # Couche Régions — grands cercles
+  addCircleMarkers(
+    data = reg_df, lng = ~lng, lat = ~lat,
+    radius = 18, color = "white", weight = 2,
+    fillColor = ~pal(GAM_pct), fillOpacity = 0.9,
+    popup = popups_reg,
+    label = ~paste0("🗺️ ", region, " — GAM : ", round(GAM_pct, 1), " %"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "bold", "padding" = "4px 8px"),
+      textsize = "13px", direction = "auto"),
+    group = "🗺️ Régions"
+  ) |>
+
+  # Couche Départements — cercles moyens
+  addCircleMarkers(
+    data = dept_df, lng = ~lng, lat = ~lat,
+    radius = 12, color = "white", weight = 1.5,
+    fillColor = ~pal(GAM_pct), fillOpacity = 0.88,
+    popup = popups_dept,
+    label = ~paste0("🏛️ ", department, " — GAM : ", round(GAM_pct, 1), " %"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "bold", "padding" = "4px 8px"),
+      textsize = "13px", direction = "auto"),
+    group = "🏛️ Départements"
+  ) |>
+
+  # Couche Districts — petits cercles
+  addCircleMarkers(
+    data = dist_df, lng = ~lng, lat = ~lat,
+    radius = 8, color = "white", weight = 1.5,
+    fillColor = ~pal(GAM_pct), fillOpacity = 0.85,
+    popup = popups_dist,
+    label = ~paste0("📌 ", district, " — GAM : ", round(GAM_pct, 1), " %"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "bold", "padding" = "4px 8px"),
+      textsize = "13px", direction = "auto"),
+    group = "📌 Districts"
+  ) |>
+
+  addLegend(
+    position  = "bottomright", pal = pal,
+    values    = c(reg_df$GAM_pct, dept_df$GAM_pct, dist_df$GAM_pct),
+    title     = "GAM (%)", labFormat = labelFormat(suffix = " %"), opacity = 0.9
+  ) |>
+
+  addLayersControl(
+    baseGroups    = c("CartoDB (clair)", "OpenStreetMap", "Satellite"),
+    overlayGroups = c("🗺️ Régions", "🏛️ Départements", "📌 Districts"),
+    options       = layersControlOptions(collapsed = FALSE)
+  )
+
+carte_niveaux
+```
+
+## Carte 2 — ggplot2 + plotly (survol → tooltip complet)
+
+```{r}
+#| label: carte-plotly-niveaux
+
+# Combiner les 3 niveaux dans un seul dataframe
+all_df <- bind_rows(reg_df, dept_df, dist_df) |>
+  mutate(
+    niveau  = factor(niveau,
+                     levels = c("🗺️ Région", "🏛️ Département", "📌 District")),
+    gam_cat = cut(GAM_pct,
+                  breaks = c(-Inf, 5, 10, 15, Inf),
+                  labels = c("< 5 % — Acceptable", "5–10 % — Pauvre",
+                             "10–15 % — Sérieux",  "≥ 15 % — Critique"),
+                  right  = FALSE),
+    taille  = case_when(
+      niveau == "🗺️ Région"      ~ 6,
+      niveau == "🏛️ Département" ~ 4,
+      TRUE                        ~ 2.5
+    )
+  )
+
+p_niveaux <- ggplot(all_df,
+                    aes(x = lng, y = lat,
+                        color = gam_cat,
+                        shape = niveau,
+                        size  = taille,
+                        text  = tooltip)) +
+  geom_point(alpha = 0.88) +
+  scale_color_manual(
+    name   = "Niveau GAM",
+    values = c("< 5 % — Acceptable" = "#2ECC71",
+               "5–10 % — Pauvre"    = "#F1C40F",
+               "10–15 % — Sérieux"  = "#E67E22",
+               "≥ 15 % — Critique"  = "#E74C3C"),
+    drop = FALSE
+  ) +
+  scale_shape_manual(
+    name   = "Niveau géographique",
+    values = c("🗺️ Région" = 17, "🏛️ Département" = 16, "📌 District" = 15)
+  ) +
+  scale_size_identity() +
+  labs(
+    title    = "Indicateurs de malnutrition par niveau géographique",
+    subtitle = "Survoler un point pour afficher tous les indicateurs",
+    x = "Longitude", y = "Latitude"
+  ) +
+  theme_bw(base_size = 12) +
+  theme(legend.position = "bottom")
+
+ggplotly(p_niveaux, tooltip = "text") |>
+  layout(
+    hoverlabel = list(
+      bgcolor     = "white",
+      font        = list(size = 12),
+      bordercolor = "#BDC3C7",
+      align       = "left"
+    ),
+    legend = list(orientation = "h", y = -0.25)
+  )
+```
+
+## Réalisation des cartes interactives et statique
+
+### Réalisation de la carte statique avec ggplot2
+
+1.  Vérification de la struture du jeu de donnée
+
+```{r}
+glimpse(df)
+```
+
+2.  Installer et Charger les packages
+
+```{r}
+install.packages(c("leaflet", "sf", "plotly", "viridis", "maps"))
+```
+
+```{r}
+# premiére réalisation
+ggplot(df, aes(x = gps_longitude, y = gps_latitude)) +
+  geom_point(color = "red", size = 2) +
+  theme_minimal() +
+  labs(
+    title = "Localisation des sites d'enquête",
+    x = "Longitude",
+    y = "Latitude"
+  )
+```
+
+```{r}
+p <- ggplot(df, aes(gps_longitude, gps_latitude,
+                    text = paste(
+                      "Région:", region,
+                      "<br>Département:", department,
+                      "<br>District:", district,
+                      "<br>Village:", village,
+                      "<br>GAM:", GAM,
+                      "<br>Stunting:", Stunting
+                    ))) +
+  geom_point(aes(color = GAM), size = 3) +
+  theme_minimal()
+```
+
+```{r}
+ggplotly(p, tooltip = "text")
+```
+
+```{r}
+# sauvegarder le fichier df
+write.csv(df, "data/donnees_malnutrition.csv", row.names = FALSE)
+```
+
+```{r}
+# charger le jeu de données
+```
+
+```{r}
+
+```

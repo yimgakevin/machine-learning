@@ -1,0 +1,4044 @@
+---
+title: "Analyse des données du paludisme"
+subtitle: "Région septentrionale du Cameroun — Devoirs 1 à 4 (question par question)"
+author: "A DSAMID — Formation R"
+date: today
+lang: fr
+format:
+  html:
+    html:
+  #apparence ─────────────────────────────────────────
+  
+    theme: cosmo # Théme bootstrap
+    css: styles/custom.css # css personnalisé aprés le théme
+    fontsize: 1.1em # taille de police de base
+    linestretch: 1.7 # interligne
+    mainfont: "Lato" # Police principale (Google Fonts supporté)"
+    monofont: "Fira Code" # Police de code
+    
+    # table des matiéres ─────────────────────────────────────────
+    toc: true
+    toc-depth: 5 # profondeur des titres de niveaux a inclure(1, 2, 3, 4,5)
+    toc-location: left # left|right|body
+    toc-title: "somaire"
+    
+    # numérotation ─────────────────────────────────────────
+    number-sections: true # H1 devient 1, H2 devient 1.1 ainsi de suite
+    number-depth: 5 # Numéroter jusqu'au niveau 5
+    
+    # ── Code ─────────────────────────────────────────
+    
+    highlight-style: github  # Style de colorisation syntaxique
+    code-fold: true          # Bouton pour plier/déplier le code
+    code-tools: true         # Bouton copier + voir source brut
+    code-link: true          # Liens vers la doc des fonctions R
+    code-overflow: wrap      # wrap | scroll (débordement du code)
+    code-line-numbers: true  # Numéros de lignes dans les blocs
+
+    # ── Figures ──────────────────────────────────────
+    
+    fig-width: 8             # Largeur en pouces (défaut Quarto)
+    fig-height: 5            # Hauteur en pouces
+    fig-dpi: 300             # Résolution pour export image
+    fig-align: center        # left | center | right
+    fig-responsive: true     # Images responsives (adaptatif mobile)
+    
+    # ── Comportement ─────────────────────────────────
+    df-print: paged          # Affichage dataframes : paged | kable | tibble
+    smooth-scroll: true      # Défilement fluide sur les ancres
+    anchor-sections: true    # Icône lien sur chaque section
+    self-contained: true     # Un seul fichier HTML (images embarquées)
+    embed-resources: true    # Alternative moderne à self-contained
+    page-layout: full        # article | full | custom
+execute:
+  warning: false
+  message: false
+---
+
+# Initialisation
+
+```{r}
+#| label: load-packages
+library(tidyverse)
+library(corrplot)
+library(patchwork)
+library(car)
+library(broom)
+library(naniar)
+library(scales)
+library(purrr)
+```
+
+```{r}
+#| label: load-data
+paludisme <- read_csv(
+  "data/base_paludisme_complete_region_septentrionale_cameroun.csv",
+  show_col_types = FALSE
+)
+```
+
+------------------------------------------------------------------------
+
+# Devoir 1 — Débutant
+
+## Importation et exploration
+
+### Q1 — Importer le fichier CSV et afficher les 6 premières lignes
+
+```{r}
+#| label: d1-q1
+head(paludisme)
+```
+
+> La base est importée avec succès via `read_csv()`. Elle contient **`{r} nrow(paludisme)`** lignes et **`{r} ncol(paludisme)`** colonnes. `read_csv` détecte automatiquement 14 variables numériques (`dbl`) et 20 variables texte (`chr`).
+
+------------------------------------------------------------------------
+
+### Q2 — Afficher la structure complète du data frame
+
+```{r}
+#| label: d1-q2
+glimpse(paludisme)
+```
+
+> `glimpse()` affiche pour chaque variable : son nom, son type et un aperçu des premières valeurs. On distingue 14 variables numériques et 20 variables texte qui devront être converties en facteurs pour les analyses catégorielles.
+
+------------------------------------------------------------------------
+
+### Q3 — Dimensions de la base
+
+```{r}
+#| label: d1-q3
+cat("Nombre de lignes (individus) :", nrow(paludisme), "\n")
+cat("Nombre de colonnes (variables):", ncol(paludisme), "\n")
+cat("Dimensions complètes          :", dim(paludisme), "\n")
+```
+
+> La base contient **`{r} nrow(paludisme)`** individus et **`{r} ncol(paludisme)`** variables.
+
+------------------------------------------------------------------------
+
+### Q4 — Résumé statistique des variables numériques
+
+```{r}
+#| label: d1-q4
+paludisme |>
+  select(where(is.numeric)) |>
+  summary()
+```
+
+> Points d'attention : `taille_menage` = 4 pour tous les individus (constante). La médiane de `parasitemie_par_ul` = 0 (majorité TDR négatifs). `hemoglobine_g_dl` min = 3.9 g/dl (valeur critique à vérifier en Devoir 4).
+
+------------------------------------------------------------------------
+
+### Q5 — Lister les variables qualitatives
+
+```{r}
+#| label: d1-q5
+vars_quali <- paludisme |> select(where(is.character)) |> names()
+cat("Nombre de variables qualitatives :", length(vars_quali), "\n\n")
+
+paludisme |>
+  select(where(is.character)) |>
+  summarise(across(everything(), n_distinct)) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "nb_modalites") |>
+  arrange(nb_modalites)
+```
+
+> La base contient **`{r} length(vars_quali)`** variables qualitatives. Parmi elles, 9 sont binaires (2 modalités), 7 ont 3–4 modalités. `utilisation_MII` est **ordinale** (Jamais \< Parfois \< Toujours) et devra être encodée comme facteur ordonné (Q17).
+
+------------------------------------------------------------------------
+
+## Manipulation avec dplyr
+
+### Q6 — Sélectionner les colonnes individu_id, age, sexe, region, test_TDR, hemoglobine_g_dl
+
+```{r}
+#| label: d1-q6
+df_q6 <- paludisme |>
+  select(individu_id, age, sexe, region, test_TDR, hemoglobine_g_dl)
+df_q6
+```
+
+------------------------------------------------------------------------
+
+### Q7 — Filtrer les individus de sexe féminin et âgés de plus de 15 ans
+
+```{r}
+#| label: d1-q7
+df_q7 <- paludisme |>
+  filter(sexe == "F", age > 15)
+cat("Nombre d'individus (femmes > 15 ans) :", nrow(df_q7), "\n")
+df_q7 |> select(individu_id, age, sexe, region)
+```
+
+> **`{r} nrow(df_q7)`** femmes de plus de 15 ans sur 3 000 individus.
+
+------------------------------------------------------------------------
+
+### Q8 — Créer la variable categorie_age
+
+```{r}
+#| label: d1-q8
+paludisme <- paludisme |>
+  mutate(categorie_age = case_when(
+    age <  5              ~ "enfant",
+    age >= 5  & age <= 14 ~ "jeune",
+    age >= 15 & age <= 49 ~ "adulte",
+    age >= 50             ~ "senior"
+  ))
+
+paludisme |> count(categorie_age)
+```
+
+------------------------------------------------------------------------
+
+### Q9 — Renommer test_TDR en resultat_tdr
+
+```{r}
+#| label: d1-q9
+paludisme <- paludisme |>
+  rename(resultat_tdr = test_TDR)
+
+cat("Vérification — la colonne s'appelle désormais :",
+    "resultat_tdr" %in% names(paludisme), "\n")
+cat("L'ancienne colonne test_TDR existe encore :",
+    "test_TDR" %in% names(paludisme), "\n")
+```
+
+------------------------------------------------------------------------
+
+### Q10 — Trier par âge décroissant, puis par région alphabétique
+
+```{r}
+#| label: d1-q10
+df_q10 <- paludisme |>
+  arrange(desc(age), region)
+df_q10 |> select(individu_id, age, region)
+```
+
+------------------------------------------------------------------------
+
+## Résumés et groupements
+
+### Q11 — Nombre total d'individus par région
+
+```{r}
+#| label: d1-q11
+paludisme |> count(region, name = "nb_individus")
+```
+
+------------------------------------------------------------------------
+
+### Q12 — Nombre d'hommes et de femmes dans chaque région
+
+```{r}
+#| label: d1-q12
+paludisme |> count(region, sexe, name = "nb_individus")
+```
+
+------------------------------------------------------------------------
+
+### Q13 — Âge moyen et écart-type par sexe
+
+```{r}
+#| label: d1-q13
+paludisme |>
+  group_by(sexe) |>
+  summarise(
+    age_moyen  = round(mean(age, na.rm = TRUE), 1),
+    ecart_type = round(sd(age,   na.rm = TRUE), 1),
+    n          = n()
+  )
+```
+
+------------------------------------------------------------------------
+
+### Q14 — Revenu mensuel moyen par milieu (rural/urbain)
+
+```{r}
+#| label: d1-q14
+paludisme |>
+  group_by(milieu) |>
+  summarise(
+    revenu_moyen = round(mean(revenu_mensuel_fcfa, na.rm = TRUE)),
+    n            = n()
+  )
+```
+
+------------------------------------------------------------------------
+
+### Q15 — Min, max et moyenne de la pluviométrie par région
+
+```{r}
+#| label: d1-q15
+paludisme |>
+  group_by(region) |>
+  summarise(
+    pluie_min = round(min(pluviometrie_annuelle_mm)),
+    pluie_moy = round(mean(pluviometrie_annuelle_mm)),
+    pluie_max = round(max(pluviometrie_annuelle_mm))
+  )
+```
+
+------------------------------------------------------------------------
+
+## Création de variables et recodage
+
+### Q16 — Variable binaire pauvre (revenu \< 50 000 FCFA)
+
+```{r}
+#| label: d1-q16
+paludisme <- paludisme |>
+  mutate(pauvre = if_else(revenu_mensuel_fcfa < 50000, "Oui", "Non"))
+paludisme |> count(pauvre) |> mutate(pct = round(n / sum(n) * 100, 1))
+```
+
+------------------------------------------------------------------------
+
+### Q17 — Transformer utilisation_MII en facteur ordonné
+
+```{r}
+#| label: d1-q17
+paludisme <- paludisme |>
+  mutate(utilisation_MII = factor(utilisation_MII,
+                                  levels  = c("Jamais", "Parfois", "Toujours"),
+                                  ordered = TRUE))
+cat("Classe :", class(paludisme$utilisation_MII), "\n")
+cat("Niveaux :", levels(paludisme$utilisation_MII), "\n")
+paludisme |> count(utilisation_MII)
+```
+
+------------------------------------------------------------------------
+
+### Q18 — Variable anemie (hémoglobine \< 11 g/dl)
+
+```{r}
+#| label: d1-q18
+paludisme <- paludisme |>
+  mutate(anemie = if_else(hemoglobine_g_dl < 11, "Oui", "Non"))
+paludisme |> count(anemie) |> mutate(pct = round(n / sum(n) * 100, 1))
+```
+
+------------------------------------------------------------------------
+
+### Q19 — Variable charge_parasitaire
+
+```{r}
+#| label: d1-q19
+paludisme <- paludisme |>
+  mutate(charge_parasitaire = case_when(
+    parasitemie_par_ul == 0    ~ "Négatif",
+    parasitemie_par_ul <= 5000 ~ "Faible",
+    parasitemie_par_ul >  5000 ~ "Élevée"
+  ))
+paludisme |> count(charge_parasitaire)
+```
+
+------------------------------------------------------------------------
+
+### Q20 — Extraire le premier mot de profession → prof_simple
+
+```{r}
+#| label: d1-q20
+paludisme <- paludisme |>
+  mutate(prof_simple = word(profession, 1))
+paludisme |> count(prof_simple, sort = TRUE)
+```
+
+------------------------------------------------------------------------
+
+## Graphiques simples avec ggplot2
+
+### Q21 — Histogramme de l'âge (binwidth = 5 ans)
+
+```{r}
+#| label: fig-d1-q21
+#| fig-cap: "Q21 — Distribution de l'âge (binwidth = 5 ans)"
+ggplot(paludisme, aes(x = age)) +
+  geom_histogram(binwidth = 10, color="blue", fill="red") +
+  labs(title = "Distribution de l'âge", x = "Âge (années)", y = "Effectif")
+```
+
+------------------------------------------------------------------------
+
+### Q22 — Diagramme en barres de la variable region
+
+```{r}
+#| label: fig-d1-q22
+#| fig-cap: "Q22 — Effectifs par région"
+ggplot(paludisme, aes(y = region)) +
+  geom_bar(fill="darkred") +
+  labs(title = "Effectifs par région", y = "Région", x = "Nombre d'individus")
+```
+
+------------------------------------------------------------------------
+
+### Q23 — Boxplot de l'hémoglobine en fonction du sexe
+
+```{r}
+#| label: fig-d1-q23
+#| fig-cap: "Q23 — Hémoglobine selon le sexe"
+ggplot(paludisme, aes(x = sexe, y = hemoglobine_g_dl)) +
+  geom_boxplot(fill="blue") +
+  labs(title = "Hémoglobine selon le sexe", x = "Sexe", y = "Hémoglobine (g/dl)")
+```
+
+------------------------------------------------------------------------
+
+### Q24 — Nuage de points âge \~ hémoglobine coloré par sexe
+
+```{r}
+#| label: fig-d1-q24
+#| fig-cap: "Q24 — Nuage de points âge vs hémoglobine (coloré par sexe)"
+ggplot(paludisme, aes(x = age, y = hemoglobine_g_dl, color = sexe)) +
+  geom_point(alpha = 0.4) +
+  labs(x = "Âge (années)", y = "Hémoglobine (g/dl)", color = "Sexe")+
+  theme_classic()
+```
+
+------------------------------------------------------------------------
+
+### Q25 — Ajouter un titre et des étiquettes au graphique Q24
+
+```{r}
+#| label: fig-d1-q25
+#| fig-cap: "Q25 — Nuage de points âge vs hémoglobine avec titre et axes étiquetés"
+ggplot(paludisme, aes(x = age, y = hemoglobine_g_dl, color = sexe)) +
+  geom_point(alpha = 0.4) +
+  labs(
+    title    = "Relation entre l'âge et le taux d'hémoglobine",
+    subtitle = "Région septentrionale du Cameroun",
+    x        = "Âge (années)",
+    y        = "Hémoglobine (g/dl)",
+    color    = "Sexe"
+  )+
+  theme_classic()
+```
+
+------------------------------------------------------------------------
+
+## Statistiques descriptives de base
+
+### Q26 — Proportion de tests TDR positifs
+
+```{r}
+#| label: d1-q26
+paludisme |>
+  summarise(
+    n_total      = n(),
+    n_positif    = sum(resultat_tdr == "Positif"),
+    prop_positif = round(mean(resultat_tdr == "Positif") * 100, 1)
+  )
+```
+
+> **`{r} round(mean(paludisme$resultat_tdr == "Positif") * 100, 1)`%** des tests TDR sont positifs.
+
+------------------------------------------------------------------------
+
+### Q27 — Prévalence du paludisme par région (%)
+
+```{r}
+#| label: d1-q27
+paludisme |>
+  group_by(region) |>
+  summarise(
+    n_total        = n(),
+    n_positif      = sum(resultat_tdr == "Positif"),
+    prevalence_pct = round(mean(resultat_tdr == "Positif") * 100, 1)
+  )
+```
+
+------------------------------------------------------------------------
+
+### Q28 — Hémoglobine moyenne : femmes enceintes vs non enceintes
+
+```{r}
+#| label: d1-q28
+paludisme |>
+  filter(sexe == "F") |>
+  group_by(grossesse) |>
+  summarise(
+    n              = n(),
+    hb_moyenne     = round(mean(hemoglobine_g_dl, na.rm = TRUE), 2),
+    hb_ecart_type  = round(sd(hemoglobine_g_dl,   na.rm = TRUE), 2)
+  )
+```
+
+------------------------------------------------------------------------
+
+### Q29 — Pourcentage d'individus ayant eu de la fièvre (2 dernières semaines)
+
+```{r}
+#| label: d1-q29
+paludisme |>
+  summarise(
+    n_total    = n(),
+    n_fievre   = sum(fievre_2sem == 1),
+    pct_fievre = round(mean(fievre_2sem == 1) * 100, 1)
+  )
+```
+
+> **`{r} round(mean(paludisme$fievre_2sem == 1) * 100, 1)`%** des individus ont eu de la fièvre dans les deux dernières semaines.
+
+------------------------------------------------------------------------
+
+### Q30 — Ménages avec au moins une moustiquaire
+
+```{r}
+#| label: d1-q30
+paludisme |>
+  distinct(menage_id, .keep_all = TRUE) |>
+  summarise(
+    n_menages_total       = n(),
+    n_avec_moustiquaire   = sum(nombre_moustiquaires >= 1),
+    pct_avec_moustiquaire = round(mean(nombre_moustiquaires >= 1) * 100, 1)
+  )
+```
+
+> Sur 750 ménages distincts, **86.5%** possèdent au moins une moustiquaire.
+
+------------------------------------------------------------------------
+
+# Devoir 2 — Intermédiaire
+
+## Manipulations avancées avec dplyr
+
+### Q1 — Moustiquaires par personne par ménage
+
+```{r}
+#| label: d2-q1
+menage_stats <- paludisme |>
+  group_by(menage_id) |>
+  summarise(
+    nb_individus               = n(),
+    nb_moustiquaires           = first(nombre_moustiquaires),
+    moustiquaires_par_personne = nb_moustiquaires / nb_individus
+  )
+menage_stats
+```
+
+------------------------------------------------------------------------
+
+### Q2 — Top 5 ménages avec le revenu le plus élevé
+
+```{r}
+#| label: d2-q2
+paludisme |>
+  distinct(menage_id, revenu_mensuel_fcfa) |>
+  slice_max(revenu_mensuel_fcfa, n = 5) |>
+  arrange(desc(revenu_mensuel_fcfa))
+```
+
+------------------------------------------------------------------------
+
+### Q3 — Résumé par district sanitaire (cas positifs, âge moyen, proportion enceintes)
+
+```{r}
+#| label: d2-q3
+paludisme |>
+  filter(resultat_tdr == "Positif") |>
+  group_by(district_sanitaire) |>
+  summarise(
+    n_positifs         = n(),
+    age_moyen_positifs = round(mean(age, na.rm = TRUE), 1),
+    prop_enceintes_pct = round(mean(grossesse == "Oui", na.rm = TRUE) * 100, 1)
+  ) |>
+  arrange(desc(n_positifs))
+```
+
+------------------------------------------------------------------------
+
+### Q4 — Colonne quartile_revenu avec ntile()
+
+```{r}
+#| label: d2-q4
+paludisme <- paludisme |>
+  mutate(quartile_revenu = ntile(revenu_mensuel_fcfa, 4))
+
+paludisme |>
+  group_by(quartile_revenu) |>
+  summarise(
+    revenu_min = round(min(revenu_mensuel_fcfa)),
+    revenu_max = round(max(revenu_mensuel_fcfa)),
+    n          = n()
+  )
+```
+
+------------------------------------------------------------------------
+
+### Q5 — Distance moyenne ± écart-type au CSI par milieu + graphique
+
+```{r}
+#| label: d2-q5-stats
+dist_milieu <- paludisme |>
+  group_by(milieu) |>
+  summarise(
+    moy_dist = mean(distance_csi_km, na.rm = TRUE),
+    sd_dist  = sd(distance_csi_km,   na.rm = TRUE)
+  )
+dist_milieu
+```
+
+```{r}
+#| label: fig-d2-q5
+#| fig-cap: "Q5 — Distance moyenne au CSI par milieu avec barres d'erreur (± écart-type)"
+ggplot(dist_milieu, aes(x = milieu, y = moy_dist)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = moy_dist - sd_dist, ymax = moy_dist + sd_dist), width = 0.2) +
+  labs(title = "Distance moyenne au centre de santé par milieu",
+       x = "Milieu", y = "Distance (km)")
+```
+
+------------------------------------------------------------------------
+
+## Transformations avec tidyr
+
+### Q6 — Tableau croisé region × milieu en format large
+
+```{r}
+#| label: d2-q6
+tab_long <- paludisme |>
+  count(region, milieu, name = "nb_individus")
+
+tab_large <- tab_long |>
+  pivot_wider(names_from = milieu, values_from = nb_individus, values_fill = 0)
+
+cat("Format long :\n"); print(tab_long)
+cat("\nFormat large :\n"); print(tab_large)
+```
+
+------------------------------------------------------------------------
+
+### Q7 — Revenir au format long avec pivot_longer
+
+```{r}
+#| label: d2-q7
+tab_large |>
+  pivot_longer(cols = c(Rural, Urbain),
+               names_to  = "milieu",
+               values_to = "nb_individus")
+```
+
+------------------------------------------------------------------------
+
+### Q8 — Tableau region × classe d'âge en format large
+
+```{r}
+#| label: d2-q8
+paludisme |>
+  count(region, categorie_age, name = "nb_individus") |>
+  pivot_wider(names_from = categorie_age, values_from = nb_individus, values_fill = 0)
+```
+
+------------------------------------------------------------------------
+
+### Q9 — Séparer menage_id en colonnes cluster et menage
+
+```{r}
+#| label: d2-q9
+paludisme |>
+  select(menage_id) |>
+  distinct() |>
+  separate(menage_id, into = c("cluster", "menage"), sep = "_") |>
+  head(10)
+```
+
+------------------------------------------------------------------------
+
+### Q10 — Fusionner données individuelles avec résumé par ménage
+
+```{r}
+#| label: d2-q10
+resume_menage <- paludisme |>
+  group_by(menage_id) |>
+  summarise(revenu_moyen_calcule = mean(revenu_mensuel_fcfa))
+
+verif <- paludisme |>
+  select(individu_id, menage_id, revenu_mensuel_fcfa) |>
+  left_join(resume_menage, by = "menage_id") |>
+  mutate(coherent = near(revenu_mensuel_fcfa, revenu_moyen_calcule))
+
+cat("Lignes incohérentes :", sum(!verif$coherent), "\n")
+cat("→ Tous les individus d'un même ménage ont exactement le même revenu.\n")
+```
+
+------------------------------------------------------------------------
+
+## Graphiques élaborés
+
+### Q11 — Barres groupées : cas positifs/négatifs par région
+
+```{r}
+#| label: fig-d2-q11
+#| fig-cap: "Q11 — Résultats TDR par région (barres groupées)"
+ggplot(paludisme, aes(y = region, fill = resultat_tdr)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Résultats TDR par région",
+       y = "Région", x = "Nombre d'individus", fill = "Résultat TDR")
+```
+
+------------------------------------------------------------------------
+
+### Q12 — Ajouter des étiquettes de valeur sur les barres
+
+```{r}
+#| label: fig-d2-q12
+#| fig-cap: "Q12 — Résultats TDR par région avec étiquettes"
+tdr_region <- paludisme |> count(region, resultat_tdr, name = "n")
+
+ggplot(tdr_region, aes(y = region, x = n, fill = resultat_tdr)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = n),
+            position = position_dodge(width = 0.9),
+            hjust = -0.1, size = 3.5) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "Résultats TDR par région (avec effectifs)",
+       y = "Région", x = "Nombre d'individus", fill = "Résultat TDR")
+```
+
+------------------------------------------------------------------------
+
+### Q13 — Boxplot hémoglobine \~ catégorie d'âge, coloré par sexe
+
+```{r}
+#| label: fig-d2-q13
+#| fig-cap: "Q13 — Hémoglobine par catégorie d'âge et sexe"
+paludisme <- paludisme |>
+  mutate(categorie_age = factor(categorie_age,
+                                levels = c("enfant","jeune","adulte","senior")))
+
+ggplot(paludisme, aes(x = categorie_age, y = hemoglobine_g_dl, fill = sexe)) +
+  geom_boxplot() +
+  labs(title = "Hémoglobine par catégorie d'âge et sexe",
+       x = "Catégorie d'âge", y = "Hémoglobine (g/dl)", fill = "Sexe")
+```
+
+------------------------------------------------------------------------
+
+### Q14 — Histogramme superposé âge : positifs vs négatifs (transparence)
+
+```{r}
+#| label: fig-d2-q14
+#| fig-cap: "Q14 — Distribution de l'âge selon le résultat TDR (histogrammes superposés)"
+ggplot(paludisme, aes(x = age, fill = resultat_tdr)) +
+  geom_histogram(binwidth = 5, alpha = 0.6, position = "identity") +
+  labs(title = "Distribution de l'âge selon le résultat TDR",
+       x = "Âge (années)", y = "Effectif", fill = "Résultat TDR")
+```
+
+------------------------------------------------------------------------
+
+### Q15 — Matrice de corrélation graphique
+
+```{r}
+#| label: fig-d2-q15
+#| fig-cap: "Q15 — Matrice de corrélation des variables numériques clés"
+cor_data <- paludisme |>
+  select(age, hemoglobine_g_dl, parasitemie_par_ul,
+         distance_csi_km, pluviometrie_annuelle_mm, altitude_m)
+mat_cor <- cor(cor_data, use = "complete.obs")
+
+corrplot(mat_cor, method = "color", addCoef.col = "black",
+         number.cex = 0.8, tl.cex = 0.9,
+         title = "Matrice de corrélation", mar = c(0, 0, 2, 0))
+```
+
+> Toutes les corrélations sont proches de 0 — aucune colinéarité notable entre ces variables.
+
+------------------------------------------------------------------------
+
+### Q16 — facet_wrap : distribution de l'hémoglobine par région
+
+```{r}
+#| label: fig-d2-q16
+#| fig-cap: "Q16 — Distribution de l'hémoglobine par région (facettes)"
+ggplot(paludisme, aes(x = hemoglobine_g_dl, fill="red")) +
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~ region) +
+  labs(title = "Distribution de l'hémoglobine par région",
+       x = "Hémoglobine (g/dl)", y = "Effectif")
+```
+
+------------------------------------------------------------------------
+
+### Q17 — Graphique en violon : parasitémie selon le résultat TDR
+
+```{r}
+#| label: fig-d2-q17
+#| fig-cap: "Q17 — Distribution de la parasitémie chez les TDR positifs (violon + boxplot)"
+paludisme |>
+  filter(resultat_tdr == "Positif") |>
+  ggplot(aes(x = resultat_tdr, y = parasitemie_par_ul)) +
+  geom_violin(fill="blue") +
+  geom_boxplot(width = 0.1) +
+  labs(title = "Parasitémie chez les individus TDR positifs",
+       x = "Résultat TDR", y = "Parasitémie (parasites/µl)")
+```
+
+------------------------------------------------------------------------
+
+### Q18 — geom_smooth (lm) sur âge \~ hémoglobine, séparé par sexe
+
+```{r}
+#| label: fig-d2-q18
+#| fig-cap: "Q18 — Régression linéaire âge ~ hémoglobine par sexe"
+ggplot(paludisme, aes(x = age, y = hemoglobine_g_dl, color = sexe)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(title = "Relation âge ~ hémoglobine avec droite de régression",
+       x = "Âge (années)", y = "Hémoglobine (g/dl)", color = "Sexe")
+```
+
+------------------------------------------------------------------------
+
+### Q19 — Proportion TDR positifs par classe d'âge avec IC binomial
+
+```{r}
+#| label: fig-d2-q19
+#| fig-cap: "Q19 — Prévalence du paludisme par catégorie d'âge (IC 95% binomial)"
+prev_age <- paludisme |>
+  group_by(categorie_age) |>
+  summarise(
+    n       = n(),
+    n_pos   = sum(resultat_tdr == "Positif"),
+    prop    = n_pos / n,
+    ic_low  = prop.test(n_pos, n)$conf.int[1],
+    ic_high = prop.test(n_pos, n)$conf.int[2]
+  )
+
+ggplot(prev_age, aes(x = categorie_age, y = prop)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = ic_low, ymax = ic_high), width = 0.2) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(title   = "Prévalence du paludisme (TDR+) par catégorie d'âge",
+       subtitle = "Barres d'erreur = IC 95% binomial",
+       x = "Catégorie d'âge", y = "Proportion TDR positifs")
+```
+
+------------------------------------------------------------------------
+
+### Q20 — Sauvegarder le graphique en PNG (300 dpi)
+
+```{r}
+#| label: d2-q20
+ggsave("data/prevalence_par_age_TDR.png", width = 8, height = 6, dpi = 300)
+cat("Graphique sauvegardé : data/prevalence_par_age_TDR.png\n")
+```
+
+------------------------------------------------------------------------
+
+## Tests statistiques simples
+
+### Q21 — Chi² : sexe \~ résultat TDR (avec vérification des effectifs théoriques)
+
+```{r}
+#| label: d2-q21
+tab_chi2 <- table(paludisme$sexe, paludisme$resultat_tdr)
+cat("Effectifs observés :\n"); print(tab_chi2)
+cat("\nEffectifs théoriques :\n"); print(chisq.test(tab_chi2)$expected)
+cat("\nTest du Chi² :\n"); print(chisq.test(tab_chi2))
+```
+
+> Tous les effectifs théoriques \> 5 → conditions satisfaites. p = 0.54 → **pas d'association** entre le sexe et le résultat TDR.
+
+------------------------------------------------------------------------
+
+### Q22 — Comparer l'âge selon la fièvre (Shapiro + QQ-plot + Wilcoxon)
+
+```{r}
+#| label: d2-q22-shapiro
+age_fievre <- paludisme$age[paludisme$fievre_2sem == 1]
+age_sans   <- paludisme$age[paludisme$fievre_2sem == 0]
+set.seed(4821)
+cat("Shapiro — groupe avec fièvre :\n")
+print(shapiro.test(sample(age_fievre, min(length(age_fievre), 5000))))
+cat("\nShapiro — groupe sans fièvre :\n")
+print(shapiro.test(sample(age_sans, min(length(age_sans), 5000))))
+```
+
+```{r}
+#| label: fig-d2-q22-qqplot
+#| fig-cap: "Q22 — QQ-plots de l'âge selon la présence de fièvre"
+par(mfrow = c(1, 2))
+qqnorm(age_fievre, main = "Avec fièvre"); qqline(age_fievre, col = "red")
+qqnorm(age_sans,   main = "Sans fièvre"); qqline(age_sans,   col = "red")
+par(mfrow = c(1, 1))
+```
+
+```{r}
+#| label: d2-q22-wilcoxon
+cat("Normalité rejetée (p << 0.05) → Test de Wilcoxon :\n")
+print(wilcox.test(age ~ fievre_2sem, data = paludisme))
+```
+
+> p = 0.24 → **l'âge ne diffère pas significativement** selon la présence de fièvre.
+
+------------------------------------------------------------------------
+
+### Q23 — ANOVA : parasitémie \~ région (avec test de Levene)
+
+```{r}
+#| label: d2-q23
+pos_only <- paludisme |> filter(resultat_tdr == "Positif")
+cat("Test de Levene :\n")
+print(leveneTest(parasitemie_par_ul ~ region, data = pos_only))
+cat("\nANOVA :\n")
+print(summary(aov(parasitemie_par_ul ~ region, data = pos_only)))
+```
+
+> Levene : p = 0.33 → homogénéité des variances satisfaite. ANOVA : p = 0.29 → **pas de différence** de parasitémie entre régions chez les positifs.
+
+------------------------------------------------------------------------
+
+### Q24 — Corrélation de Pearson : hémoglobine \~ parasitémie (positifs uniquement)
+
+```{r}
+#| label: d2-q24
+cor.test(pos_only$hemoglobine_g_dl, pos_only$parasitemie_par_ul, method = "pearson")
+```
+
+> r ≈ 0.005, p = 0.86 → **aucune corrélation** entre hémoglobine et parasitémie chez les TDR positifs.
+
+------------------------------------------------------------------------
+
+### Q25 — Chi² : proportion de femmes enceintes par région
+
+```{r}
+#| label: d2-q25
+tab_enc <- paludisme |>
+  filter(sexe == "F") |>
+  with(table(region, grossesse))
+cat("Tableau :\n"); print(tab_enc)
+cat("\nTest Chi² :\n"); print(chisq.test(tab_enc))
+```
+
+> p = 0.78 → **la proportion de femmes enceintes est homogène** entre les trois régions.
+
+------------------------------------------------------------------------
+
+### Q26 — Wilcoxon : nombre de moustiquaires \~ milieu
+
+```{r}
+#| label: d2-q26
+menages_uniq <- paludisme |> distinct(menage_id, .keep_all = TRUE)
+cat("Médiane par milieu :\n")
+menages_uniq |> group_by(milieu) |>
+  summarise(mediane = median(nombre_moustiquaires), n = n()) |> print()
+cat("\nTest de Wilcoxon :\n")
+print(wilcox.test(nombre_moustiquaires ~ milieu, data = menages_uniq))
+```
+
+------------------------------------------------------------------------
+
+### Q27 — Wilcoxon : distance au CSI \~ possession moustiquaire
+
+```{r}
+#| label: d2-q27
+menages_mii <- menages_uniq |>
+  mutate(possede_mii = if_else(nombre_moustiquaires >= 1, "Oui", "Non"))
+cat("Médiane distance par possession MII :\n")
+menages_mii |> group_by(possede_mii) |>
+  summarise(mediane_dist = median(distance_csi_km), n = n()) |> print()
+cat("\nTest de Wilcoxon :\n")
+print(wilcox.test(distance_csi_km ~ possede_mii, data = menages_mii))
+```
+
+------------------------------------------------------------------------
+
+### Q28 — Test de McNemar : fièvre \~ consultation (avec discussion)
+
+```{r}
+#| label: d2-q28
+tab_mcn <- table(
+  fievre       = paludisme$fievre_2sem == 1,
+  consultation = paludisme$consultation_sante == "Oui"
+)
+cat("Tableau fièvre × consultation :\n"); print(tab_mcn)
+cat("\nTest de McNemar :\n"); print(mcnemar.test(tab_mcn))
+```
+
+::: callout-warning
+Le test de McNemar est conçu pour des données **appariées avant/après**. Ici, `fièvre` et `consultation` sont deux variables distinctes mesurées simultanément sur les mêmes individus. Le résultat (p \< 0.001) est indicatif mais le test Chi² de dépendance serait plus approprié.
+:::
+
+------------------------------------------------------------------------
+
+### Q29 — Test de tendance (Cochran-Armitage) : utilisation_MII \~ TDR
+
+```{r}
+#| label: d2-q29
+tab_mii <- table(paludisme$utilisation_MII, paludisme$resultat_tdr)
+cat("Tableau MII × TDR :\n"); print(tab_mii)
+cat("\nChi² classique :\n"); print(chisq.test(tab_mii))
+n_pos_mii   <- tab_mii[, "Positif"]
+n_total_mii <- rowSums(tab_mii)
+cat("\nTest de tendance (Cochran-Armitage) :\n")
+print(prop.trend.test(n_pos_mii, n_total_mii))
+```
+
+------------------------------------------------------------------------
+
+### Q30 — Interprétation synthétique de tous les tests
+
+```{r}
+#| label: d2-q30
+tibble::tribble(
+  ~Question, ~Test,                         ~`p-valeur`, ~Interpretation,
+  "Q21", "Chi² sexe ~ TDR",                "0.54",  "Pas d'association sexe ~ TDR",
+  "Q22", "Wilcoxon âge ~ fièvre",          "0.24",  "L'âge ne diffère pas selon la fièvre",
+  "Q23", "ANOVA parasitémie ~ région",     "0.29",  "Pas de différence entre régions",
+  "Q24", "Pearson Hb ~ parasitémie",       "0.86",  "Aucune corrélation (r ≈ 0)",
+  "Q25", "Chi² grossesse ~ région",        "0.78",  "Proportion enceintes homogène",
+  "Q26", "Wilcoxon moustiquaires ~ milieu","0.22",  "Pas de différence rural/urbain",
+  "Q27", "Wilcoxon distance ~ MII",        "0.16",  "Distance non associée à la MII",
+  "Q28", "McNemar fièvre ~ consultation",  "< 0.001","Significatif mais test inadapté",
+  "Q29", "Cochran-Armitage MII ~ TDR",     "0.32",  "Pas de tendance MII ~ TDR"
+)
+```
+
+------------------------------------------------------------------------
+
+# Devoir 3 — Avancé
+
+## Itérations avec purrr
+
+### Q1 — Moyenne et écart-type de chaque variable numérique avec map_dfr
+
+```{r}
+#| label: d3-q1
+vars_num <- paludisme |> select(where(is.numeric)) |> names()
+
+map_dfr(vars_num, \(v) {
+  x <- paludisme[[v]]
+  tibble(variable   = v,
+         moyenne    = round(mean(x, na.rm = TRUE), 3),
+         ecart_type = round(sd(x,   na.rm = TRUE), 3))
+})
+```
+
+------------------------------------------------------------------------
+
+### Q2 — Shapiro-Wilk sur toutes les variables numériques
+
+```{r}
+#| label: d3-q2
+set.seed(7341)
+map_dfr(vars_num, \(v) {
+  x <- paludisme[[v]]
+  if (sd(x, na.rm = TRUE) == 0)
+    return(tibble(variable = v, W = NA, p_valeur = NA, normale = "Constante"))
+  x_s <- sample(x[!is.na(x)], min(length(x[!is.na(x)]), 5000))
+  res <- shapiro.test(x_s)
+  tibble(variable = v,
+         W        = round(res$statistic, 4),
+         p_valeur = signif(res$p.value, 3),
+         normale  = if_else(res$p.value > 0.05, "Oui", "Non"))
+})
+```
+
+> `hemoglobine_g_dl` est la **seule variable normalement distribuée** (p = 0.34). Toutes les autres rejettent la normalité.
+
+------------------------------------------------------------------------
+
+### Q3 — nest + map : corrélation Hb \~ parasitémie par district
+
+```{r}
+#| label: d3-q3
+paludisme |>
+  filter(resultat_tdr == "Positif") |>
+  group_by(district_sanitaire) |>
+  nest() |>
+  mutate(cor_res = map(data, \(d) {
+    ct <- cor.test(d$hemoglobine_g_dl, d$parasitemie_par_ul, method = "pearson")
+    tibble(r = round(ct$estimate, 3), p_valeur = round(ct$p.value, 4))
+  })) |>
+  select(district_sanitaire, cor_res) |>
+  unnest(cor_res) |>
+  arrange(p_valeur)
+```
+
+> Aucun district ne présente de corrélation significative (tous p \> 0.14).
+
+------------------------------------------------------------------------
+
+### Q4 — Fonction quartiles → map_df sur toutes les variables numériques
+
+```{r}
+#| label: d3-q4
+fn_quartiles <- function(x, nom = "") {
+  q <- quantile(x, probs = c(0.25, 0.5, 0.75), na.rm = TRUE)
+  tibble(variable = nom, Q1 = round(q[1],3), mediane = round(q[2],3), Q3 = round(q[3],3))
+}
+map_df(vars_num, \(v) fn_quartiles(paludisme[[v]], v))
+```
+
+------------------------------------------------------------------------
+
+### Q5 — Hémoglobine moyenne par sexe pour chaque région
+
+```{r}
+#| label: d3-q5
+paludisme |>
+  group_by(region, sexe) |>
+  summarise(hb_moy = round(mean(hemoglobine_g_dl, na.rm = TRUE), 2),
+            n = n(), .groups = "drop") |>
+  pivot_wider(names_from = sexe, values_from = c(hb_moy, n), names_glue = "{sexe}_{.value}")
+```
+
+------------------------------------------------------------------------
+
+## purrr + ggplot2 (graphiques multiples)
+
+### Q6 — Histogramme de l'âge par région en grille (patchwork)
+
+```{r}
+#| label: fig-d3-q6
+#| fig-cap: "Q6 — Histogramme de l'âge par région (grille patchwork)"
+plots_age <- paludisme |>
+  group_by(region) |>
+  nest() |>
+  mutate(plot = map2(data, region, \(d, r) {
+    ggplot(d, aes(x = age)) +
+      geom_histogram(binwidth = 5, fill="darkred") +
+      labs(title = r, x = "Âge", y = "Effectif")
+  }))
+wrap_plots(plots_age$plot, ncol = 3)
+```
+
+### Q7 — Boxplot Hb \~ sexe par district en grille (patchwork)
+
+```{r}
+#| label: fig-d3-q7
+#| fig-cap: "Q7 — Boxplot Hb ~ sexe pour chaque district (grille)"
+fn_bp <- function(df, titre) {
+  ggplot(df, aes(x = sexe, y = hemoglobine_g_dl)) +
+    geom_boxplot(fill="blue") + labs(title = titre, x = "Sexe", y = "Hb (g/dl)")
+}
+plots_dist <- paludisme |>
+  group_by(district_sanitaire) |>
+  nest() |>
+  mutate(plot = map2(data, district_sanitaire, fn_bp))
+wrap_plots(plots_dist$plot, ncol = 4)
+```
+
+------------------------------------------------------------------------
+
+### Q8 — Hémoglobine ± écart-type par classe d'âge pour chaque région
+
+```{r}
+#| label: fig-d3-q8
+#| fig-cap: "Q8 — Hémoglobine moyenne (± sd) par classe d'âge pour chaque région"
+fn_barre <- function(df, titre) {
+  df |>
+    group_by(categorie_age) |>
+    summarise(moy = mean(hemoglobine_g_dl, na.rm = TRUE),
+              sd  = sd(hemoglobine_g_dl,   na.rm = TRUE), .groups = "drop") |>
+    ggplot(aes(x = categorie_age, y = moy)) +
+    geom_col() +
+    geom_errorbar(aes(ymin = moy - sd, ymax = moy + sd), width = 0.2) +
+    labs(title = titre, x = "Catégorie d'âge", y = "Hb moy (g/dl)") +
+    ylim(0, 17)
+}
+plots_hb <- paludisme |>
+  group_by(region) |> nest() |>
+  mutate(plot = map2(data, region, fn_barre))
+wrap_plots(plots_hb$plot, ncol = 3)
+```
+
+------------------------------------------------------------------------
+
+### Q9 — Prévalence par district avec étiquettes % et barres d'erreur IC 95%
+
+```{r}
+#| label: fig-d3-q9
+#| fig-cap: "Q9 — Prévalence du paludisme (TDR+) par district sanitaire"
+prev_dist <- paludisme |>
+  group_by(district_sanitaire) |>
+  summarise(n = n(), n_pos = sum(resultat_tdr == "Positif"),
+            prop = n_pos / n,
+            ic_low  = prop.test(n_pos, n)$conf.int[1],
+            ic_high = prop.test(n_pos, n)$conf.int[2])
+
+ggplot(prev_dist, aes(x = reorder(district_sanitaire, prop), y = prop)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = ic_low, ymax = ic_high), width = 0.2) +
+  geom_text(aes(label = paste0(round(prop * 100, 1), "%")),
+            hjust = -0.2, size = 3.5) +
+  scale_y_continuous(labels = percent_format(),
+                     expand = expansion(mult = c(0, 0.15))) +
+  coord_flip() +
+  labs(title = "Prévalence du paludisme (TDR+) par district",
+       subtitle = "Barres d'erreur = IC 95% binomial",
+       x = "District sanitaire", y = "Proportion TDR positifs")
+```
+
+------------------------------------------------------------------------
+
+### Q10 — Dotplot hémoglobine par région avec moyennes et IC 95%
+
+```{r}
+#| label: fig-d3-q10
+#| fig-cap: "Q10 — Hémoglobine moyenne par région (IC 95%, calculé via purrr)"
+hb_stats <- paludisme |>
+  group_by(region) |> nest() |>
+  mutate(stats = map(data, \(d) {
+    tt <- t.test(d$hemoglobine_g_dl)
+    tibble(moy = tt$estimate, ic_low = tt$conf.int[1], ic_high = tt$conf.int[2])
+  })) |>
+  select(region, stats) |> unnest(stats)
+
+ggplot(hb_stats, aes(x = region, y = moy)) +
+  geom_point(size = 4) +
+  geom_errorbar(aes(ymin = ic_low, ymax = ic_high), width = 0.15) +
+  labs(title = "Hémoglobine moyenne par région (IC 95%)",
+       x = "Région", y = "Hémoglobine (g/dl)")
+```
+
+------------------------------------------------------------------------
+
+## Manipulation avancée de chaînes avec stringr
+
+### Q11 — Professions contenant "Fonctionnaire" (insensible à la casse)
+
+```{r}
+#| label: d3-q11
+result_fonct <- paludisme |>
+  filter(str_detect(profession, regex("fonctionnaire", ignore_case = TRUE))) |>
+  count(profession, sort = TRUE)
+
+if (nrow(result_fonct) == 0) {
+  cat("Aucune profession 'Fonctionnaire' trouvée dans la base.\n")
+  cat("Professions disponibles :\n")
+  paludisme |> count(profession, sort = TRUE) |> print()
+} else {
+  print(result_fonct)
+}
+```
+
+------------------------------------------------------------------------
+
+### Q12 — Remplacer NA / chaînes vides dans profession par "Non renseigné"
+
+```{r}
+#| label: d3-q12
+cat("NA dans profession :", sum(is.na(paludisme$profession)), "\n")
+cat("Chaînes vides      :", sum(str_trim(paludisme$profession) == "", na.rm = TRUE), "\n")
+
+paludisme <- paludisme |>
+  mutate(profession = if_else(
+    is.na(profession) | str_trim(profession) == "",
+    "Non renseigné", profession))
+
+cat("Après remplacement — modalités :\n")
+paludisme |> count(profession)
+```
+
+------------------------------------------------------------------------
+
+### Q13 — Créer profession_categorie
+
+```{r}
+#| label: d3-q13
+paludisme <- paludisme |>
+  mutate(profession_categorie = case_when(
+    str_detect(profession, regex("agriculteur|agri|paysan|eleveur", ignore_case = TRUE)) ~ "Secteur agricole",
+    str_detect(profession, regex("commerc|vendeur|marchand",         ignore_case = TRUE)) ~ "Commerce",
+    str_detect(profession, regex("sans emploi|chômeur|inactif",      ignore_case = TRUE)) ~ "Sans emploi",
+    str_detect(profession, regex("élève|etudiant|étudiant|scolaire", ignore_case = TRUE)) ~ "Scolarisé",
+    TRUE ~ "Autre"
+  ))
+paludisme |> count(profession_categorie, sort = TRUE)
+```
+
+------------------------------------------------------------------------
+
+### Q14 — Compter les personnes dont profession contient "Élève"
+
+```{r}
+#| label: d3-q14
+n_eleves <- sum(str_detect(paludisme$profession, regex("élève|eleve", ignore_case = TRUE)))
+cat("Nombre de personnes avec profession contenant 'Élève' :", n_eleves, "\n")
+```
+
+------------------------------------------------------------------------
+
+### Q15 — Extraire le numéro de district_sanitaire en numérique
+
+```{r}
+#| label: d3-q15
+paludisme <- paludisme |>
+  mutate(district_num = as.numeric(str_extract(district_sanitaire, "\\d+")))
+paludisme |> distinct(district_sanitaire, district_num) |> arrange(district_num)
+```
+
+------------------------------------------------------------------------
+
+## tidyr avancé
+
+### Q16 — Tableau large par ménage : nb individus, femmes enceintes, tests positifs
+
+```{r}
+#| label: d3-q16
+tab_menage <- paludisme |>
+  group_by(menage_id) |>
+  summarise(nb_individus = n(),
+            nb_enceintes = sum(grossesse == "Oui", na.rm = TRUE),
+            nb_positifs  = sum(resultat_tdr == "Positif"), .groups = "drop")
+tab_menage
+```
+
+------------------------------------------------------------------------
+
+### Q17 — Ajouter la proportion de positifs par ménage
+
+```{r}
+#| label: d3-q17
+tab_menage <- tab_menage |>
+  mutate(prop_positifs = round(nb_positifs / nb_individus, 3))
+cat("Distribution de la proportion de positifs :\n")
+summary(tab_menage$prop_positifs)
+tab_menage
+```
+
+------------------------------------------------------------------------
+
+### Q18 — complete() : toutes combinaisons région × milieu
+
+```{r}
+#| label: d3-q18
+paludisme |>
+  count(region, milieu) |>
+  complete(region, milieu, fill = list(n = 0))
+```
+
+> Toutes les 6 combinaisons sont présentes — aucune combinaison manquante.
+
+------------------------------------------------------------------------
+
+### Q19 — Remplacer NA de grossesse par "Non applicable" pour les hommes
+
+```{r}
+#| label: d3-q19
+cat("NA dans grossesse :", sum(is.na(paludisme$grossesse)), "\n")
+cat("Hommes avec NA    :", sum(paludisme$sexe == "M" & is.na(paludisme$grossesse)), "\n")
+paludisme <- paludisme |>
+  mutate(grossesse = case_when(
+    sexe == "M" & is.na(grossesse) ~ "Non applicable",
+    TRUE                           ~ grossesse
+  ))
+paludisme |> count(grossesse, sexe) |> arrange(sexe)
+```
+
+------------------------------------------------------------------------
+
+### Q20 — Tableau croisé région × niveau d'éducation avec totaux marginaux
+
+```{r}
+#| label: d3-q20
+tab_educ <- paludisme |>
+  count(region, niveau_education) |>
+  pivot_wider(names_from = niveau_education, values_from = n, values_fill = 0) |>
+  mutate(Total_ligne = rowSums(across(where(is.numeric))))
+
+totaux_col <- tab_educ |>
+  summarise(region = "Total", across(where(is.numeric), sum))
+
+bind_rows(tab_educ, totaux_col)
+```
+
+------------------------------------------------------------------------
+
+## Graphiques avancés
+
+### Q21 — Heatmap de corrélation
+
+```{r}
+#| label: fig-d3-q21
+#| fig-cap: "Q21 — Heatmap de corrélation des variables numériques"
+vars_hm <- paludisme |>
+  select(age, hemoglobine_g_dl, parasitemie_par_ul,
+         distance_csi_km, pluviometrie_annuelle_mm,
+         altitude_m, revenu_mensuel_fcfa, nombre_moustiquaires)
+corrplot(cor(vars_hm, use = "complete.obs"),
+         method = "color", addCoef.col = "black",
+         number.cex = 0.75, tl.cex = 0.85,
+         col = colorRampPalette(c("#d73027","white","#1a9850"))(200),
+         title = "Heatmap de corrélation", mar = c(0, 0, 2, 0))
+```
+
+------------------------------------------------------------------------
+
+### Q22 — Densité 2D : âge \~ hémoglobine, différenciée par résultat TDR
+
+```{r}
+#| label: fig-d3-q22
+#| fig-cap: "Q22 — Densité 2D âge ~ hémoglobine selon le résultat TDR"
+ggplot(paludisme, aes(x = age, y = hemoglobine_g_dl)) +
+  geom_density_2d_filled(alpha = 0.7) +
+  facet_wrap(~ resultat_tdr) +
+  labs(title = "Densité 2D âge ~ hémoglobine selon le résultat TDR",
+       x = "Âge (années)", y = "Hémoglobine (g/dl)")
+```
+
+------------------------------------------------------------------------
+
+### Q23 — Mettre en évidence les points avec parasitémie \> 5 000
+
+```{r}
+#| label: fig-d3-q23
+#| fig-cap: "Q23 — Parasitémie des TDR positifs (rouge = > 5 000 µl, alternative à gghighlight)"
+paludisme |>
+  filter(resultat_tdr == "Positif") |>
+  mutate(outlier = parasitemie_par_ul > 5000) |>
+  ggplot(aes(x = age, y = parasitemie_par_ul, color = outlier)) +
+  geom_point(alpha = 0.6) +
+  scale_color_manual(values = c("FALSE" = "grey60", "TRUE" = "#d73027"),
+                     labels = c("≤ 5 000", "> 5 000")) +
+  labs(title    = "Parasitémie des individus TDR positifs",
+       subtitle = "Points rouges : parasitémie > 5 000 (alternative manuelle à gghighlight)",
+       x = "Âge (années)", y = "Parasitémie (parasites/µl)", color = "Parasitémie")
+```
+
+::: callout-note
+Le package `gghighlight` n'est pas disponible dans cet environnement. Installer avec `install.packages("gghighlight")` puis remplacer `scale_color_manual(...)` par `gghighlight(parasitemie_par_ul > 5000)`.
+:::
+
+------------------------------------------------------------------------
+
+### Q24 — Boxplot + jitter : hémoglobine par région
+
+```{r}
+#| label: fig-d3-q24
+#| fig-cap: "Q24 — Distribution de l'hémoglobine par région (boxplot + points individuels)"
+ggplot(paludisme, aes(x = region, y = hemoglobine_g_dl)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(alpha = 0.07, width = 0.2) +
+  labs(title    = "Distribution de l'hémoglobine par région",
+       subtitle = "Boxplot + points individuels (jitter)",
+       x = "Région", y = "Hémoglobine (g/dl)")
+```
+
+------------------------------------------------------------------------
+
+## Tests statistiques sélectionnés
+
+### Q25 — ANOVA à deux facteurs avec interaction : Hb \~ région × milieu
+
+```{r}
+#| label: d3-q25
+aov2 <- aov(hemoglobine_g_dl ~ region * milieu, data = paludisme)
+cat("ANOVA à deux facteurs — hémoglobine ~ région × milieu :\n")
+print(summary(aov2))
+tidy(aov2)
+```
+
+> Ni la région (p = 0.58), ni le milieu (p = 0.77), ni leur interaction (p = 0.66) n'influencent significativement l'hémoglobine.
+
+------------------------------------------------------------------------
+
+### Q26 — Comparaisons multiples post-hoc Tukey
+
+```{r}
+#| label: fig-d3-q26
+#| fig-cap: "Q26 — Intervalles de confiance Tukey HSD (effet région sur l'hémoglobine)"
+tukey_res <- TukeyHSD(aov2, which = "region")
+cat("Résultats Tukey :\n"); print(tukey_res)
+plot(tukey_res, las = 1)
+```
+
+> Toutes les p ajustées \> 0.54 → **aucune paire de régions** ne diffère significativement.
+
+------------------------------------------------------------------------
+
+### Q27 — Kruskal-Wallis : parasitémie \~ utilisation_MII
+
+```{r}
+#| label: d3-q27
+cat("Kruskal-Wallis :\n")
+print(kruskal.test(parasitemie_par_ul ~ utilisation_MII, data = pos_only))
+pos_only |> group_by(utilisation_MII) |>
+  summarise(mediane = median(parasitemie_par_ul), n = n())
+```
+
+------------------------------------------------------------------------
+
+### Q28 — Test de Fisher : aspersion intra-domiciliaire (IRS) × TDR
+
+```{r}
+#| label: d3-q28
+tab_fisher <- table(
+  IRS = paludisme$pulverisation_IRS,
+  TDR = paludisme$resultat_tdr
+)
+cat("Tableau IRS × TDR :\n"); print(tab_fisher)
+cat("\nTest exact de Fisher :\n")
+print(fisher.test(tab_fisher))
+```
+
+> Le test de Fisher est préféré au Chi² lorsque les effectifs théoriques sont faibles. Ici, la p-valeur indique **l'absence d'association significative** entre l'utilisation de l'IRS et le statut TDR.
+
+------------------------------------------------------------------------
+
+### Q29 — Régression logistique : TDR \~ âge + Hb + milieu + utilisation_MII
+
+```{r}
+#| label: d3-q29
+paludisme_lr <- paludisme |>
+  mutate(tdr_bin = if_else(resultat_tdr == "Positif", 1L, 0L))
+
+mod_log <- glm(
+  tdr_bin ~ age + hemoglobine_g_dl + milieu + utilisation_MII,
+  data   = paludisme_lr,
+  family = binomial
+)
+cat("Résumé du modèle logistique :\n")
+tidy(mod_log, exponentiate = TRUE, conf.int = TRUE)
+```
+
+> La régression logistique multivarié estime simultanément l'effet de chaque covariable sur la probabilité d'être TDR positif. Les odds-ratios proches de 1 et les intervalles de confiance chevauchant 1 confirment **l'absence de prédicteurs significatifs** dans ce jeu de données synthétique.
+
+------------------------------------------------------------------------
+
+### Q30 — Synthèse des tests statistiques du Devoir 3
+
+```{r}
+#| label: d3-q30
+synthese_d3 <- tibble::tribble(
+  ~Question, ~Test,                                    ~`p-valeur`, ~Interprétation,
+  "Q25", "ANOVA 2 facteurs Hb ~ région × milieu",     "0.58 / 0.77 / 0.66", "Aucun effet principal ni interaction",
+  "Q26", "Tukey HSD (post-hoc région)",               "> 0.54 (toutes paires)", "Aucune paire de régions ne diffère",
+  "Q27", "Kruskal-Wallis parasitémie ~ MII",          "0.60",  "Pas d'effet de l'utilisation MII",
+  "Q28", "Fisher exact IRS ~ TDR",                    "voir sortie", "Pas d'association IRS ~ TDR",
+  "Q29", "Régression logistique TDR ~ covariables",   "tous > 0.05", "Aucun prédicteur significatif"
+)
+synthese_d3
+```
+
+::: callout-note
+L'ensemble des tests du Devoir 3 convergent vers la même conclusion : dans cette base synthétique, **aucune variable socio-environnementale ne prédit de façon significative** les marqueurs biologiques du paludisme. Cela est cohérent avec la construction aléatoire du jeu de données.
+:::
+
+------------------------------------------------------------------------
+
+# Devoir 4 — Qualité des données
+
+```{r}
+#| label: d4-setup
+#| include: false
+# Normalisation des noms de colonnes pour les devoirs 4, 5 et 6
+paludisme <- paludisme |>
+  rename(
+    age_ans                      = age,
+    aspersion_intra_domiciliaire = pulverisation_IRS,
+    etat_civil                   = statut_matrimonial,
+    id_individu                  = individu_id,
+    pluviometrie_mm              = pluviometrie_annuelle_mm
+  )
+```
+
+## Détection des valeurs manquantes
+
+### Q1 — Compter les valeurs manquantes par colonne
+
+```{r}
+#| label: d4-q1
+na_counts <- colSums(is.na(paludisme))
+na_df <- tibble(
+  variable    = names(na_counts),
+  n_manquants = na_counts,
+  pct         = round(100 * na_counts / nrow(paludisme), 2)
+) |> arrange(desc(n_manquants))
+na_df
+```
+
+> La base originale ne contient **aucune valeur manquante** (jeu de données synthétique complet). Pour illustrer les techniques de gestion des NA, nous allons simuler des valeurs manquantes.
+
+------------------------------------------------------------------------
+
+### Q2 — Visualiser les valeurs manquantes avec naniar (sur données simulées)
+
+```{r}
+#| label: fig-d4-q2
+#| fig-cap: "Q2 — Proportion de valeurs manquantes par variable (données simulées)"
+set.seed(4812)
+paludisme_na_simul <- paludisme |>
+  mutate(
+    age_ans              = if_else(runif(n()) < 0.05, NA_real_, age_ans),
+    hemoglobine_g_dl     = if_else(runif(n()) < 0.08, NA_real_, hemoglobine_g_dl),
+    grossesse            = if_else(runif(n()) < 0.04, NA_character_, grossesse),
+    niveau_education     = if_else(runif(n()) < 0.06, NA_character_, niveau_education)
+  )
+
+naniar::gg_miss_var(paludisme_na_simul) +
+  labs(title = "Valeurs manquantes par variable (simulation)",
+       x = "Nombre de NA", y = "Variable")
+```
+
+> La fonction `gg_miss_var()` du package `{naniar}` fournit un aperçu graphique rapide de la distribution des NA par variable.
+
+------------------------------------------------------------------------
+
+### Q3 — Identifier les variables contenant des NA
+
+```{r}
+#| label: d4-q3
+vars_avec_na <- paludisme_na_simul |>
+  summarise(across(everything(), ~sum(is.na(.)))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "n_na") |>
+  filter(n_na > 0) |>
+  arrange(desc(n_na))
+cat("Variables avec NA :\n")
+vars_avec_na
+```
+
+------------------------------------------------------------------------
+
+### Q4 — Calculer la proportion de NA par variable
+
+```{r}
+#| label: d4-q4
+paludisme_na_simul |>
+  summarise(across(everything(), ~round(100 * mean(is.na(.)), 2))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "pct_na") |>
+  filter(pct_na > 0) |>
+  arrange(desc(pct_na))
+```
+
+> Aucune variable simulée ne dépasse 10 % de NA — seuil souvent utilisé comme premier signal d'alerte pour la qualité des données.
+
+------------------------------------------------------------------------
+
+### Q5 — Détecter les NA structurels : grossesse chez les hommes
+
+```{r}
+#| label: d4-q5
+# Dans la base originale, "grossesse" devrait être NA ou "Non" pour les hommes
+hommes_enceints <- paludisme |>
+  filter(sexe == "M", grossesse == "Oui")
+cat("Hommes avec grossesse = 'Oui' :", nrow(hommes_enceints), "\n\n")
+
+# Dans la base simulée, NA chez les hommes sont structurels
+paludisme_na_simul |>
+  filter(sexe == "M") |>
+  summarise(
+    total_hommes      = n(),
+    grossesse_na      = sum(is.na(grossesse)),
+    grossesse_oui     = sum(grossesse == "Oui", na.rm = TRUE)
+  )
+```
+
+> Un **NA structurel** est un NA dont l'absence d'information est logiquement attendue (ex. grossesse chez un homme). Ce type de NA doit être recodé explicitement plutôt qu'imputé.
+
+------------------------------------------------------------------------
+
+## Traitement des valeurs manquantes
+
+### Q6 — Imputer la médiane pour les variables numériques
+
+```{r}
+#| label: d4-q6
+imputer_mediane <- function(x) {
+  x[is.na(x)] <- median(x, na.rm = TRUE)
+  x
+}
+
+paludisme_imp <- paludisme_na_simul |>
+  mutate(
+    age_ans          = imputer_mediane(age_ans),
+    hemoglobine_g_dl = imputer_mediane(hemoglobine_g_dl)
+  )
+
+cat("NA restants après imputation médiane :\n")
+cat("  age_ans         :", sum(is.na(paludisme_imp$age_ans)), "\n")
+cat("  hemoglobine_g_dl:", sum(is.na(paludisme_imp$hemoglobine_g_dl)), "\n")
+```
+
+> L'imputation par la médiane est robuste aux valeurs extrêmes et préserve la distribution centrale. Elle est préférée à la moyenne pour les variables asymétriques.
+
+------------------------------------------------------------------------
+
+### Q7 — Imputer le mode pour les variables catégorielles
+
+```{r}
+#| label: d4-q7
+mode_cat <- function(x) {
+  tab <- sort(table(x, useNA = "no"), decreasing = TRUE)
+  names(tab)[1]
+}
+
+paludisme_imp <- paludisme_imp |>
+  mutate(
+    niveau_education = if_else(
+      is.na(niveau_education),
+      mode_cat(niveau_education),
+      niveau_education
+    )
+  )
+
+cat("Mode de niveau_education :", mode_cat(paludisme_na_simul$niveau_education), "\n")
+cat("NA restants             :", sum(is.na(paludisme_imp$niveau_education)), "\n")
+```
+
+------------------------------------------------------------------------
+
+### Q8 — Recoder grossesse = "Non" pour les hommes (NA structurel)
+
+```{r}
+#| label: d4-q8
+paludisme_imp <- paludisme_imp |>
+  mutate(
+    grossesse = case_when(
+      sexe == "M"               ~ "Non",
+      is.na(grossesse) & sexe == "F" ~ mode_cat(grossesse[sexe == "F"]),
+      TRUE                             ~ grossesse
+    )
+  )
+
+cat("NA restants dans 'grossesse' :", sum(is.na(paludisme_imp$grossesse)), "\n")
+paludisme_imp |> count(sexe, grossesse)
+```
+
+> Le recodage différencié selon le sexe est essentiel : imputer un mode global pour `grossesse` affecterait de manière incohérente les hommes.
+
+------------------------------------------------------------------------
+
+### Q9 — Vérifier la qualité de l'imputation
+
+```{r}
+#| label: d4-q9
+cat("Résumé AVANT imputation (données simulées) :\n")
+paludisme_na_simul |>
+  summarise(
+    na_age  = sum(is.na(age_ans)),
+    na_hb   = sum(is.na(hemoglobine_g_dl)),
+    na_educ = sum(is.na(niveau_education)),
+    na_gros = sum(is.na(grossesse))
+  ) |> print()
+
+cat("\nRésumé APRÈS imputation :\n")
+paludisme_imp |>
+  summarise(
+    na_age  = sum(is.na(age_ans)),
+    na_hb   = sum(is.na(hemoglobine_g_dl)),
+    na_educ = sum(is.na(niveau_education)),
+    na_gros = sum(is.na(grossesse))
+  ) |> print()
+```
+
+------------------------------------------------------------------------
+
+### Q10 — Comparer les distributions avant/après imputation (âge)
+
+```{r}
+#| label: fig-d4-q10
+#| fig-cap: "Q10 — Distribution de l'âge avant et après imputation par la médiane"
+df_comp <- bind_rows(
+  paludisme_na_simul |> transmute(age_ans, etape = "Avant imputation"),
+  paludisme_imp      |> transmute(age_ans, etape = "Après imputation")
+)
+
+ggplot(df_comp, aes(x = age_ans, fill = etape)) +
+  geom_histogram(bins = 10, alpha = 0.6, position = "identity") +
+  facet_wrap(~etape) +
+  labs(title = "Distribution de l'âge avant et après imputation",
+       x = "Âge (ans)", y = "Effectif", fill = NULL)
+```
+
+> L'imputation par la médiane crée un pic artificiel à la valeur centrale. Pour une analyse confirmative, des méthodes plus sophistiquées (imputation multiple) seraient préférables.
+
+------------------------------------------------------------------------
+
+## Identification et traitement des valeurs aberrantes
+
+### Q11 — Méthode IQR : détecter les outliers dans l'hémoglobine
+
+```{r}
+#| label: d4-q11
+Q1_hb  <- quantile(paludisme$hemoglobine_g_dl, 0.25)
+Q3_hb  <- quantile(paludisme$hemoglobine_g_dl, 0.75)
+IQR_hb <- Q3_hb - Q1_hb
+borne_inf_hb <- Q1_hb - 1.5 * IQR_hb
+borne_sup_hb <- Q3_hb + 1.5 * IQR_hb
+
+outliers_hb_df <- paludisme |>
+  filter(hemoglobine_g_dl < borne_inf_hb | hemoglobine_g_dl > borne_sup_hb)
+
+cat(sprintf("Q1=%.2f  Q3=%.2f  IQR=%.2f\n", Q1_hb, Q3_hb, IQR_hb))
+cat(sprintf("Bornes : [%.2f ; %.2f]\n", borne_inf_hb, borne_sup_hb))
+cat("Nombre d'outliers IQR :", nrow(outliers_hb_df), "\n")
+outliers_hb_df |> select(id_individu, age_ans, sexe, hemoglobine_g_dl) |> head(10)
+```
+
+------------------------------------------------------------------------
+
+### Q12 — Méthode z-score : détecter les outliers dans l'âge
+
+```{r}
+#| label: d4-q12
+z_scores_age <- scale(paludisme$age_ans)[, 1]
+outliers_age <- paludisme |>
+  mutate(z_age = z_scores_age) |>
+  filter(abs(z_age) > 3)
+
+cat("Outliers âge (|z| > 3) :", nrow(outliers_age), "\n")
+if (nrow(outliers_age) > 0) {
+  outliers_age |> select(id_individu, age_ans, z_age) |> head(10)
+} else {
+  cat("Aucun outlier détecté par la méthode z-score.\n")
+}
+```
+
+> La méthode z-score suppose une distribution approximativement normale. Elle est moins robuste que la méthode IQR en présence de distributions asymétriques.
+
+------------------------------------------------------------------------
+
+### Q13 — Boxplot illustrant les outliers
+
+```{r}
+#| label: fig-d4-q13
+#| fig-cap: "Q13 — Boxplot de l'hémoglobine avec mise en évidence des outliers IQR"
+paludisme |>
+  mutate(outlier = hemoglobine_g_dl < borne_inf_hb | hemoglobine_g_dl > borne_sup_hb) |>
+  ggplot(aes(x = region, y = hemoglobine_g_dl)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+  geom_jitter(aes(color = outlier), width = 0.2, size = 1, alpha = 0.5) +
+  scale_color_manual(values = c("FALSE" = "grey60", "TRUE" = "red3"),
+                     labels = c("Normal", "Outlier IQR")) +
+  labs(title = "Hémoglobine par région — outliers IQR en rouge",
+       x = "Région", y = "Hémoglobine (g/dL)", color = NULL)
+```
+
+------------------------------------------------------------------------
+
+### Q14 — Compter les outliers IQR pour toutes les variables numériques
+
+```{r}
+#| label: d4-q14
+vars_num_d4 <- c("age_ans", "hemoglobine_g_dl", "parasitemie_par_ul",
+                  "revenu_mensuel_fcfa", "distance_csi_km", "pluviometrie_mm")
+
+map_dfr(vars_num_d4, \(v) {
+  x   <- paludisme[[v]]
+  q1  <- quantile(x, 0.25, na.rm = TRUE)
+  q3  <- quantile(x, 0.75, na.rm = TRUE)
+  iqr <- q3 - q1
+  n_out <- sum(x < q1 - 1.5 * iqr | x > q3 + 1.5 * iqr, na.rm = TRUE)
+  tibble(variable = v, Q1 = round(q1, 2), Q3 = round(q3, 2),
+         borne_inf = round(q1 - 1.5 * iqr, 2),
+         borne_sup = round(q3 + 1.5 * iqr, 2),
+         n_outliers = n_out,
+         pct_outliers = round(100 * n_out / length(x), 2))
+})
+```
+
+------------------------------------------------------------------------
+
+### Q15 — Tableau des valeurs extrêmes (percentiles 1 et 99)
+
+```{r}
+#| label: d4-q15
+map_dfr(vars_num_d4, \(v) {
+  x <- paludisme[[v]]
+  tibble(
+    variable = v,
+    min      = round(min(x, na.rm = TRUE), 2),
+    p1       = round(quantile(x, 0.01, na.rm = TRUE), 2),
+    p99      = round(quantile(x, 0.99, na.rm = TRUE), 2),
+    max      = round(max(x, na.rm = TRUE), 2)
+  )
+})
+```
+
+> La comparaison entre min/p1 et max/p99 révèle si des valeurs extrêmes s'écartent de la distribution générale, ce qui peut signaler des erreurs de saisie.
+
+------------------------------------------------------------------------
+
+### Q16 — Évaluer la plausibilité biologique de l'hémoglobine
+
+```{r}
+#| label: d4-q16
+# Seuils cliniques : Hb < 3 g/dL = incompatible avec la vie ; Hb > 20 g/dL = improbable
+hb_implausible <- paludisme |>
+  filter(hemoglobine_g_dl < 3 | hemoglobine_g_dl > 20)
+
+cat("Valeurs d'Hb biologiquement implausibles :", nrow(hb_implausible), "\n\n")
+
+# Hb < 7 g/dL = anémie sévère (OMS) — cliniquement possible mais à vérifier
+hb_severe <- paludisme |> filter(hemoglobine_g_dl < 7)
+cat("Anémie sévère (Hb < 7 g/dL) :", nrow(hb_severe), "individus\n")
+hb_severe |>
+  group_by(region) |>
+  summarise(n = n(), hb_moy = round(mean(hemoglobine_g_dl), 2))
+```
+
+------------------------------------------------------------------------
+
+### Q17 — Winsorisation du revenu mensuel
+
+```{r}
+#| label: d4-q17
+winsorise <- function(x, p_low = 0.01, p_high = 0.99) {
+  low  <- quantile(x, p_low,  na.rm = TRUE)
+  high <- quantile(x, p_high, na.rm = TRUE)
+  pmin(pmax(x, low), high)
+}
+
+paludisme_propre <- paludisme |>
+  mutate(revenu_wins = winsorise(revenu_mensuel_fcfa))
+
+cat(sprintf("Revenu original  — min: %.0f  max: %.0f\n",
+            min(paludisme$revenu_mensuel_fcfa),
+            max(paludisme$revenu_mensuel_fcfa)))
+cat(sprintf("Revenu winsorisé — min: %.0f  max: %.0f\n",
+            min(paludisme_propre$revenu_wins),
+            max(paludisme_propre$revenu_wins)))
+```
+
+> La winsorisation remplace les valeurs au-delà des percentiles 1 et 99 par ces bornes, atténuant l'effet des outliers sans supprimer d'observations.
+
+------------------------------------------------------------------------
+
+### Q18 — Validation de l'âge (plage 0–120 ans)
+
+```{r}
+#| label: d4-q18
+age_invalide <- paludisme |>
+  filter(age_ans < 0 | age_ans > 120)
+cat("Individus avec âge invalide (< 0 ou > 120 ans) :", nrow(age_invalide), "\n\n")
+
+# Distribution de l'âge par tranche
+paludisme |>
+  mutate(tranche_age = cut(age_ans,
+    breaks = c(0, 10, 20, 30, 40, 50, 60, 120),
+    labels = c("0-9", "10-19", "20-29", "30-39", "40-49", "50-59", "60+"),
+    right  = FALSE)) |>
+  count(tranche_age)
+```
+
+------------------------------------------------------------------------
+
+### Q19 — Borner les valeurs extrêmes de pluviométrie
+
+```{r}
+#| label: d4-q19
+borne_inf_pluie <- quantile(paludisme$pluviometrie_mm, 0.01, na.rm = TRUE)
+borne_sup_pluie <- quantile(paludisme$pluviometrie_mm, 0.99, na.rm = TRUE)
+
+paludisme_propre <- paludisme_propre |>
+  mutate(pluv_bornee = pmin(pmax(pluviometrie_mm, borne_inf_pluie), borne_sup_pluie))
+
+cat(sprintf("Pluviométrie originale  — étendue : [%.1f ; %.1f]\n",
+            min(paludisme$pluviometrie_mm), max(paludisme$pluviometrie_mm)))
+cat(sprintf("Pluviométrie bornée     — étendue : [%.1f ; %.1f]\n",
+            min(paludisme_propre$pluv_bornee), max(paludisme_propre$pluv_bornee)))
+```
+
+------------------------------------------------------------------------
+
+### Q20 — Comparer la distribution du revenu avant/après winsorisation
+
+```{r}
+#| label: fig-d4-q20
+#| fig-cap: "Q20 — Revenu mensuel avant et après winsorisation"
+df_rev <- bind_rows(
+  paludisme_propre |> transmute(revenu = revenu_mensuel_fcfa, etape = "Avant winsorisation"),
+  paludisme_propre |> transmute(revenu = revenu_wins,         etape = "Après winsorisation")
+)
+
+ggplot(df_rev, aes(x = revenu)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white", alpha = 0.8) +
+  facet_wrap(~etape, scales = "free_x") +
+  scale_x_continuous(labels = scales::label_comma()) +
+  labs(title = "Distribution du revenu mensuel (FCFA)",
+       x = "Revenu (FCFA)", y = "Effectif")
+```
+
+------------------------------------------------------------------------
+
+## Vérifications de cohérence
+
+### Q21 — Cohérence TDR \~ parasitémie
+
+```{r}
+#| label: d4-q21
+incoherences_tdr <- paludisme |>
+  filter(
+    (resultat_tdr == "Positif"  & parasitemie_par_ul == 0) |
+    (resultat_tdr == "Négatif"  & parasitemie_par_ul >  0)
+  )
+cat("Incohérences TDR ~ parasitémie :", nrow(incoherences_tdr), "\n\n")
+
+paludisme |>
+  group_by(resultat_tdr) |>
+  summarise(
+    n          = n(),
+    para_zero  = sum(parasitemie_par_ul == 0),
+    para_pos   = sum(parasitemie_par_ul >  0),
+    para_moy   = round(mean(parasitemie_par_ul), 1)
+  )
+```
+
+> Aucune incohérence TDR \~ parasitémie : la base synthétique respecte parfaitement cette contrainte logique.
+
+------------------------------------------------------------------------
+
+### Q22 — État civil chez les enfants de moins de 10 ans
+
+```{r}
+#| label: d4-q22
+etat_enfants <- paludisme |>
+  filter(age_ans < 10, etat_civil %in% c("Marié", "Divorcé", "Veuf")) |>
+  count(etat_civil, sort = TRUE)
+
+n_incoherent <- paludisme |>
+  filter(age_ans < 10, etat_civil %in% c("Marié", "Divorcé", "Veuf")) |>
+  nrow()
+
+cat("Enfants < 10 ans avec état civil adulte :", n_incoherent, "\n\n")
+etat_enfants
+```
+
+::: callout-warning
+**`r n_incoherent` enfants de moins de 10 ans** présentent un état civil adulte (Marié, Divorcé, Veuf). Il s'agit d'un artefact de la génération synthétique des données. Dans un contexte réel, ces valeurs devraient être recodées en `"Célibataire"` ou marquées comme manquantes.
+:::
+
+------------------------------------------------------------------------
+
+### Q23 — Cohérence sexe \~ grossesse
+
+```{r}
+#| label: d4-q23
+paludisme |>
+  group_by(sexe, grossesse) |>
+  summarise(n = n(), .groups = "drop") |>
+  pivot_wider(names_from = grossesse, values_from = n, values_fill = 0)
+```
+
+```{r}
+#| label: d4-q23b
+hommes_gros <- paludisme |>
+  filter(sexe == "M", grossesse == "Oui") |> nrow()
+cat("Hommes avec grossesse = 'Oui' :", hommes_gros, "\n")
+```
+
+> Si ce nombre est non nul, il constitue une incohérence directe à corriger en recodant `grossesse = "Non"` pour tous les individus de sexe masculin.
+
+------------------------------------------------------------------------
+
+### Q24 — Cohérence âge \~ niveau d'éducation
+
+```{r}
+#| label: d4-q24
+# Enfants < 6 ans ne peuvent pas avoir de niveau supérieur au primaire
+educ_incoherent <- paludisme |>
+  filter(age_ans < 6,
+         niveau_education %in% c("Primaire", "Secondaire", "Supérieur"))
+
+cat("Enfants < 6 ans avec scolarisation formelle :", nrow(educ_incoherent), "\n\n")
+
+paludisme |>
+  filter(age_ans < 10) |>
+  count(niveau_education, sort = TRUE)
+```
+
+------------------------------------------------------------------------
+
+### Q25 — Rapport de cohérence global
+
+```{r}
+#| label: d4-q25
+interpretations <- tibble::tribble(
+  ~Vérification,                                ~N_incohérences, ~Commentaire,
+  "TDR négatif + parasitémie > 0",              "0",  "Cohérence parfaite",
+  "TDR positif + parasitémie = 0",              "0",  "Cohérence parfaite",
+  "Homme avec grossesse = Oui",                 as.character(hommes_gros),
+                                                      "Artefact synthétique",
+  "Enfant < 10 ans avec état civil adulte",     as.character(n_incoherent),
+                                                      "Artefact synthétique",
+  "Enfant < 6 ans avec scolarisation formelle", as.character(nrow(educ_incoherent)),
+                                                      "À vérifier"
+)
+interpretations
+```
+
+------------------------------------------------------------------------
+
+## Nettoyage final et export
+
+### Q26 — Détecter les doublons
+
+```{r}
+#| label: d4-q26
+n_lignes_total    <- nrow(paludisme)
+n_lignes_uniques  <- nrow(distinct(paludisme))
+n_doublons        <- n_lignes_total - n_lignes_uniques
+
+cat("Lignes totales   :", n_lignes_total, "\n")
+cat("Lignes uniques   :", n_lignes_uniques, "\n")
+cat("Doublons exacts  :", n_doublons, "\n\n")
+
+# Doublons sur identifiant individu uniquement
+n_id_dup <- paludisme |>
+  count(id_individu) |>
+  filter(n > 1) |>
+  nrow()
+cat("Identifiants individu dupliqués :", n_id_dup, "\n")
+```
+
+> Aucun doublon : chaque individu est présent une seule fois dans la base. C'est attendu pour un jeu de données synthétique bien construit.
+
+------------------------------------------------------------------------
+
+### Q27 — Standardiser les noms de variables (snake_case)
+
+```{r}
+#| label: d4-q27
+# Vérification que tous les noms sont déjà en snake_case
+noms_actuels <- names(paludisme)
+noms_proposes <- janitor::make_clean_names(noms_actuels)
+
+comparaison_noms <- tibble(
+  original = noms_actuels,
+  propose  = noms_proposes,
+  modifie  = original != propose
+)
+
+cat("Noms déjà conformes snake_case :",
+    sum(!comparaison_noms$modifie), "/", nrow(comparaison_noms), "\n")
+if (any(comparaison_noms$modifie)) {
+  cat("\nNoms à modifier :\n")
+  print(filter(comparaison_noms, modifie))
+}
+```
+
+::: callout-note
+Si le package `{janitor}` n'est pas installé, utiliser : `install.packages("janitor")`.
+:::
+
+------------------------------------------------------------------------
+
+### Q28 — Créer le dataset final propre
+
+```{r}
+#| label: d4-q28
+paludisme_final <- paludisme |>
+  # Recoder grossesse pour les hommes
+  mutate(
+    grossesse = if_else(sexe == "M" & grossesse == "Oui", "Non", grossesse)
+  ) |>
+  # Recoder état civil incohérent chez enfants < 10 ans
+  mutate(
+    etat_civil = if_else(
+      age_ans < 10 & etat_civil %in% c("Marié", "Divorcé", "Veuf"),
+      "Célibataire",
+      etat_civil
+    )
+  ) |>
+  # Ajouter revenu winsorisé
+  mutate(revenu_wins = winsorise(revenu_mensuel_fcfa))
+
+cat("Dimensions du dataset final :", nrow(paludisme_final), "×", ncol(paludisme_final), "\n")
+cat("Valeurs manquantes totales  :", sum(is.na(paludisme_final)), "\n")
+glimpse(paludisme_final)
+```
+
+------------------------------------------------------------------------
+
+### Q29 — Créer un dictionnaire des données
+
+```{r}
+#| label: d4-q29
+dictionnaire <- tibble(
+  variable     = names(paludisme_final),
+  type_r       = map_chr(paludisme_final, \(x) class(x)[1]),
+  n_distincts  = map_int(paludisme_final, \(x) n_distinct(x, na.rm = TRUE)),
+  n_na         = map_int(paludisme_final, \(x) sum(is.na(x))),
+  exemple      = map_chr(paludisme_final, \(x) as.character(x[!is.na(x)][1]))
+) |>
+  mutate(
+    description = case_match(variable,
+      "id_individu"               ~ "Identifiant unique de l'individu",
+      "age_ans"                   ~ "Âge en années",
+      "sexe"                      ~ "Sexe biologique (Masculin/Féminin)",
+      "region"                    ~ "Région administrative",
+      "milieu"                    ~ "Milieu de résidence (Urbain/Rural)",
+      "hemoglobine_g_dl"          ~ "Taux d'hémoglobine en g/dL",
+      "parasitemie_par_ul"        ~ "Parasitémie (parasites/µL)",
+      "resultat_tdr"              ~ "Résultat du test de diagnostic rapide",
+      "fievre_2sem"               ~ "Fièvre dans les 2 dernières semaines (0/1)",
+      "revenu_mensuel_fcfa"       ~ "Revenu mensuel du ménage en FCFA",
+      "revenu_wins"               ~ "Revenu mensuel winsorisé (p1–p99)",
+      "utilisation_MII"           ~ "Fréquence d'utilisation des moustiquaires",
+      "grossesse"                 ~ "Statut de grossesse (Oui/Non)",
+      "niveau_education"          ~ "Niveau d'instruction",
+      "etat_civil"                ~ "Situation matrimoniale",
+      "distance_csi_km"           ~ "Distance au centre de santé intégré (km)",
+      "pluviometrie_mm"           ~ "Pluviométrie mensuelle (mm)",
+      "aspersion_intra_domiciliaire" ~ "Pulvérisation intra-domiciliaire (Oui/Non)",
+      .default = variable
+    )
+  )
+
+dictionnaire |> select(variable, type_r, n_distincts, n_na, description)
+```
+
+------------------------------------------------------------------------
+
+### Q30 — Exporter le dataset final en CSV
+
+```{r}
+#| label: d4-q30
+write_csv(paludisme_final, "data/paludisme_final_propre.csv")
+cat("✔ Dataset exporté : data/paludisme_final_propre.csv\n")
+cat("  Dimensions :", nrow(paludisme_final), "lignes ×", ncol(paludisme_final), "colonnes\n")
+cat("  Taille     :", round(file.size("data/paludisme_final_propre.csv") / 1024, 1), "Ko\n")
+```
+
+::: callout-note
+## Bilan de l'analyse — 120 questions complétées
+
+| Devoir | Thème | Questions | Points clés |
+|----|----|----|----|
+| D1 | Débutant — Exploration & manipulation | Q1–Q30 | Prévalence TDR 34,3 % ; 86,5 % de ménages avec moustiquaire |
+| D2 | Intermédiaire — dplyr / tidyr / tests | Q1–Q30 | Tous les tests non significatifs à α = 0,05 |
+| D3 | Avancé — purrr / stringr / régression | Q1–Q30 | Aucun prédicteur significatif du TDR ; Hb seule variable normale (Shapiro p = 0,34) |
+| D4 | Qualité des données | Q1–Q30 | Base synthétique complète (0 NA) ; artefacts d'état civil et grossesse corrigés |
+
+La base est désormais propre, cohérente et exportée pour une utilisation ultérieure.
+:::
+
+------------------------------------------------------------------------
+
+# Devoir 5 — Biostatistiques & Indicateurs Programmatiques
+
+::: callout-note
+## Contexte programmatique
+
+Ce devoir mobilise les indicateurs de performance suivis par les principales organisations mondiales de lutte antipaludique : l'**OMS** (*Rapport mondial sur le paludisme*), le **Partenariat RBM** (*Roll Back Malaria*), le **PMI** (*President's Malaria Initiative* / USAID), le **Fonds mondial** et l'**UNICEF**. Les seuils et objectifs de référence sont ceux du *Global Technical Strategy for Malaria 2016–2030* (GTS) et des rapports PMI annuels.
+
+Toutes les analyses s'appuient sur la base nettoyée `paludisme_final` issue du Devoir 4.
+:::
+
+## Indicateurs épidémiologiques OMS
+
+### Q1 — Taux de Positivité des Tests (TPR) global et par région
+
+Le **TPR** (*Test Positivity Rate*) est l'indicateur de référence OMS pour évaluer l'intensité de transmission. Un TPR ≥ 10 % signale une forte endémicité ; un TPR ≥ 40 % indique une situation d'urgence épidémique. La cible du GTS est un TPR \< 10 % à l'horizon 2030.
+
+```{r}
+#| label: d5-q1
+# TPR = proportion de tests positifs parmi tous les tests réalisés
+tpr_global <- paludisme_final |>
+  summarise(
+    n_testes   = n(),
+    n_positifs = sum(resultat_tdr == "Positif"),
+    TPR_pct    = round(n_positifs / n_testes * 100, 1),
+    IC_bas     = round(prop.test(n_positifs, n_testes)$conf.int[1] * 100, 1),
+    IC_haut    = round(prop.test(n_positifs, n_testes)$conf.int[2] * 100, 1)
+  )
+
+tpr_region <- paludisme_final |>
+  group_by(region) |>
+  summarise(
+    n_testes   = n(),
+    n_positifs = sum(resultat_tdr == "Positif"),
+    TPR_pct    = round(n_positifs / n_testes * 100, 1),
+    IC_bas     = round(prop.test(n_positifs, n_testes)$conf.int[1] * 100, 1),
+    IC_haut    = round(prop.test(n_positifs, n_testes)$conf.int[2] * 100, 1)
+  )
+
+cat("=== TPR Global ===\n"); print(tpr_global)
+cat("\n=== TPR par région (IC 95 %) ===\n"); print(tpr_region)
+```
+
+> **Correction** : Le TPR global est d'environ **34 %**, largement au-dessus du seuil OMS de 10 %. Cela classe la région septentrionale en zone de **forte endémicité**. Les IC 95 % binomiaux permettent d'encadrer l'estimation et de comparer les régions entre elles. Dans un rapport PMI, ce tableau serait complété par le taux d'incidence annuel (cas pour 1 000 habitants).
+
+------------------------------------------------------------------------
+
+### Q2 — Prévalence parasitaire chez les 2–10 ans (PfPR₂₋₁₀)
+
+Le **PfPR₂₋₁₀** (*Plasmodium falciparum Parasite Rate* dans la tranche 2–10 ans) est l'indicateur standardisé du *Malaria Atlas Project* (MAP) et de l'OMS pour mesurer l'intensité de transmission indépendamment de la structure démographique. Il facilite les comparaisons internationales.
+
+```{r}
+#| label: d5-q2
+pfpr_global <- paludisme_final |>
+  filter(age_ans >= 2, age_ans <= 10) |>
+  summarise(
+    n_enfants  = n(),
+    n_positifs = sum(resultat_tdr == "Positif"),
+    PfPR2_10   = round(n_positifs / n_enfants * 100, 1),
+    IC_bas     = round(prop.test(n_positifs, n_enfants)$conf.int[1] * 100, 1),
+    IC_haut    = round(prop.test(n_positifs, n_enfants)$conf.int[2] * 100, 1)
+  )
+
+pfpr_region <- paludisme_final |>
+  filter(age_ans >= 2, age_ans <= 10) |>
+  group_by(region) |>
+  summarise(
+    n_enfants  = n(),
+    n_positifs = sum(resultat_tdr == "Positif"),
+    PfPR2_10   = round(n_positifs / n_enfants * 100, 1),
+    IC_bas     = round(prop.test(n_positifs, n_enfants)$conf.int[1] * 100, 1),
+    IC_haut    = round(prop.test(n_positifs, n_enfants)$conf.int[2] * 100, 1)
+  )
+
+cat("=== PfPR₂₋₁₀ Global ===\n"); print(pfpr_global)
+cat("\n=== PfPR₂₋₁₀ par région ===\n"); print(pfpr_region)
+```
+
+> **Correction** : Le PfPR₂₋₁₀ est proche du TPR global dans cette base (distribution d'âge relativement homogène). Le MAP classe les zones avec PfPR₂₋₁₀ \> 10 % en endémicité **méso-** à **hyperendémique**. Cette tranche d'âge est retenue car l'immunité naturelle n'est pas encore acquise et les réponses serologiques ne biaisent pas le TDR.
+
+------------------------------------------------------------------------
+
+### Q3 — Prévalence de l'anémie selon les seuils OMS différenciés
+
+L'OMS définit des seuils d'anémie spécifiques par groupe (OMS, 2011). Le critère unique Hb \< 11 g/dL utilisé en Devoir 1 sous-estime l'anémie chez les adultes masculins (seuil = 13 g/dL) et la surestime chez les enfants de 5–14 ans.
+
+```{r}
+#| label: d5-q3
+# Seuils OMS 2011 différenciés par âge, sexe et statut de grossesse
+prev_anemie_oms <- paludisme_final |>
+  mutate(
+    seuil_hb = case_when(
+      age_ans < 5                                        ~ 11.0,
+      age_ans >= 5  & age_ans < 12                       ~ 11.5,
+      age_ans >= 12 & age_ans < 15                       ~ 12.0,
+      sexe == "F" & grossesse == "Oui" & age_ans >= 15   ~ 11.0,
+      sexe == "F" & age_ans >= 15                        ~ 12.0,
+      sexe == "M" & age_ans >= 15                        ~ 13.0,
+      TRUE                                               ~ 12.0
+    ),
+    groupe = case_when(
+      age_ans < 5                                        ~ "Enfants < 5 ans",
+      age_ans >= 5 & age_ans < 15                        ~ "Enfants 5–14 ans",
+      sexe == "F" & grossesse == "Oui"                   ~ "Femmes enceintes",
+      sexe == "F" & age_ans >= 15                        ~ "Femmes adultes",
+      sexe == "M" & age_ans >= 15                        ~ "Hommes adultes",
+      TRUE                                               ~ "Autre"
+    ),
+    anemie_oms    = hemoglobine_g_dl < seuil_hb,
+    anemie_severe = hemoglobine_g_dl < 7.0
+  ) |>
+  group_by(groupe) |>
+  summarise(
+    n              = n(),
+    prev_anemie    = round(mean(anemie_oms,    na.rm = TRUE) * 100, 1),
+    prev_severe    = round(mean(anemie_severe, na.rm = TRUE) * 100, 1),
+    hb_mediane     = round(median(hemoglobine_g_dl, na.rm = TRUE), 1),
+    .groups = "drop"
+  ) |>
+  arrange(groupe)
+
+prev_anemie_oms
+```
+
+> **Correction** : Les seuils OMS différenciés révèlent une prévalence d'anémie chez les **hommes adultes** plus faible qu'avec un seuil unique de 11 g/dL (car leur seuil est 13 g/dL). Les **enfants \< 5 ans** et les **femmes enceintes** restent les groupes prioritaires pour les programmes de supplémentation en fer et de traitement préventif intermittent. L'anémie sévère (Hb \< 7 g/dL) indique un risque vital immédiat nécessitant une transfusion.
+
+------------------------------------------------------------------------
+
+### Q4 — Tableau de bord des indicateurs épidémiologiques OMS
+
+Synthèse des indicateurs épidémiologiques standardisés pour la présentation dans un rapport annuel de programme ou une revue PMI.
+
+```{r}
+#| label: d5-q4
+# Proportion de paludisme grave (parasitémie > 100 000/µL = critère sévérité OMS)
+prop_grave <- paludisme_final |>
+  filter(resultat_tdr == "Positif") |>
+  summarise(
+    n_positifs    = n(),
+    n_grave       = sum(parasitemie_par_ul > 100000),
+    pct_grave     = round(mean(parasitemie_par_ul > 100000) * 100, 1)
+  )
+
+# Anémie paludique (TDR+ et Hb < 11 g/dL) chez les enfants < 5 ans
+anemie_palu_u5 <- paludisme_final |>
+  filter(age_ans < 5) |>
+  summarise(
+    n                  = n(),
+    n_palu_anemie      = sum(resultat_tdr == "Positif" & hemoglobine_g_dl < 11),
+    prev_palu_anemie   = round(mean(resultat_tdr == "Positif" & hemoglobine_g_dl < 11) * 100, 1)
+  )
+
+# Tableau récapitulatif
+tibble::tribble(
+  ~Indicateur,                                    ~Valeur,         ~Seuil_reference,      ~Source,
+  "TPR global",                                   paste0(tpr_global$TPR_pct, " %"),
+                                                  "< 10 % (GTS 2030)",                    "OMS",
+  "PfPR₂₋₁₀ global",                             paste0(pfpr_global$PfPR2_10, " %"),
+                                                  "< 1 % (élimination)",                  "MAP/OMS",
+  "Paludisme grave (parasitémie > 100 000/µL)",   paste0(prop_grave$pct_grave, " % des +"),
+                                                  "Indicateur de sévérité",               "OMS",
+  "Anémie paludique chez enfants < 5 ans",        paste0(anemie_palu_u5$prev_palu_anemie, " %"),
+                                                  "Cible de réduction",                   "UNICEF/OMS"
+)
+```
+
+------------------------------------------------------------------------
+
+## Indicateurs de couverture des interventions (RBM / PMI)
+
+### Q5 — Couverture des ménages en MILDA et accès universel
+
+Le **RBM** et le **PMI** suivent deux indicateurs distincts :
+
+- **Couverture en MILDA** : % de ménages possédant ≥ 1 moustiquaire imprégnée de longue durée d'action (objectif ≥ 80 %).
+- **Accès universel** : % de ménages ayant ≥ 1 MILDA pour 2 personnes — critère d'efficacité protectrice minimale.
+
+```{r}
+#| label: d5-q5
+menages_d5 <- paludisme_final |>
+  distinct(menage_id, .keep_all = TRUE)
+
+couverture_milda <- menages_d5 |>
+  summarise(
+    n_menages          = n(),
+    # Possession ≥ 1 MII
+    n_avec_mii         = sum(nombre_moustiquaires >= 1),
+    pct_possession     = round(mean(nombre_moustiquaires >= 1) * 100, 1),
+    # Accès universel : ≥ 1 MII pour 2 personnes (taille_menage / 2)
+    n_acces_universel  = sum(nombre_moustiquaires >= taille_menage / 2),
+    pct_acces_univ     = round(mean(nombre_moustiquaires >= taille_menage / 2) * 100, 1),
+    mii_moy_par_menage = round(mean(nombre_moustiquaires), 2)
+  )
+
+couv_par_milieu <- menages_d5 |>
+  group_by(milieu) |>
+  summarise(
+    n_menages       = n(),
+    pct_possession  = round(mean(nombre_moustiquaires >= 1) * 100, 1),
+    pct_acces_univ  = round(mean(nombre_moustiquaires >= taille_menage / 2) * 100, 1),
+    .groups = "drop"
+  )
+
+cat("=== Couverture MILDA globale ===\n"); print(couverture_milda)
+cat("\n=== Couverture MILDA par milieu ===\n"); print(couv_par_milieu)
+```
+
+> **Correction** : Le **taux de possession** (≥ 1 MII) et le taux d'**accès universel** sont deux indicateurs complémentaires. Un ménage peut posséder une moustiquaire mais ne pas avoir la couverture universelle si sa taille dépasse 2 personnes par moustiquaire. Le PMI vise ≥ 80 % pour les deux indicateurs. L'écart entre possession et accès universel signale le besoin en moustiquaires supplémentaires.
+
+------------------------------------------------------------------------
+
+### Q6 — Taux d'utilisation des MII (comportement de protection)
+
+L'utilisation effective des MII est mesurée par la variable `utilisation_MII` (fréquence d'utilisation). Le PMI distingue la **possession** de l'**utilisation réelle** car des moustiquaires peuvent être possédées mais non utilisées. La variable ordonnée `Jamais < Parfois < Toujours` permet un test de tendance.
+
+```{r}
+#| label: d5-q6
+# Taux d'utilisation parmi les ménages possédant au moins 1 MII
+utilisation_mii <- paludisme_final |>
+  group_by(utilisation_MII) |>
+  summarise(
+    n             = n(),
+    pct           = round(n() / nrow(paludisme_final) * 100, 1),
+    prev_tdr      = round(mean(resultat_tdr == "Positif") * 100, 1),
+    hb_mediane    = round(median(hemoglobine_g_dl, na.rm = TRUE), 1),
+    .groups = "drop"
+  ) |>
+  mutate(
+    pct_cumule = cumsum(pct),
+    pct_utilise_toujours = pct[utilisation_MII == "Toujours"]
+  )
+
+utilisation_mii |> select(utilisation_MII, n, pct, prev_tdr, hb_mediane)
+```
+
+```{r}
+#| label: fig-d5-q6
+#| fig-cap: "Q6 — Prévalence TDR (%) selon la fréquence d'utilisation des MII"
+utilisation_mii |>
+  ggplot(aes(x = utilisation_MII, y = prev_tdr)) +
+  geom_col() +
+  geom_text(aes(label = paste0(prev_tdr, " %")), vjust = -0.5, size = 4) +
+  scale_y_continuous(limits = c(0, max(utilisation_mii$prev_tdr) * 1.2)) +
+  labs(
+    title    = "Prévalence du paludisme (TDR+) selon l'utilisation des MII",
+    subtitle = "Indicateur PMI : cible ≥ 80 % d'utilisation « Toujours »",
+    x        = "Fréquence d'utilisation des MII",
+    y        = "Prévalence TDR positif (%)"
+  )
+```
+
+> **Correction** : La tendance décroissante de la prévalence entre « Jamais » et « Toujours » serait le signal attendu si les MII étaient protectrices. Dans ce jeu synthétique, l'association est faible (voir test de tendance D2 Q29). La proportion d'utilisateurs « Toujours » est l'indicateur de couverture effective rapporté par le PMI dans ses *Malaria Operational Plans* (MOP).
+
+------------------------------------------------------------------------
+
+### Q7 — Couverture en aspersion intra-domiciliaire (IRS) par région
+
+L'**IRS** (*Indoor Residual Spraying*) est l'une des deux principales interventions vectorielles. Le PMI suit le **taux de couverture des structures protégées** et évalue son efficacité sur la réduction du TPR.
+
+```{r}
+#| label: d5-q7
+# Couverture IRS par région et milieu
+couv_irs <- paludisme_final |>
+  group_by(region) |>
+  summarise(
+    n_total       = n(),
+    n_irs         = sum(aspersion_intra_domiciliaire == "Oui"),
+    pct_irs       = round(mean(aspersion_intra_domiciliaire == "Oui") * 100, 1),
+    tpr_avec_irs  = round(mean(resultat_tdr[aspersion_intra_domiciliaire == "Oui"] == "Positif") * 100, 1),
+    tpr_sans_irs  = round(mean(resultat_tdr[aspersion_intra_domiciliaire == "Non"] == "Positif") * 100, 1),
+    .groups = "drop"
+  )
+
+couv_irs
+```
+
+> **Correction** : Le tableau permet de comparer visuellement le TPR dans les structures protégées vs non-protégées par l'IRS. Une différence de TPR en faveur des structures avec IRS constituerait une preuve programmatique d'efficacité. En l'absence de différence (base synthétique), on conclurait à une absence d'effet protecteur observé ou à une couverture insuffisante.
+
+------------------------------------------------------------------------
+
+### Q8 — Taux de recours aux soins en cas de fièvre
+
+Le **care-seeking rate** est un indicateur OMS/UNICEF mesurant la proportion de malades fébriles ayant consulté une structure de santé dans les 48–72 heures. La cible PMI est ≥ 80 % de consultations dans les 24 heures suivant l'apparition de la fièvre.
+
+```{r}
+#| label: d5-q8
+recours_soins <- paludisme_final |>
+  filter(fievre_2sem == 1) |>
+  summarise(
+    n_febriles       = n(),
+    n_consulte       = sum(consultation_sante == "Oui"),
+    taux_consultation = round(mean(consultation_sante == "Oui") * 100, 1),
+    IC_bas           = round(prop.test(sum(consultation_sante == "Oui"), n())$conf.int[1] * 100, 1),
+    IC_haut          = round(prop.test(sum(consultation_sante == "Oui"), n())$conf.int[2] * 100, 1)
+  )
+
+recours_milieu <- paludisme_final |>
+  filter(fievre_2sem == 1) |>
+  group_by(milieu) |>
+  summarise(
+    n_febriles        = n(),
+    taux_consultation = round(mean(consultation_sante == "Oui") * 100, 1),
+    dist_mediane_csi  = round(median(distance_csi_km, na.rm = TRUE), 1),
+    .groups = "drop"
+  )
+
+cat("=== Recours aux soins global ===\n"); print(recours_soins)
+cat("\n=== Recours aux soins par milieu ===\n"); print(recours_milieu)
+```
+
+> **Correction** : Le taux de recours aux soins est un **proxy de l'accès aux services de santé**. L'analyse par milieu révèle si la distance au CSI (`distance_csi_km`) est associée à une moindre consultation — relation attendue en milieu rural. Cette information alimente les décisions de positionnement des agents de santé communautaire (ASC) dans les programmes PMI.
+
+------------------------------------------------------------------------
+
+## Analyse des populations vulnérables
+
+### Q9 — Prévalence chez les enfants de moins de 5 ans
+
+Les **enfants de moins de 5 ans** sont le groupe à mortalité paludique la plus élevée (70 % des décès mondiaux selon l'OMS). Le suivi de leur prévalence est l'indicateur d'impact prioritaire de tout programme.
+
+```{r}
+#| label: d5-q9
+prev_u5 <- paludisme_final |>
+  mutate(groupe_age = if_else(age_ans < 5, "< 5 ans", "≥ 5 ans")) |>
+  group_by(groupe_age) |>
+  summarise(
+    n              = n(),
+    n_pos          = sum(resultat_tdr == "Positif"),
+    prevalence     = round(n_pos / n * 100, 1),
+    IC_bas         = round(prop.test(n_pos, n)$conf.int[1] * 100, 1),
+    IC_haut        = round(prop.test(n_pos, n)$conf.int[2] * 100, 1),
+    hb_mediane     = round(median(hemoglobine_g_dl, na.rm = TRUE), 1),
+    .groups = "drop"
+  )
+
+prev_u5
+```
+
+```{r}
+#| label: d5-q9-test
+# Test de comparaison de proportions (H₀ : prévalence identique entre groupes d'âge)
+n_pos_u5  <- prev_u5$n_pos[prev_u5$groupe_age == "< 5 ans"]
+n_tot_u5  <- prev_u5$n[prev_u5$groupe_age == "< 5 ans"]
+n_pos_5p  <- prev_u5$n_pos[prev_u5$groupe_age == "≥ 5 ans"]
+n_tot_5p  <- prev_u5$n[prev_u5$groupe_age == "≥ 5 ans"]
+prop.test(c(n_pos_u5, n_pos_5p), c(n_tot_u5, n_tot_5p))
+```
+
+> **Correction** : La comparaison de proportions avec IC 95 % permet de tester si la prévalence chez les moins de 5 ans diffère significativement du reste de la population. L'OMS publie annuellement la prévalence U5 dans le *World Malaria Report* ; dans les programmes PMI, une réduction ≥ 40 % sur 5 ans est considérée comme un impact significatif.
+
+------------------------------------------------------------------------
+
+### Q10 — Paludisme pendant la grossesse (MiP)
+
+Le **paludisme dans la grossesse** (MiP, *Malaria in Pregnancy*) est une priorité de l'OMS/UNICEF en raison du risque d'anémie sévère maternelle, de faible poids de naissance et de mortalité néonatale. L'indicateur de couverture associé est le **TPI** (Traitement Préventif Intermittent).
+
+```{r}
+#| label: d5-q10
+mip_stats <- paludisme_final |>
+  filter(sexe == "F", age_ans >= 15) |>
+  group_by(grossesse) |>
+  summarise(
+    n               = n(),
+    prev_tdr        = round(mean(resultat_tdr == "Positif") * 100, 1),
+    IC_bas          = round(prop.test(sum(resultat_tdr == "Positif"), n())$conf.int[1] * 100, 1),
+    IC_haut         = round(prop.test(sum(resultat_tdr == "Positif"), n())$conf.int[2] * 100, 1),
+    hb_mediane      = round(median(hemoglobine_g_dl, na.rm = TRUE), 1),
+    prev_anemie_sev = round(mean(hemoglobine_g_dl < 7) * 100, 1),
+    taux_consult    = round(mean(consultation_sante == "Oui") * 100, 1),
+    .groups = "drop"
+  )
+
+mip_stats
+```
+
+```{r}
+#| label: d5-q10-test
+# Test de Fisher : statut TDR ~ grossesse chez les femmes adultes
+tab_mip <- paludisme_final |>
+  filter(sexe == "F", age_ans >= 15) |>
+  with(table(grossesse = grossesse == "Oui",
+             tdr_positif = resultat_tdr == "Positif"))
+cat("Tableau TDR × Grossesse (femmes ≥ 15 ans) :\n"); print(tab_mip)
+cat("\nTest exact de Fisher :\n"); print(fisher.test(tab_mip))
+```
+
+> **Correction** : L'indicateur clé du MiP combine la **prévalence parasitaire pendant la grossesse** et la **prévalence de l'anémie maternelle** (Hb \< 11 g/dL). Le test de Fisher est adapté car les effectifs de femmes enceintes peuvent être faibles. Une prévalence plus élevée chez les femmes enceintes qu'en dehors de la grossesse signerait une **immunodépression gestationnelle**, attendue biologiquement.
+
+------------------------------------------------------------------------
+
+### Q11 — Courbe de prévalence parasitaire par groupe d'âge (Age-Prevalence Curve)
+
+La courbe âge-prévalence est un outil diagnostique fondamental en épidémiologie du paludisme : en zone d'endémie stable, on observe un **pic de prévalence** chez les enfants de 2–10 ans, puis une décroissance due à l'acquisition progressive de l'immunité clinique.
+
+```{r}
+#| label: fig-d5-q11
+#| fig-cap: "Q11 — Courbe de prévalence parasitaire (TDR+) par tranche d'âge quinquennale"
+courbe_age <- paludisme_final |>
+  mutate(tranche_age = cut(
+    age_ans,
+    breaks = c(0, 5, 10, 15, 20, 30, 40, 50, 100),
+    labels = c("0–4", "5–9", "10–14", "15–19", "20–29", "30–39", "40–49", "50+"),
+    right  = FALSE
+  )) |>
+  group_by(tranche_age) |>
+  summarise(
+    n       = n(),
+    n_pos   = sum(resultat_tdr == "Positif"),
+    prev    = n_pos / n,
+    ic_bas  = prop.test(n_pos, n)$conf.int[1],
+    ic_haut = prop.test(n_pos, n)$conf.int[2],
+    .groups = "drop"
+  )
+
+ggplot(courbe_age, aes(x = tranche_age, y = prev, group = 1)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_ribbon(aes(ymin = ic_bas, ymax = ic_haut), alpha = 0.2) +
+  scale_y_continuous(labels = percent_format(), limits = c(0, NA)) +
+  labs(
+    title    = "Courbe âge-prévalence parasitaire (TDR+)",
+    subtitle = "Ruban = IC 95 % binomial — Indicateur OMS/MAP",
+    x        = "Tranche d'âge (ans)",
+    y        = "Prévalence TDR positif (%)"
+  )
+```
+
+> **Correction** : Dans une population avec forte transmission stable (holoendémique), le pic de prévalence se situe vers **5–9 ans**, puis décroît. L'absence de ce pic dans une base synthétique confirme que les données ont été générées aléatoirement. L'interprétation de cette courbe est centrale dans les enquêtes MIS (*Malaria Indicator Survey*) et MICS (*Multiple Indicator Cluster Survey*) coordonnées par l'UNICEF/OMS.
+
+------------------------------------------------------------------------
+
+## Mesures d'association épidémiologiques
+
+### Q12 — Odds Ratio (OR) non ajusté : non-utilisation des MII → TDR positif
+
+L'**Odds Ratio** est la mesure d'association standard dans les études cas-témoins et les régressions logistiques. Il quantifie l'excès de risque associé à une exposition (ici : ne jamais utiliser les MII).
+
+```{r}
+#| label: d5-q12
+# Recodage binaire : exposé = "Jamais" utiliser les MII (pire catégorie)
+tab_or <- paludisme_final |>
+  mutate(
+    non_utilise_mii = if_else(utilisation_MII == "Jamais", "Non-utilisateur", "Utilisateur"),
+    tdr_pos         = if_else(resultat_tdr == "Positif", "Positif", "Négatif")
+  ) |>
+  with(table(exposition = non_utilise_mii, outcome = tdr_pos))
+
+cat("Tableau de contingence 2×2 :\n"); print(tab_or)
+
+# Calcul manuel de l'OR avec IC 95 % (méthode de Woolf)
+a <- tab_or["Non-utilisateur", "Positif"]
+b <- tab_or["Non-utilisateur", "Négatif"]
+c <- tab_or["Utilisateur",     "Positif"]
+d <- tab_or["Utilisateur",     "Négatif"]
+
+or_brut  <- (a * d) / (b * c)
+se_ln_or <- sqrt(1/a + 1/b + 1/c + 1/d)
+ic_bas   <- exp(log(or_brut) - 1.96 * se_ln_or)
+ic_haut  <- exp(log(or_brut) + 1.96 * se_ln_or)
+
+cat(sprintf(
+  "\nOR brut = %.3f  [IC 95 %% : %.3f – %.3f]\n",
+  or_brut, ic_bas, ic_haut
+))
+cat("\nVérification via régression logistique :\n")
+mod_or <- glm(
+  (resultat_tdr == "Positif") ~ I(utilisation_MII == "Jamais"),
+  data = paludisme_final, family = binomial
+)
+broom::tidy(mod_or, exponentiate = TRUE, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
+  select(term, estimate, conf.low, conf.high, p.value)
+```
+
+> **Correction** : L'OR représente le rapport des cotes de maladie entre les non-utilisateurs et les utilisateurs. Un OR \> 1 indique que la non-utilisation est associée à un risque accru. La formule de Woolf fournit l'IC 95 % sur l'échelle logarithmique. Dans les rapports programmatiques (PMI, Fonds mondial), les OR sont systématiquement accompagnés de leur IC 95 % et d'une p-valeur.
+
+------------------------------------------------------------------------
+
+### Q13 — Risque Relatif (RR) et comparaison avec l'OR
+
+Le **Risque Relatif** (RR ou rapport de risque) est plus intuitif que l'OR et préféré dans les études transversales et de cohortes. Il quantifie directement de combien de fois le risque est multiplié dans le groupe exposé.
+
+```{r}
+#| label: d5-q13
+# RR calculé à partir du tableau 2×2 (données transversales)
+rr_brut  <- (a / (a + b)) / (c / (c + d))
+se_ln_rr <- sqrt((1 - a / (a + b)) / a + (1 - c / (c + d)) / c)
+ic_bas_rr  <- exp(log(rr_brut) - 1.96 * se_ln_rr)
+ic_haut_rr <- exp(log(rr_brut) + 1.96 * se_ln_rr)
+
+cat(sprintf("RR brut = %.3f  [IC 95 %% : %.3f – %.3f]\n",
+            rr_brut, ic_bas_rr, ic_haut_rr))
+
+# Comparaison OR vs RR
+tibble(
+  Mesure       = c("Odds Ratio (OR)", "Risque Relatif (RR)"),
+  Estimation   = round(c(or_brut, rr_brut), 3),
+  IC_bas       = round(c(ic_bas, ic_bas_rr), 3),
+  IC_haut      = round(c(ic_haut, ic_haut_rr), 3),
+  Interpretation = c(
+    "Rapport des cotes (études cas-témoins, régression logistique)",
+    "Rapport de risques (études transversales, cohortes)"
+  )
+)
+```
+
+> **Correction** : Lorsque la prévalence de la maladie est élevée (\> 10 %), l'OR **surestime** le RR. Dans ce jeu de données avec un TPR ≈ 34 %, la différence OR/RR est notable. Le RR est préféré pour les études de prévalence (MIS, EDS) ; l'OR est retenu pour la régression logistique. La **régression de Poisson avec variance robuste** est la méthode recommandée pour estimer des RR directement à partir de données binaires.
+
+------------------------------------------------------------------------
+
+### Q14 — Test de Mantel-Haenszel : OR stratifié par région
+
+Le test de **Mantel-Haenszel** permet d'estimer un OR **ajusté sur un facteur de confusion** (ici la région) sans recourir à une régression. Il teste également si l'OR varie entre les strates (test d'homogénéité de Breslow-Day).
+
+```{r}
+#| label: d5-q14
+# Tableau 3D : exposition × outcome × strate (région)
+tab_mh <- paludisme_final |>
+  mutate(
+    non_utilise = utilisation_MII == "Jamais",
+    positif     = resultat_tdr == "Positif"
+  ) |>
+  with(table(exposition = non_utilise, outcome = positif, strate = region))
+
+cat("Test de Mantel-Haenszel (OR stratifié sur la région) :\n")
+mh_res <- mantelhaen.test(tab_mh, correct = FALSE)
+print(mh_res)
+
+cat(sprintf(
+  "\nOR de Mantel-Haenszel = %.3f  [IC 95 %% : %.3f – %.3f]  p = %.4f\n",
+  mh_res$estimate, mh_res$conf.int[1], mh_res$conf.int[2], mh_res$p.value
+))
+```
+
+> **Correction** : L'OR de Mantel-Haenszel est un **OR moyen pondéré** sur les strates. Si l'OR MH diffère substantiellement de l'OR brut (Q12), cela indique que la région est un **facteur de confusion**. Si les OR par strate sont hétérogènes (test de Breslow-Day significatif), il y a **interaction** entre la région et l'exposition, et un OR unique n'est plus approprié. Ce test est standard dans les analyses des enquêtes EDS et MIS.
+
+------------------------------------------------------------------------
+
+### Q15 — Fraction Attribuable dans la Population (FAP)
+
+La **FAP** (*Population Attributable Fraction*) mesure la proportion de cas de paludisme dans la population qui serait éliminée si l'exposition (non-utilisation des MII) était supprimée. C'est un indicateur central pour prioriser les interventions.
+
+```{r}
+#| label: d5-q15
+# Méthode de Levin (1953) : FAP = Pe × (RR - 1) / (1 + Pe × (RR - 1))
+# Pe = proportion d'exposés dans la population
+pe <- (a + b) / (a + b + c + d)
+
+fap_rr  <- (pe * (rr_brut - 1)) / (1 + pe * (rr_brut - 1))
+fap_or  <- (pe * (or_brut - 1)) / (1 + pe * (or_brut - 1))
+
+cat(sprintf("Proportion d'exposés (Pe) : %.1f %%\n", pe * 100))
+cat(sprintf("FAP (basée sur le RR)     : %.1f %%\n", fap_rr  * 100))
+cat(sprintf("FAP (basée sur l'OR)      : %.1f %%\n", fap_or  * 100))
+
+cat("\nInterprétation :\n")
+cat(sprintf(
+  "→ Si tous les individus utilisaient des MII, %.1f %% des cas de paludisme\n  pourraient théoriquement être évités dans cette population.\n",
+  fap_rr * 100
+))
+```
+
+> **Correction** : La FAP est un outil de **santé publique** et non une mesure de causalité individuelle. Elle intègre à la fois la force de l'association (RR) et la fréquence de l'exposition (Pe). Une FAP élevée justifie d'investir massivement dans la réduction de l'exposition. Elle est utilisée dans les analyses coût-efficacité des programmes PMI et Fonds mondial pour arbitrer entre interventions vectorielles.
+
+------------------------------------------------------------------------
+
+### Q16 — Hémoglobine et parasitémie : analyse de la relation dose-réponse
+
+L'**effet dose-réponse** entre la charge parasitaire et la baisse de l'hémoglobine est biologiquement plausible (destruction des globules rouges). Tester cette relation par tertiles de parasitémie est une approche standard dans les études sur l'anémie paludique.
+
+```{r}
+#| label: d5-q16
+# Analyse dose-réponse chez les TDR positifs uniquement
+dose_reponse <- paludisme_final |>
+  filter(resultat_tdr == "Positif") |>
+  mutate(
+    tertile_para = ntile(parasitemie_par_ul, 3),
+    tertile_label = case_when(
+      tertile_para == 1 ~ "T1 — Faible\n(parasitémie basse)",
+      tertile_para == 2 ~ "T2 — Moyen\n(parasitémie intermédiaire)",
+      tertile_para == 3 ~ "T3 — Élevé\n(parasitémie haute)"
+    )
+  ) |>
+  group_by(tertile_label) |>
+  summarise(
+    n              = n(),
+    para_mediane   = round(median(parasitemie_par_ul)),
+    hb_moyenne     = round(mean(hemoglobine_g_dl, na.rm = TRUE), 2),
+    hb_sd          = round(sd(hemoglobine_g_dl, na.rm = TRUE), 2),
+    prev_anemie    = round(mean(hemoglobine_g_dl < 11, na.rm = TRUE) * 100, 1),
+    .groups = "drop"
+  )
+
+dose_reponse
+```
+
+```{r}
+#| label: d5-q16-anova
+# ANOVA pour tester la différence d'hémoglobine entre tertiles
+aov_para <- aov(
+  hemoglobine_g_dl ~ factor(ntile(parasitemie_par_ul, 3)),
+  data = paludisme_final |> filter(resultat_tdr == "Positif")
+)
+cat("ANOVA Hb ~ tertile de parasitémie :\n")
+broom::tidy(aov_para)
+```
+
+> **Correction** : Si l'ANOVA est significative (p \< 0,05), un test post-hoc de Tukey identifierait quels tertiles diffèrent. La **relation dose-réponse** (T1 → T2 → T3 : Hb décroissante) renforcerait l'hypothèse causale selon les critères de Bradford Hill. Son absence dans ce jeu synthétique est attendue (données générées indépendamment).
+
+------------------------------------------------------------------------
+
+### Q17 — Régression logistique multivariée rigoureuse (niveau PhD)
+
+La construction d'un modèle de régression logistique publiable dans un journal indexé (*Malaria Journal*, *PLOS Medicine*, *Lancet Infectious Diseases*) exige la vérification de **7 hypothèses** avant toute interprétation des coefficients. Cette section suit le protocole de Hosmer, Lemeshow & Sturdivant (2013) *Applied Logistic Regression* (3e éd.) et les lignes directrices STROBE pour les études observationnelles.
+
+#### 17.1 — Préparation du dataset analytique
+
+```{r}
+#| label: d5-q17-prep
+# Encodage binaire des prédicteurs catégoriels et vérification des NA
+paludisme_lr <- paludisme_final |>
+  mutate(
+    tdr_bin      = as.integer(resultat_tdr == "Positif"),
+    sexe_m       = as.integer(sexe == "M"),
+    milieu_rural = as.integer(milieu == "Rural"),
+    mii_jamais   = as.integer(utilisation_MII == "Jamais"),
+    irs_non      = as.integer(aspersion_intra_domiciliaire == "Non"),
+    pauvre_oui   = as.integer(pauvre == "Oui"),
+    enfant_u5    = as.integer(age_ans < 5),
+    fievre_oui   = as.integer(fievre_2sem == 1)
+  ) |>
+  tidyr::drop_na(tdr_bin, age_ans, sexe_m, milieu_rural,
+                 mii_jamais, irs_non, distance_csi_km, pauvre_oui)
+
+cat("Dataset analytique :", nrow(paludisme_lr), "obs. ×",
+    ncol(paludisme_lr), "variables\n")
+cat("Observations exclues (NA) :",
+    nrow(paludisme_final) - nrow(paludisme_lr), "\n\n")
+cat("Distribution de l'outcome :\n")
+table(TDR_binaire = paludisme_lr$tdr_bin) |> print()
+```
+
+------------------------------------------------------------------------
+
+#### 17.2 — Hypothèse 1 : Taille d'échantillon — EPV (Events Per Variable)
+
+Le critère **EPV ≥ 10** (Peduzzi et al., 1996) est le seuil minimal ; les recommandations actuelles (van Smeden et al., 2019) préconisent EPV ≥ 20 pour des intervalles de confiance fiables.
+
+```{r}
+#| label: d5-q17-epv
+n_events <- sum(paludisme_lr$tdr_bin)
+n_non_ev <- nrow(paludisme_lr) - n_events
+n_pred   <- 8L
+epv      <- min(n_events, n_non_ev) / n_pred
+
+tibble(
+  Critère      = c("Événements (TDR+)", "Non-événements (TDR−)",
+                   "Nombre de prédicteurs", "EPV (classe minoritaire / n_pred)",
+                   "Seuil minimal EPV ≥ 10", "Seuil recommandé EPV ≥ 20 (PhD)"),
+  Valeur       = c(n_events, n_non_ev, n_pred, round(epv, 1),
+                   if_else(epv >= 10, "✔ SATISFAIT", "✘ NON SATISFAIT"),
+                   if_else(epv >= 20, "✔ SATISFAIT", "✘ NON SATISFAIT"))
+)
+```
+
+------------------------------------------------------------------------
+
+#### 17.3 — Hypothèse 2 : Absence de multicolinéarité (VIF)
+
+Un **VIF ≥ 5** indique une colinéarité modérée ; **VIF ≥ 10** impose la suppression ou la combinaison du prédicteur.
+
+```{r}
+#| label: d5-q17-vif
+mod_prov <- glm(
+  tdr_bin ~ age_ans + sexe_m + milieu_rural + mii_jamais +
+    irs_non + distance_csi_km + pauvre_oui + enfant_u5,
+  data   = paludisme_lr,
+  family = binomial(link = "logit")
+)
+
+vif_vals <- car::vif(mod_prov)
+
+tibble(
+  Prédicteur = names(vif_vals),
+  VIF        = round(vif_vals, 3),
+  Décision   = case_when(
+    vif_vals < 5  ~ "✔ Acceptable",
+    vif_vals < 10 ~ "⚠ Colinéarité modérée — surveiller",
+    TRUE          ~ "✘ Colinéarité forte — retirer ou combiner"
+  )
+) |> arrange(desc(VIF))
+```
+
+------------------------------------------------------------------------
+
+#### 17.4 — Hypothèse 3 : Linéarité des prédicteurs continus dans le logit (Box-Tidwell)
+
+Pour les prédicteurs continus (`age_ans`, `distance_csi_km`), la régression logistique suppose une relation **linéaire** avec le logit de l'outcome. Le test de Box-Tidwell (1962) ajoute le terme d'interaction $x \times \ln(x)$ : si son coefficient est significatif (p \< 0,05), la linéarité est violée.
+
+```{r}
+#| label: d5-q17-boxtidwell
+bt_data <- paludisme_lr |>
+  filter(age_ans > 0, distance_csi_km > 0) |>
+  mutate(
+    age_log_age   = age_ans * log(age_ans),
+    dist_log_dist = distance_csi_km * log(distance_csi_km)
+  )
+
+mod_bt <- glm(
+  tdr_bin ~ age_ans + age_log_age + distance_csi_km + dist_log_dist +
+    sexe_m + milieu_rural + mii_jamais + irs_non + pauvre_oui + enfant_u5,
+  data   = bt_data,
+  family = binomial(link = "logit")
+)
+
+broom::tidy(mod_bt) |>
+  filter(str_detect(term, "log")) |>
+  mutate(
+    Décision = if_else(
+      p.value < 0.05,
+      "⚠ Non-linéarité — envisager spline ou catégorisation",
+      "✔ Linéarité dans le logit satisfaite"
+    )
+  ) |>
+  select(Terme = term, Coeff = estimate, `p-valeur` = p.value, Décision)
+```
+
+> Si la non-linéarité de l'âge est confirmée, la solution publiable est d'utiliser des **restricted cubic splines** (`rms::rcs()`, 3 nœuds) ou de catégoriser en quintiles. L'âge pédiatrique présente classiquement une relation non linéaire avec le risque de paludisme (forme en U inversé).
+
+------------------------------------------------------------------------
+
+#### 17.5 — Hypothèse 4 : Absence de séparation complète
+
+La séparation complète (un prédicteur binaire prédit parfaitement l'outcome) fait diverger les coefficients vers ±∞. Ce diagnostic est préalable à toute estimation.
+
+```{r}
+#| label: d5-q17-separation
+# Vérifier chaque prédicteur binaire : pas de cellule vide dans les tableaux 2×2
+predicteurs_bin <- c("sexe_m", "milieu_rural", "mii_jamais",
+                     "irs_non", "pauvre_oui", "enfant_u5")
+
+map_dfr(predicteurs_bin, \(v) {
+  tab <- table(paludisme_lr[[v]], paludisme_lr$tdr_bin)
+  tibble(
+    Prédicteur       = v,
+    Cellule_min      = min(tab),
+    Separation_risque = if_else(min(tab) == 0,
+      "✘ SÉPARATION COMPLÈTE — utiliser pénalisation (Firth)",
+      "✔ Aucune cellule vide")
+  )
+})
+```
+
+------------------------------------------------------------------------
+
+#### 17.6 — Hypothèse 5 : Observations influentes (Cook's Distance)
+
+```{r}
+#| label: fig-d5-q17-cook
+#| fig-cap: "Q17.6 — Détection des observations influentes (Cook's Distance)"
+cooks_d     <- cooks.distance(mod_prov)
+seuil_cook  <- 4 / nrow(paludisme_lr)
+n_influents <- sum(cooks_d > seuil_cook)
+
+cat(sprintf(
+  "Seuil Cook's D = 4/n = %.5f\nObservations influentes : %d / %d (%.1f %%)\n",
+  seuil_cook, n_influents, nrow(paludisme_lr),
+  100 * n_influents / nrow(paludisme_lr)
+))
+
+data.frame(obs = seq_along(cooks_d), cook = cooks_d) |>
+  ggplot(aes(x = obs, y = cook)) +
+  geom_point(aes(color = cook > seuil_cook), size = 0.6, alpha = 0.5) +
+  geom_hline(yintercept = seuil_cook, color = "red", linetype = "dashed") +
+  scale_color_manual(values = c("grey50", "#d73027"),
+                     labels = c("Normal", "Influent")) +
+  annotate("text", x = nrow(paludisme_lr) * 0.75,
+           y = seuil_cook * 1.15,
+           label = sprintf("Seuil = 4/n = %.5f", seuil_cook),
+           color = "red", size = 3.5) +
+  labs(title = "Cook's Distance — Observations influentes",
+       x = "Indice d'observation", y = "Cook's Distance", color = NULL)
+```
+
+------------------------------------------------------------------------
+
+#### 17.7 — Hypothèse 6 : Indépendance des résidus — Correction du clustering ménage
+
+Les individus d'un même ménage partagent le même environnement, les mêmes moustiquaires et les mêmes revenus : **les résidus intra-ménage sont corrélés**. Ignorer ce clustering sous-estime les erreurs-standard et produit des p-valeurs artificiellement significatives.
+
+```{r}
+#| label: d5-q17-cluster
+# Erreurs-standard robustes clusterisées par menage_id (sandwich estimator)
+if (!requireNamespace("sandwich", quietly = TRUE) ||
+    !requireNamespace("lmtest", quietly = TRUE)) {
+  message("Packages requis : install.packages(c('sandwich', 'lmtest'))")
+} else {
+  library(sandwich); library(lmtest)
+
+  vcov_cl  <- sandwich::vcovCL(mod_prov, cluster = ~menage_id,
+                                data = paludisme_lr)
+  se_naif  <- coef(summary(mod_prov))[-1, "Std. Error"]
+  se_rob   <- sqrt(diag(vcov_cl))[-1]
+
+  tibble(
+    Terme        = names(se_naif),
+    SE_naïf      = round(se_naif, 5),
+    SE_robuste   = round(se_rob, 5),
+    Ratio_SE     = round(se_rob / se_naif, 3),
+    Évaluation   = if_else(
+      se_rob / se_naif > 1.10,
+      "⚠ Inflation SE ≥ 10 % — clustering important",
+      "✔ Inflation < 10 % — effet faible"
+    )
+  )
+}
+```
+
+> **Gold standard** : si l'inflation des SE est \> 10 %, la solution rigoureuse est un **modèle à effets aléatoires** : `lme4::glmer(tdr_bin ~ ... + (1 | menage_id), family = binomial)`. Cette approche estime explicitement la variance inter-ménages et donne des OR conditionnels (au ménage).
+
+------------------------------------------------------------------------
+
+#### 17.8 — Calibration du modèle : test de Hosmer-Lemeshow
+
+**H₀ : bonne calibration** (les probabilités prédites correspondent aux fréquences observées). Un p \> 0,05 indique que le modèle est bien calibré.
+
+```{r}
+#| label: d5-q17-hl
+# Implémentation autonome du test H-L (pas de dépendance externe)
+hosmer_lemeshow <- function(y, y_hat, g = 10) {
+  cuts <- unique(quantile(y_hat, probs = seq(0, 1, length.out = g + 1)))
+  grp  <- findInterval(y_hat, cuts, rightmost.closed = TRUE)
+  grp[grp == 0] <- 1
+  hl_df <- tibble(obs = y, pred = y_hat, grp = grp) |>
+    group_by(grp) |>
+    summarise(n       = n(),
+              obs_pos = sum(obs), obs_neg = n() - sum(obs),
+              exp_pos = sum(pred), exp_neg = n() - sum(pred),
+              .groups = "drop")
+  chi2 <- sum((hl_df$obs_pos - hl_df$exp_pos)^2 / hl_df$exp_pos +
+              (hl_df$obs_neg - hl_df$exp_neg)^2 / hl_df$exp_neg,
+              na.rm = TRUE)
+  list(stat = chi2, df = nrow(hl_df) - 2,
+       p    = pchisq(chi2, nrow(hl_df) - 2, lower.tail = FALSE),
+       tab  = hl_df)
+}
+
+pred_proba <- predict(mod_prov, type = "response")
+hl         <- hosmer_lemeshow(paludisme_lr$tdr_bin, pred_proba)
+
+cat(sprintf("Hosmer-Lemeshow : χ²(%d) = %.3f,  p = %.4f\n",
+            hl$df, hl$stat, hl$p))
+cat(if_else(hl$p > 0.05,
+  "✔ Calibration satisfaisante — observé ≈ prédit (H₀ non rejetée)\n",
+  "⚠ Calibration insuffisante — réviser la spécification du modèle\n"))
+
+cat("\nTableau observé vs prédit par décile de risque :\n")
+hl$tab |> mutate(across(where(is.numeric), \(x) round(x, 2)))
+```
+
+------------------------------------------------------------------------
+
+#### 17.9 — Pouvoir discriminant : courbe ROC et AUC
+
+L'**AUC** (*Area Under the ROC Curve*) mesure la capacité du modèle à classer correctement un TDR+ au-dessus d'un TDR−. Standards : AUC \< 0,70 = insuffisant ; 0,70–0,79 = acceptable ; 0,80–0,89 = bon ; ≥ 0,90 = excellent.
+
+```{r}
+#| label: fig-d5-q17-roc
+#| fig-cap: "Q17.9 — Courbe ROC du modèle logistique final"
+calc_roc <- function(labels, scores) {
+  ord <- order(scores, decreasing = TRUE)
+  y   <- labels[ord]
+  tpr <- cumsum(y == 1) / sum(y == 1)
+  fpr <- cumsum(y == 0) / sum(y == 0)
+  auc <- sum(diff(c(0, fpr)) * (c(0, tpr) + c(tpr, 0)) / 2)
+  tibble(fpr = c(0, fpr, 1), tpr = c(0, tpr, 1), auc = auc)
+}
+
+roc_df  <- calc_roc(paludisme_lr$tdr_bin, pred_proba)
+auc_val <- unique(roc_df$auc)
+auc_lab <- case_when(
+  auc_val >= 0.90 ~ "Excellent (≥ 0.90)",
+  auc_val >= 0.80 ~ "Bon (0.80–0.89)",
+  auc_val >= 0.70 ~ "Acceptable (0.70–0.79)",
+  TRUE            ~ "Insuffisant (< 0.70)"
+)
+
+ggplot(roc_df, aes(x = fpr, y = tpr)) +
+  geom_line(color = "#2166ac", linewidth = 1.2) +
+  geom_ribbon(aes(ymin = 0, ymax = tpr), alpha = 0.08, fill = "#2166ac") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey60") +
+  annotate("label", x = 0.65, y = 0.18,
+           label = sprintf("AUC = %.4f\n%s", auc_val, auc_lab),
+           size = 4, color = "#2166ac", fill = "white") +
+  labs(
+    title    = "Courbe ROC — Modèle logistique multvarié",
+    subtitle = "TDR positif vs TDR négatif — Région septentrionale du Cameroun",
+    x        = "Taux de Faux Positifs (1 − Spécificité)",
+    y        = "Taux de Vrais Positifs (Sensibilité)"
+  )
+```
+
+------------------------------------------------------------------------
+
+#### 17.10 — Statistiques globales d'ajustement (pseudo-R², AIC, BIC)
+
+```{r}
+#| label: d5-q17-r2
+ll_full <- as.numeric(logLik(mod_prov))
+ll_null <- as.numeric(logLik(update(mod_prov, . ~ 1)))
+n_obs   <- nobs(mod_prov)
+
+r2_mcf <- 1 - ll_full / ll_null
+r2_cs  <- 1 - exp(-2 / n_obs * (ll_full - ll_null))
+r2_nag <- r2_cs / (1 - exp(2 / n_obs * ll_null))
+
+tibble(
+  Métrique       = c("Log-vraisemblance (modèle complet)",
+                     "Log-vraisemblance (modèle nul)",
+                     "Pseudo-R² de McFadden",
+                     "Pseudo-R² de Nagelkerke",
+                     "AIC", "BIC", "AUC (ROC)"),
+  Valeur         = c(round(ll_full, 2), round(ll_null, 2),
+                     round(r2_mcf, 4),  round(r2_nag, 4),
+                     round(AIC(mod_prov), 2), round(BIC(mod_prov), 2),
+                     round(auc_val, 4)),
+  Interprétation = c("—", "—",
+                     if_else(r2_mcf > 0.2, "Bon ajustement (> 0.20)",
+                             "Ajustement modeste (< 0.20)"),
+                     if_else(r2_nag > 0.3, "Acceptable (> 0.30)",
+                             "Faible (< 0.30)"),
+                     "Plus faible = meilleur", "Pénalise davantage la complexité",
+                     auc_lab)
+)
+```
+
+------------------------------------------------------------------------
+
+#### 17.11 — Modèle final validé — OR ajustés publiables
+
+```{r}
+#| label: d5-q17-final
+# mod_multi = modèle final validé (toutes hypothèses vérifiées)
+mod_multi <- mod_prov
+
+broom::tidy(mod_multi, exponentiate = TRUE, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
+  mutate(
+    Prédicteur = dplyr::recode(term,
+      "age_ans"        = "Âge (par année)",
+      "sexe_m"         = "Sexe masculin (réf. : féminin)",
+      "milieu_rural"   = "Milieu rural (réf. : urbain)",
+      "mii_jamais"     = "MII — jamais utilisée (réf. : parfois/toujours)",
+      "irs_non"        = "Absence d'IRS (réf. : IRS effectuée)",
+      "distance_csi_km"= "Distance au CSI (par km supplémentaire)",
+      "pauvre_oui"     = "Ménage pauvre (réf. : non pauvre)",
+      "enfant_u5"      = "Enfant < 5 ans (réf. : ≥ 5 ans)"
+    ),
+    `OR ajusté` = round(estimate, 3),
+    `IC 95 % inf` = round(conf.low, 3),
+    `IC 95 % sup` = round(conf.high, 3),
+    `p-valeur`   = round(p.value, 4),
+    Sig          = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01  ~ "**",
+      p.value < 0.05  ~ "*",
+      p.value < 0.10  ~ ".",
+      TRUE            ~ "ns"
+    )
+  ) |>
+  select(Prédicteur, `OR ajusté`, `IC 95 % inf`, `IC 95 % sup`,
+         `p-valeur`, Sig)
+```
+
+::: callout-note
+## Bilan du protocole — Régression logistique (récapitulatif)
+
+| Hypothèse | Méthode | Résultat attendu |
+|----|----|----|
+| **Taille d'échantillon (EPV)** | EPV = min(events, non-events) / k | ≥ 20 recommandé |
+| **Multicolinéarité** | VIF (car::vif) | VIF \< 5 pour tous |
+| **Linéarité continue × logit** | Box-Tidwell (terme x·ln x) | p \> 0,05 |
+| **Séparation complète** | Cellules min tableaux 2×2 | Aucune cellule vide |
+| **Observations influentes** | Cook's Distance \> 4/n | Proportion identifiée |
+| **Clustering ménage** | SE robustes sandwich (vcovCL) | Ratio SE ≈ 1 |
+| **Calibration** | Hosmer-Lemeshow (g = 10) | p \> 0,05 |
+| **Discrimination** | AUC courbe ROC | ≥ 0,70 (acceptable) |
+
+**Lecture des OR** : un OR ajusté de 1,50 signifie que les individus exposés ont des **cotes** de TDR positif **1,5× plus élevées** à profil de covariables identique. Pour être publiable, le tableau doit mentionner : effectif analysé, nombre d'événements, EPV, AUC, pseudo-R² de Nagelkerke et méthode de gestion du clustering.
+:::
+
+------------------------------------------------------------------------
+
+## Visualisations épidémiologiques standards
+
+### Q18 — Pyramide épidémiologique des cas TDR positifs
+
+La **pyramide épidémiologique** (âge × sexe) est la représentation graphique standard des enquêtes de terrain. Elle permet d'identifier visuellement les groupes d'âge et de sexe les plus touchés.
+
+```{r}
+#| label: fig-d5-q18
+#| fig-cap: "Q18 — Pyramide épidémiologique des cas TDR positifs par tranche d'âge et sexe"
+pyramide_data <- paludisme_final |>
+  filter(resultat_tdr == "Positif") |>
+  mutate(tranche_age = cut(
+    age_ans,
+    breaks = c(0, 5, 10, 15, 20, 30, 40, 50, 100),
+    labels = c("0–4", "5–9", "10–14", "15–19", "20–29", "30–39", "40–49", "50+"),
+    right  = FALSE
+  )) |>
+  count(tranche_age, sexe) |>
+  mutate(n_plot = if_else(sexe == "M", -n, n))
+
+ggplot(pyramide_data, aes(x = n_plot, y = tranche_age, fill = sexe)) +
+  geom_col() +
+  scale_x_continuous(
+    labels = \(x) as.character(abs(x)),
+    name   = "Nombre de cas TDR positifs"
+  ) +
+  geom_vline(xintercept = 0, linewidth = 0.5) +
+  labs(
+    title    = "Pyramide épidémiologique — Cas TDR positifs",
+    subtitle = "Hommes (gauche) · Femmes (droite)",
+    y        = "Tranche d'âge (ans)",
+    fill     = "Sexe"
+  )
+```
+
+> **Correction** : La pyramide épidémiologique est produite en représentant les effectifs masculins en négatif (vers la gauche). La forme attendue en zone d'endémicité stable est une **base large** (enfants \< 10 ans les plus touchés) s'amincissant avec l'âge (immunité acquise). Une asymétrie gauche-droite peut signaler une différence de vulnérabilité par sexe ou un biais de sélection dans l'enquête.
+
+------------------------------------------------------------------------
+
+### Q19 — Forest plot des OR ajustés issus de la régression logistique
+
+Le **forest plot** est la représentation graphique standard des OR dans les publications épidémiologiques. Chaque point représente l'OR ajusté d'une covariable ; la barre horizontale représente l'IC 95 %.
+
+```{r}
+#| label: fig-d5-q19
+#| fig-cap: "Q19 — Forest plot des OR ajustés (régression logistique multivariée)"
+or_data <- broom::tidy(mod_multi, exponentiate = TRUE, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
+  mutate(
+    term = dplyr::recode(term,
+      "age_ans"         = "Âge (par année)",
+      "sexe_m"          = "Sexe masculin",
+      "milieu_rural"    = "Milieu rural",
+      "mii_jamais"      = "Non-utilisation MII",
+      "irs_non"         = "Absence IRS",
+      "distance_csi_km" = "Distance au CSI (par km)",
+      "pauvre_oui"      = "Ménage pauvre",
+      "enfant_u5"       = "Enfant < 5 ans"
+    ),
+    significatif = p.value < 0.05
+  )
+
+ggplot(or_data, aes(x = estimate, y = reorder(term, estimate),
+                    color = significatif)) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "grey50") +
+  geom_point(size = 3) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +
+  scale_color_manual(
+    values = c("FALSE" = "grey60", "TRUE" = "#d73027"),
+    labels = c("Non significatif (p ≥ 0.05)", "Significatif (p < 0.05)")
+  ) +
+  scale_x_log10() +
+  labs(
+    title    = "Forest plot des OR ajustés — Facteurs de risque du paludisme",
+    subtitle = "Régression logistique multivariée — OR sur échelle logarithmique",
+    x        = "Odds Ratio ajusté (IC 95 %)",
+    y        = NULL,
+    color    = NULL
+  )
+```
+
+> **Correction** : L'axe des OR est en **échelle logarithmique** pour que les effets protecteurs (OR \< 1) et les effets de risque (OR \> 1) soient représentés symétriquement autour de la ligne de référence OR = 1. Les facteurs dont l'IC 95 % ne croise pas 1 (ligne pointillée) sont significatifs à α = 5 %. Ce format graphique est requis par les journaux de santé publique (*PLOS Medicine*, *Lancet Infectious Diseases*, *Malaria Journal*).
+
+------------------------------------------------------------------------
+
+### Q20 — Tableau de bord synthétique des indicateurs programmatiques
+
+Synthèse de tous les indicateurs calculés dans ce devoir, formatée selon les standards des rapports PMI et des revues de programme OMS.
+
+```{r}
+#| label: d5-q20
+# Calcul des valeurs finales pour le tableau de bord
+n_total_d5   <- nrow(paludisme_final)
+n_pos_d5     <- sum(paludisme_final$resultat_tdr == "Positif")
+n_u5         <- sum(paludisme_final$age_ans < 5)
+n_pos_u5_d5  <- sum(paludisme_final$age_ans < 5 & paludisme_final$resultat_tdr == "Positif")
+n_fievre_d5  <- sum(paludisme_final$fievre_2sem == 1)
+n_consult_d5 <- sum(paludisme_final$fievre_2sem == 1 & paludisme_final$consultation_sante == "Oui")
+n_men        <- nrow(menages_d5)
+n_men_mii    <- sum(menages_d5$nombre_moustiquaires >= 1)
+n_men_irs    <- sum(paludisme_final |> distinct(menage_id, .keep_all = TRUE) |>
+                      pull(aspersion_intra_domiciliaire) == "Oui")
+
+tableau_de_bord <- tibble::tribble(
+  ~Domaine,           ~Indicateur,                                       ~Valeur,                       ~Objectif_GTS2030,
+  "Épidémiologie",    "Taux de Positivité des Tests (TPR)",               paste0(round(n_pos_d5/n_total_d5*100,1), " %"),    "< 10 %",
+  "Épidémiologie",    "PfPR₂₋₁₀ (prévalence 2–10 ans)",                  paste0(pfpr_global$PfPR2_10, " %"),                 "< 1 % (élimination)",
+  "Épidémiologie",    "Prévalence chez les enfants < 5 ans",              paste0(round(n_pos_u5_d5/n_u5*100,1), " %"),       "Réduction ≥ 40 %",
+  "Prévention",       "Couverture ménages en MILDA (possession ≥ 1)",     paste0(couverture_milda$pct_possession, " %"),      "≥ 80 %",
+  "Prévention",       "Accès universel MILDA (≥ 1 MII / 2 personnes)",   paste0(couverture_milda$pct_acces_univ, " %"),      "≥ 80 %",
+  "Prévention",       "Couverture IRS (structures protégées)",            paste0(round(n_men_irs/n_men*100,1), " %"),         "Contexte-dépendant",
+  "Accès aux soins",  "Recours aux soins parmi les cas fébriles",         paste0(round(n_consult_d5/n_fievre_d5*100,1), " %"), "≥ 80 %",
+  "Populations vulnérables", "Prévalence MiP (TDR+ / femmes enceintes)", paste0(mip_stats$prev_tdr[mip_stats$grossesse == "Oui"], " %"), "Réduction maximale"
+)
+
+tableau_de_bord
+```
+
+::: callout-note
+## Bilan de l'analyse — Devoir 5 (22 questions)
+
+| Section | Thème | Questions | Indicateurs OMS/PMI couverts |
+|----|----|----|----|
+| A | Indicateurs épidémiologiques OMS | Q1–Q4 | TPR, PfPR₂₋₁₀, seuils anémie OMS, tableau de bord |
+| B | Couverture des interventions RBM/PMI | Q5–Q8 | Possession MILDA, accès universel, IRS, recours aux soins |
+| C | Populations vulnérables | Q9–Q11 | Prévalence U5, MiP, courbe âge-prévalence |
+| D | Mesures d'association | Q12–Q17 | OR brut, RR, Mantel-Haenszel, FAP, dose-réponse, OR ajustés (PhD) |
+| E | Visualisations épidémiologiques | Q18–Q20 | Pyramide épidémiologique, forest plot, tableau de bord GTS 2030 |
+| F | Classification supervisée | Q21–Q22 | Déséquilibre de classes, downsampling, LASSO, Arbre CART, ROC comparatif |
+
+**Points clés biostatistiques** : déséquilibre de classes et piège de l'accuracy ; downsampling ; régression logistique (11 étapes) ; LASSO ; Arbre CART ; comparaison ROC multi-modèles.
+:::
+
+------------------------------------------------------------------------
+
+### Q21 — Diagnostic du déséquilibre de classes
+
+Avant tout entraînement d'un classificateur, il est impératif de vérifier l'équilibre entre les classes. Un déséquilibre ignoré biaise les modèles vers la classe majoritaire : l'accuracy est gonflée artificiellement tandis que la sensibilité s'effondre.
+
+```{r}
+#| label: fig-d5-q21
+#| fig-cap: "Q21 — Distribution des classes TDR et piège de l'accuracy naïve"
+dist_classes <- paludisme_final |>
+  count(resultat_tdr) |>
+  mutate(pct = round(n / sum(n) * 100, 1))
+
+n_pos_cl  <- dist_classes$n[dist_classes$resultat_tdr == "Positif"]
+n_neg_cl  <- dist_classes$n[dist_classes$resultat_tdr != "Positif"]
+ratio_imb <- round(n_neg_cl / n_pos_cl, 2)
+
+cat("=== Diagnostic du déséquilibre de classes ===\n")
+print(dist_classes)
+cat(sprintf("\nRatio déséquilibre : %.2f:1  |  Sévérité : %s\n",
+  ratio_imb,
+  case_when(ratio_imb < 1.5 ~ "Équilibré",
+            ratio_imb < 3   ~ "Léger — downsampling recommandé",
+            ratio_imb < 10  ~ "Modéré — SMOTE ou downsampling impératif",
+            TRUE            ~ "Sévère")))
+
+# Figure : distribution + piège de l'accuracy
+p_dist <- ggplot(dist_classes, aes(x = resultat_tdr, y = n, fill = resultat_tdr)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = paste0(n, "\n(", pct, " %)")), vjust = -0.3, size = 4) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "Distribution des classes (outcome TDR)",
+       x = "Résultat TDR", y = "Effectif") +
+  theme(legend.position = "none")
+
+df_naif <- tibble(
+  Modèle   = rep(c("Naïf (tout Négatif)", "Idéal (AUC=1)"), each = 3),
+  Métrique = rep(c("Accuracy", "Sensibilité", "Spécificité"), 2),
+  Valeur   = c(n_neg_cl / (n_pos_cl + n_neg_cl), 0, 1,  1, 1, 1)
+)
+p_naif <- ggplot(df_naif, aes(x = Métrique, y = Valeur, fill = Modèle)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = percent_format(), limits = c(0, 1.15)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey50") +
+  labs(title = "Piège de l'accuracy naïve",
+       y = "Valeur", x = NULL, fill = NULL) +
+  theme(legend.position = "bottom")
+
+p_dist + p_naif
+```
+
+> **Correction** : Avec un ratio de **`r ratio_imb`:1**, un classifieur qui prédirait toujours « Négatif » obtiendrait **`r round(n_neg_cl/(n_pos_cl+n_neg_cl)*100,1)` % d'accuracy** avec **0 % de sensibilité** — inutile cliniquement. Les métriques pertinentes pour les classificateurs médicaux sont : sensibilité, spécificité, score de Youden (Se + Sp − 1) et **AUC-ROC**. La stratégie retenue est le **downsampling** (sous-échantillonnage de la classe Négatif à 1:1 dans le train set), préservant intacte la distribution naturelle dans le test set.
+
+------------------------------------------------------------------------
+
+### Q22 — LASSO logistique et Arbre CART avec rééquilibrage
+
+Deux modèles complémentaires entraînés sur le train set rééquilibré par downsampling 1:1, évalués sur le même test set pour une comparaison équitable.
+
+```{r}
+#| label: d5-q22-prep
+library(glmnet); library(rpart); library(pROC); library(caret)
+
+df_clf <- paludisme_final |>
+  mutate(
+    tdr_bin    = factor(if_else(resultat_tdr == "Positif", "Positif", "Negatif"),
+                        levels = c("Positif", "Negatif")),
+    sexe_m     = as.integer(sexe == "M"),
+    milieu_r   = as.integer(milieu == "Rural"),
+    mii_jamais = as.integer(utilisation_MII == "Jamais"),
+    irs_non    = as.integer(aspersion_intra_domiciliaire == "Non"),
+    pauvre_oui = as.integer(pauvre == "Oui"),
+    enfant_u5  = as.integer(age_ans < 5)
+  ) |>
+  select(tdr_bin, age_ans, sexe_m, milieu_r, mii_jamais,
+         irs_non, distance_csi_km, pauvre_oui, enfant_u5) |>
+  drop_na()
+
+set.seed(5817)
+idx_p   <- which(df_clf$tdr_bin == "Positif")
+idx_n   <- which(df_clf$tdr_bin == "Negatif")
+tr_idx  <- c(sample(idx_p, floor(0.75 * length(idx_p))),
+             sample(idx_n, floor(0.75 * length(idx_n))))
+tr <- df_clf[tr_idx, ]; te <- df_clf[-tr_idx, ]
+
+set.seed(5817)
+tr_pos  <- tr[tr$tdr_bin == "Positif", ]
+tr_neg  <- tr[tr$tdr_bin == "Negatif", ][
+  sample(sum(tr$tdr_bin == "Negatif"), sum(tr$tdr_bin == "Positif")), ]
+tr_bal  <- rbind(tr_pos, tr_neg)[sample(nrow(tr_pos) * 2), ]
+
+cat(sprintf("Train rééquilibré : Pos=%d | Neg=%d  |  Test : %d obs\n",
+            sum(tr_bal$tdr_bin == "Positif"), sum(tr_bal$tdr_bin == "Negatif"),
+            nrow(te)))
+```
+
+```{r}
+#| label: d5-q22-lasso
+X_tr <- as.matrix(tr_bal[, -1]); y_tr <- tr_bal$tdr_bin
+X_te <- as.matrix(te[, -1]);     y_te <- te$tdr_bin
+
+set.seed(5817)
+cv_lasso <- cv.glmnet(X_tr, y_tr, family = "binomial",
+                      alpha = 1, nfolds = 10, type.measure = "auc")
+
+cat(sprintf("LASSO — λ.min=%.5f | AUC-CV=%.4f\n",
+            cv_lasso$lambda.min, max(cv_lasso$cvm)))
+
+coef_l <- coef(cv_lasso, s = "lambda.1se")
+coef_df <- tibble(Variable = rownames(coef_l)[-1],
+                  Coeff    = round(coef_l[-1, 1], 4)) |>
+  filter(Coeff != 0) |> arrange(desc(abs(Coeff)))
+if (nrow(coef_df) == 0) cat("→ Tous coefficients = 0 : absence de signal.\n") else print(coef_df)
+```
+
+```{r}
+#| label: d5-q22-cart
+set.seed(5817)
+cart_mod <- rpart(tdr_bin ~ ., data = tr_bal, method = "class",
+                  control = rpart.control(minsplit=20, minbucket=10,
+                                          cp=0.005, maxdepth=5))
+if (length(cart_mod$variable.importance) > 0) {
+  vi <- sort(round(cart_mod$variable.importance /
+                   sum(cart_mod$variable.importance) * 100, 1), decreasing = TRUE)
+  cat("Importance des variables (CART) :\n"); print(vi)
+} else { cat("Arbre trivial — aucun prédicteur n'améliore la classification.\n") }
+```
+
+```{r}
+#| label: fig-d5-q22-roc
+#| fig-cap: "Q22 — Courbes ROC comparatives sur le test set (split 75/25 stratifié)"
+lr_ref     <- glm(tdr_bin ~ ., data = tr_bal, family = binomial)
+pred_lr    <- predict(lr_ref,   newdata = te,  type = "response")
+pred_lasso <- predict(cv_lasso, newx = X_te,  s = "lambda.1se", type = "response")[, 1]
+pred_cart  <- predict(cart_mod, newdata = te,  type = "prob")[, "Positif"]
+
+roc_lr_f    <- pROC::roc(y_te, pred_lr,    levels=c("Negatif","Positif"), quiet=TRUE)
+roc_lasso_f <- pROC::roc(y_te, pred_lasso, levels=c("Negatif","Positif"), quiet=TRUE)
+roc_cart_f  <- pROC::roc(y_te, pred_cart,  levels=c("Negatif","Positif"), quiet=TRUE)
+
+get_met <- function(prob, truth) {
+  cl <- factor(if_else(prob > 0.5, "Positif", "Negatif"), levels = c("Positif","Negatif"))
+  cm <- caret::confusionMatrix(cl, truth, positive = "Positif")
+  tibble(Accuracy=round(cm$overall["Accuracy"],3),
+         Sensibilite=round(cm$byClass["Sensitivity"],3),
+         Specificite=round(cm$byClass["Specificity"],3),
+         Kappa=round(cm$overall["Kappa"],3))
+}
+
+tableau_comp <- bind_rows(
+  get_met(pred_lr,    y_te) |> mutate(Modèle="Logistique", AUC=round(pROC::auc(roc_lr_f),4)),
+  get_met(pred_lasso, y_te) |> mutate(Modèle="LASSO",      AUC=round(pROC::auc(roc_lasso_f),4)),
+  get_met(pred_cart,  y_te) |> mutate(Modèle="Arbre CART", AUC=round(pROC::auc(roc_cart_f),4))
+) |> select(Modèle, AUC, Accuracy, Sensibilite, Specificite, Kappa) |> arrange(desc(AUC))
+cat("=== Tableau comparatif — test set ===\n"); print(tableau_comp)
+
+roc_all <- bind_rows(
+  tibble(FPR=1-roc_lr_f$specificities,    TPR=roc_lr_f$sensitivities,
+         Modèle=sprintf("Logistique (AUC=%.3f)", pROC::auc(roc_lr_f))),
+  tibble(FPR=1-roc_lasso_f$specificities, TPR=roc_lasso_f$sensitivities,
+         Modèle=sprintf("LASSO (AUC=%.3f)", pROC::auc(roc_lasso_f))),
+  tibble(FPR=1-roc_cart_f$specificities,  TPR=roc_cart_f$sensitivities,
+         Modèle=sprintf("Arbre CART (AUC=%.3f)", pROC::auc(roc_cart_f)))
+)
+ggplot(roc_all, aes(x=FPR, y=TPR, color=Modèle)) +
+  geom_line(linewidth=1.1) +
+  geom_abline(slope=1, intercept=0, linetype="dashed", color="grey60") +
+  scale_color_manual(values=c("#2166ac","#d73027","#1a9850")) +
+  annotate("label", x=0.6, y=0.12, size=3.2, color="grey40", fill="white",
+           label="AUC ≈ 0.50 attendu\n(données synthétiques\nsans signal causal)") +
+  labs(title="Courbes ROC — Logistique, LASSO et Arbre CART",
+       subtitle="Évaluation sur test set — Downsampling 1:1 sur train set",
+       x="1 − Spécificité", y="Sensibilité", color=NULL) +
+  theme(legend.position="bottom")
+```
+
+::: callout-warning
+## AUC ≈ 0.50 — Résultat honnête, pas un échec
+
+Les trois modèles produisent AUC ≈ 0.50 car les covariables ont été générées **indépendamment** de l'outcome dans la base synthétique.
+:::
+
+> **Récapitulatif** : Logistique → inférence causale (OR ajustés) ; LASSO → sélection automatique de variables ; CART → règle clinique interprétable. Ces trois modèles sont **complémentaires**, pas en concurrence.
+
+------------------------------------------------------------------------
+
+# Devoir 6 — Apprentissage Non Supervisé
+
+::: callout-note
+## Contexte méthodologique
+
+L'apprentissage non supervisé explore la **structure latente** des données sans utiliser l'outcome. Ces méthodes sont utilisées en épidémiologie du paludisme pour : identifier des profils de vulnérabilité (clustering), réduire la dimensionnalité pour visualisation (ACP, FAMD), et analyser des associations entre variables catégorielles (AFC, ACM). Les packages **FactoMineR** et **factoextra** implémentent toutes ces méthodes en R.
+:::
+
+## Analyse en Composantes Principales (ACP)
+
+### Q1 — Préparation des données et test de sphéricité de Bartlett
+
+Avant l'ACP, deux conditions doivent être vérifiées : (1) **présence de corrélations** entre variables (test de Bartlett), et (2) **standardisation obligatoire** quand les unités de mesure diffèrent.
+
+```{r}
+#| label: d6-q1
+library(FactoMineR); library(factoextra); library(cluster); library(dendextend)
+
+# Variables continues biologiques et socio-environnementales pertinentes
+vars_acp <- c("age_ans", "hemoglobine_g_dl", "parasitemie_par_ul",
+              "distance_csi_km", "pluviometrie_mm",
+              "altitude_m", "revenu_mensuel_fcfa", "nombre_moustiquaires")
+
+df_acp <- paludisme_final |> select(all_of(vars_acp)) |> drop_na()
+
+cat(sprintf("Dataset ACP : %d individus × %d variables\n", nrow(df_acp), ncol(df_acp)))
+
+# Variances brutes — justification de la standardisation
+cat("\nVariances brutes (avant standardisation) :\n")
+sapply(df_acp, var) |> round(1) |> sort(decreasing = TRUE) |> print()
+
+# Test de sphéricité de Bartlett (H₀ : matrice de corrélation = identité)
+mat_cor <- cor(scale(df_acp))
+n_acp <- nrow(df_acp); p_acp <- ncol(df_acp)
+chi2_b <- -(n_acp - 1 - (2*p_acp + 5)/6) * log(det(mat_cor))
+df_b   <- p_acp * (p_acp - 1) / 2
+p_b    <- pchisq(chi2_b, df_b, lower.tail = FALSE)
+cat(sprintf("\nTest de Bartlett : χ²(%d) = %.2f, p = %.2e\n", df_b, chi2_b, p_b))
+cat(if_else(p_b < 0.05,
+  "✔ p < 0.05 → corrélations significatives → ACP pertinente\n",
+  "⚠ p > 0.05 → absence de corrélations → ACP non justifiée\n"))
+```
+
+> **Correction** : Les variances s'étalent de 2 à 791 millions selon les unités — la standardisation (`scale.unit = TRUE`) est obligatoire pour que chaque variable contribue équitablement à l'ACP. Le test de Bartlett rejette H₀ (p \< 0,05), confirmant des corrélations non nulles qui justifient la réduction de dimensionnalité. Sur données synthétiques, les corrélations restent faibles mais significatives grâce à la grande taille d'échantillon (n = 3 000).
+
+------------------------------------------------------------------------
+
+### Q2 — ACP : valeurs propres et critères de sélection des axes
+
+```{r}
+#| label: d6-q2
+res_pca <- PCA(df_acp, scale.unit = TRUE, ncp = 8, graph = FALSE)
+
+eig_df <- as.data.frame(res_pca$eig) |>
+  tibble::rownames_to_column("Composante") |>
+  rename(Valeur_propre = eigenvalue,
+         Variance_pct  = `percentage of variance`,
+         Variance_cum  = `cumulative percentage of variance`) |>
+  mutate(
+    Critere_Kaiser = if_else(Valeur_propre >= 1, "✔ λ ≥ 1", "✘ λ < 1"),
+    across(where(is.numeric), \(x) round(x, 3))
+  )
+
+eig_df
+```
+
+> **Correction — critères de sélection des axes** :
+>
+> | Critère | Règle | Axes retenus |
+> |----|----|----|
+> | **Kaiser** | Valeurs propres λ ≥ 1 | Composantes avec λ ≥ 1 |
+> | **Règle du coude** | Point d'inflexion du scree plot | Voir Q3 |
+> | **Variance cumulée** | ≥ 70–80 % de variance expliquée | Nombre d'axes nécessaires |
+>
+> Sur données synthétiques sans structure forte, les valeurs propres sont proches de 1 (variance équirépartie). Un λ légèrement supérieur à 1 suffit pour retenir l'axe selon Kaiser.
+
+------------------------------------------------------------------------
+
+### Q3 — Scree plot (éboulis des valeurs propres)
+
+```{r}
+#| label: fig-d6-q3
+#| fig-cap: "Q3 — Scree plot (éboulis des valeurs propres) avec ligne de Kaiser (λ=1)"
+fviz_screeplot(res_pca, addlabels = TRUE, ncp = 8, barfill = "steelblue",
+               barcolor = "white", linecolor = "darkblue") +
+  geom_hline(yintercept = 100/p_acp, linetype = "dashed", color = "red") +
+  annotate("text", x = 7, y = 100/p_acp + 1,
+           label = sprintf("Seuil Kaiser = %.1f %%", 100/p_acp),
+           color = "red", size = 3.5) +
+  labs(title = "Scree plot — ACP sur variables continues",
+       subtitle = "Ligne rouge = seuil de Kaiser (100%/p variables)")
+```
+
+> **Correction** : La ligne rouge représente le seuil de Kaiser exprimé en pourcentage de variance (100/p = 12.5 % pour 8 variables). Les axes au-dessus de ce seuil sont retenus. Le "coude" dans le scree plot indique le point où l'information marginal par axe devient négligeable.
+
+------------------------------------------------------------------------
+
+### Q4 — Cercle des corrélations et biplot
+
+```{r}
+#| label: fig-d6-q4a
+#| fig-cap: "Q4a — Cercle des corrélations (contributions des variables aux axes 1 et 2)"
+fviz_pca_var(res_pca,
+             col.var   = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel     = TRUE,
+             title     = "Cercle des corrélations — ACP (Dim 1 × Dim 2)") +
+  labs(color = "Contribution (%)")
+```
+
+```{r}
+#| label: fig-d6-q4b
+#| fig-cap: "Q4b — Biplot ACP : individus colorés par résultat TDR"
+# Extraire les scores des individus
+scores_acp <- as.data.frame(res_pca$ind$coord[, 1:2]) |>
+  mutate(TDR = paludisme_final$resultat_tdr)
+
+ggplot(scores_acp, aes(x = Dim.1, y = Dim.2, color = TDR)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  stat_ellipse(level = 0.95, linewidth = 1) +
+  scale_color_manual(values = c("Positif" = "#d73027", "Négatif" = "#2166ac")) +
+  labs(
+    title    = "Biplot ACP — Individus colorés par résultat TDR",
+    subtitle = "Ellipses de confiance à 95 % — axes 1 et 2",
+    x        = sprintf("Dim 1 (%.1f %%)", res_pca$eig[1, 2]),
+    y        = sprintf("Dim 2 (%.1f %%)", res_pca$eig[2, 2]),
+    color    = "Résultat TDR"
+  )
+```
+
+> **Correction** : Le cercle des corrélations montre les variables les mieux représentées (proche du bord) et leurs corrélations mutuelles (vecteurs proches = corrélés positivement). Le biplot individus colorés par TDR permet de visualiser si les TDR+ se séparent des TDR- dans l'espace ACP. Le chevauchement complet des ellipses confirme l'absence de structure séparant les cas des non-cas dans l'espace socio-environnemental — cohérent avec les AUC ≈ 0.50 en D5.
+
+------------------------------------------------------------------------
+
+## Clustering non supervisé
+
+### Q5 — Détermination du nombre optimal de clusters
+
+Deux méthodes complémentaires sont utilisées : la **méthode du coude** (WSS = Within Sum of Squares) et la **méthode silhouette** (cohésion vs séparation inter-cluster).
+
+```{r}
+#| label: fig-d6-q5
+#| fig-cap: "Q5 — Méthode du coude et silhouette pour k optimal (ACP Dim 1–3)"
+# Utiliser les 3 premiers axes ACP pour réduire le bruit
+scores_3d <- res_pca$ind$coord[, 1:3]
+
+set.seed(3142)
+
+# WSS (méthode du coude)
+wss_vals <- sapply(1:8, function(k) {
+  kmeans(scores_3d, centers = k, nstart = 25, iter.max = 100)$tot.withinss
+})
+
+# Silhouette
+sil_vals <- sapply(2:8, function(k) {
+  km  <- kmeans(scores_3d, centers = k, nstart = 25, iter.max = 100)
+  mean(cluster::silhouette(km$cluster, dist(scores_3d))[, 3])
+})
+
+k_opt <- which.max(sil_vals) + 1
+cat(sprintf("k optimal (silhouette max = %.4f) : k = %d\n", max(sil_vals), k_opt))
+
+p_wss <- tibble(k = 1:8, WSS = wss_vals) |>
+  ggplot(aes(x = k, y = WSS)) +
+  geom_line(linewidth = 1) + geom_point(size = 3) +
+  scale_x_continuous(breaks = 1:8) +
+  labs(title = "Méthode du coude (WSS)", x = "Nombre de clusters k", y = "WSS total")
+
+p_sil <- tibble(k = 2:8, Silhouette = sil_vals) |>
+  ggplot(aes(x = k, y = Silhouette)) +
+  geom_line(linewidth = 1) + geom_point(size = 3) +
+  geom_point(data = tibble(k = k_opt, Silhouette = max(sil_vals)),
+             color = "red", size = 5, shape = 18) +
+  scale_x_continuous(breaks = 2:8) +
+  labs(title = "Méthode silhouette", x = "k", y = "Silhouette moyen")
+
+p_wss + p_sil
+```
+
+> **Correction** : Le silhouette moyen mesure à quel point chaque individu ressemble mieux à son propre cluster qu'aux autres (plage : −1 à +1). Une valeur \> 0.5 indique une structure forte ; 0.25–0.5, structure modérée. Sur données synthétiques, des valeurs autour de 0.25 indiquent une **structure faible mais détectable**. Le point rouge indique le k optimal retenu.
+
+------------------------------------------------------------------------
+
+### Q6 — K-means sur les scores ACP
+
+```{r}
+#| label: fig-d6-q6
+#| fig-cap: "Q6 — K-means (k optimal) dans l'espace ACP (Dim 1 × Dim 2)"
+set.seed(3142)
+km_final <- kmeans(scores_3d, centers = k_opt, nstart = 50, iter.max = 200)
+
+cat(sprintf("K-means (k=%d) — Inertie intra : %.2f / Inertie totale : %.2f\n",
+            k_opt, km_final$tot.withinss, km_final$totss))
+cat(sprintf("Variance expliquée entre groupes : %.1f %%\n",
+            km_final$betweenss / km_final$totss * 100))
+cat("\nEffectifs par cluster :\n"); print(table(km_final$cluster))
+
+fviz_cluster(km_final, data = scores_3d,
+             geom = "point", alpha = 0.4, ellipse.type = "convex",
+             palette = "jco", pointsize = 1) +
+  labs(title = sprintf("K-means (k=%d) — Espace ACP (Dim 1 × Dim 2)", k_opt),
+       subtitle = sprintf("Variance inter-cluster : %.1f %%",
+                          km_final$betweenss / km_final$totss * 100))
+```
+
+------------------------------------------------------------------------
+
+### Q7 — Classification ascendante hiérarchique (CAH) et dendrogramme
+
+```{r}
+#| label: fig-d6-q7
+#| fig-cap: "Q7 — Dendrogramme CAH (méthode de Ward) — sous-échantillon illustratif"
+# Sous-échantillon pour la lisibilité du dendrogramme
+set.seed(3142)
+idx_dend <- sample(nrow(scores_3d), 150)
+dist_mat  <- dist(scores_3d[idx_dend, ], method = "euclidean")
+hc_ward   <- hclust(dist_mat, method = "ward.D2")
+
+dend_obj <- as.dendrogram(hc_ward) |>
+  color_branches(k = k_opt)
+
+par(mar = c(4, 2, 3, 1))
+plot(dend_obj, leaflab = "none", horiz = FALSE,
+     main = sprintf("Dendrogramme CAH (Ward.D2) — k=%d clusters — n=150", k_opt),
+     ylab = "Hauteur (distance de fusion)")
+abline(h = rev(hc_ward$height)[k_opt - 1] * 1.05,
+       col = "red", lty = 2, lwd = 1.5)
+legend("topright", legend = paste("Cluster", 1:k_opt),
+       fill = scales::hue_pal()(k_opt), bty = "n", cex = 0.8)
+```
+
+> **Correction** : La méthode de Ward minimise la variance intra-cluster à chaque fusion (critère de Ward.D2). La ligne rouge horizontale indique la coupure retenue pour k clusters. La hauteur de la dernière fusion avant coupure doit être nettement plus grande que les fusions précédentes — c'est le "saut" qui justifie k.
+
+------------------------------------------------------------------------
+
+### Q8 — Profil socio-épidémiologique des clusters
+
+```{r}
+#| label: d6-q8
+# Associer les clusters aux données originales
+profil_clusters <- paludisme_final |>
+  slice(as.integer(names(km_final$cluster))) |>
+  mutate(cluster = factor(km_final$cluster)) |>
+  group_by(cluster) |>
+  summarise(
+    n                = n(),
+    age_median       = round(median(age_ans, na.rm = TRUE), 1),
+    hb_moyenne       = round(mean(hemoglobine_g_dl, na.rm = TRUE), 2),
+    prev_tdr         = round(mean(resultat_tdr == "Positif") * 100, 1),
+    prev_anemie      = round(mean(hemoglobine_g_dl < 11, na.rm = TRUE) * 100, 1),
+    pct_rural        = round(mean(milieu == "Rural") * 100, 1),
+    pct_pauvre       = round(mean(pauvre == "Oui") * 100, 1),
+    revenu_median    = round(median(revenu_mensuel_fcfa, na.rm = TRUE)),
+    dist_csi_median  = round(median(distance_csi_km, na.rm = TRUE), 1),
+    .groups = "drop"
+  )
+
+profil_clusters
+```
+
+> **Correction** : Le profil des clusters traduit la **segmentation de la population** en groupes homogènes selon leurs caractéristiques socio-biologiques. Dans un programme de lutte contre le paludisme, ces clusters orientent le **ciblage des interventions** : les clusters avec forte prévalence TDR + forte pauvreté + éloignement du CSI reçoivent la priorité pour les distributions de MII et le déploiement d'ASC.
+
+------------------------------------------------------------------------
+
+## Factor Analysis of Mixed Data (FAMD)
+
+### Q9 — FAMD : variables numériques et catégorielles simultanément
+
+La **FAMD** (Pagès, 2004) généralise l'ACP aux tableaux mixtes : elle standardise les variables quantitatives (comme l'ACP) et pondère les variables qualitatives (comme l'ACM), permettant une représentation unifiée de tous les types de variables.
+
+```{r}
+#| label: d6-q9
+vars_famd_num <- c("age_ans", "hemoglobine_g_dl", "distance_csi_km",
+                   "revenu_mensuel_fcfa", "nombre_moustiquaires")
+vars_famd_cat <- c("sexe", "milieu", "resultat_tdr", "utilisation_MII",
+                   "aspersion_intra_domiciliaire", "niveau_education", "pauvre")
+
+df_famd <- paludisme_final |>
+  select(all_of(c(vars_famd_num, vars_famd_cat))) |>
+  mutate(across(all_of(vars_famd_cat), as.factor)) |>
+  drop_na()
+
+cat(sprintf("Dataset FAMD : %d individus × %d variables (%d numériques + %d catégorielles)\n",
+            nrow(df_famd), ncol(df_famd), length(vars_famd_num), length(vars_famd_cat)))
+
+res_famd <- FAMD(df_famd, ncp = 5, graph = FALSE)
+
+# Valeurs propres
+eig_famd <- as.data.frame(res_famd$eig) |>
+  tibble::rownames_to_column("Dim") |>
+  rename(lambda = eigenvalue, pct_var = `percentage of variance`,
+         pct_cum = `cumulative percentage of variance`) |>
+  mutate(across(where(is.numeric), \(x) round(x, 3)))
+
+cat("\nValeurs propres FAMD :\n")
+print(eig_famd)
+```
+
+------------------------------------------------------------------------
+
+### Q10 — Contributions des variables aux axes FAMD
+
+```{r}
+#| label: fig-d6-q10
+#| fig-cap: "Q10 — Contributions des variables aux deux premiers axes FAMD"
+p_var1 <- fviz_contrib(res_famd, choice = "var", axes = 1, top = 12,
+                        fill = "steelblue") +
+  labs(title = "Contributions — Axe 1") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p_var2 <- fviz_contrib(res_famd, choice = "var", axes = 2, top = 12,
+                        fill = "darkorange") +
+  labs(title = "Contributions — Axe 2") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p_var1 + p_var2
+```
+
+> **Correction** : Les contributions mesurent dans quelle proportion chaque variable (ou modalité) a construit l'axe. Une contribution élevée signifie que la variable est **structurante** pour cet axe. La ligne pointillée rouge indique la contribution attendue si toutes les variables contribuaient équitablement (100/p %). Une variable au-dessus de ce seuil est significativement représentée sur l'axe.
+
+------------------------------------------------------------------------
+
+### Q11 — Biplot FAMD : individus et variables dans un même espace
+
+```{r}
+ #| label: fig-d6-q11
+ #| fig-cap: "Q11 — Biplot FAMD : individus colorés par résultat TDR (axes 1 × 2)"
+coord_famd <- as.data.frame(res_famd$ind$coord)
+coord_famd$TDR <- df_famd$resultat_tdr
+
+ggplot(coord_famd, aes(x = Dim.1, y = Dim.2, color = TDR)) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  scale_color_manual(values = c("Négatif" = "#2166ac", "Positif" = "#d73027")) +
+  labs(title    = "FAMD — Individus dans l'espace factoriel mixte",
+       subtitle = "Couleur = résultat TDR | Variables numériques + catégorielles",
+       x = "Dim 1", y = "Dim 2", color = "TDR")
+```
+
+------------------------------------------------------------------------
+
+## Analyse Factorielle des Correspondances (AFC)
+
+### Q12 — AFC sur tableau catégorie d'âge × charge parasitaire
+
+L'**AFC** analyse les associations entre deux variables catégorielles à travers leur tableau de contingence. Elle décompose le χ² d'indépendance en axes factoriels, chaque axe expliquant une part de l'association totale.
+
+```{r}
+#| label: d6-q12
+# Tableau de contingence catégorie_age × charge_parasitaire
+tab_afc <- paludisme_final |>
+  filter(!is.na(charge_parasitaire), !is.na(categorie_age)) |>
+  with(table(categorie_age, charge_parasitaire))
+
+cat("Tableau de contingence (categorie_age × charge_parasitaire) :\n")
+print(tab_afc)
+
+# Profils lignes (distributions de charge parasitaire par catégorie d'âge)
+cat("\nProfils-lignes (%) :\n")
+round(prop.table(tab_afc, margin = 1) * 100, 1) |> print()
+
+# Test du χ² préalable à l'AFC
+chi2_afc <- chisq.test(tab_afc)
+cat(sprintf("\nTest χ² : χ²(%d) = %.2f,  p = %.4f\n",
+            chi2_afc$parameter, chi2_afc$statistic, chi2_afc$p.value))
+
+res_afc <- CA(tab_afc, graph = FALSE)
+cat("\nValeurs propres AFC :\n")
+print(round(res_afc$eig, 4))
+cat(sprintf("\nInertie totale (χ²/n) = %.6f\n",
+            sum(res_afc$eig[, 1])))
+```
+
+> **Correction** : L'inertie totale de l'AFC = χ²/n. Elle mesure le degré d'association entre les deux variables : plus l'inertie est grande, plus les profils-lignes s'éloignent du profil moyen. La décomposition en axes (Dim1, Dim2…) décompose cette inertie : Dim1 explique la part maximale. Sur données synthétiques, l'inertie proche de 0 confirme l'absence d'association forte — cohérent avec les tests du χ² non significatifs des Devoirs 2 et 3.
+
+------------------------------------------------------------------------
+
+### Q13 — Biplot AFC : modalités dans l'espace factoriel
+
+```{r}
+#| label: fig-d6-q13
+#| fig-cap: "Q13 — Biplot AFC : catégorie d'âge × charge parasitaire (symétrique)"
+fviz_ca_biplot(res_afc,
+               repel      = TRUE,
+               col.row    = "#d73027",
+               col.col    = "#2166ac",
+               arrow.fill = "grey70") +
+  labs(title    = "AFC — Biplot symétrique",
+       subtitle = "Rouge = catégorie d'âge | Bleu = charge parasitaire") +
+  theme(plot.subtitle = element_text(size = 9))
+```
+
+> **Correction** : Dans le **biplot symétrique** de l'AFC, la proximité entre une modalité-ligne (rouge) et une modalité-colonne (bleu) indique une **co-occurrence** : cette catégorie d'âge est sur-représentée avec cette charge parasitaire. Des modalités éloignées du centre ont des profils atypiques. Des modalités proches du centre ont des profils proches du profil moyen général.
+
+------------------------------------------------------------------------
+
+## Analyse Factorielle des Correspondances Multiples (ACM)
+
+### Q14 — ACM sur variables catégorielles clés
+
+L'**ACM** (Multiple Correspondence Analysis) généralise l'AFC à plus de deux variables catégorielles simultanément. Elle révèle les associations entre **modalités de plusieurs variables** dans un seul espace factoriel.
+
+```{r}
+#| label: d6-q14
+vars_acm <- c("sexe", "milieu", "resultat_tdr", "utilisation_MII",
+              "aspersion_intra_domiciliaire", "anemie", "pauvre", "categorie_age")
+
+df_acm <- paludisme_final |>
+  select(all_of(vars_acm)) |>
+  mutate(across(everything(), as.factor)) |>
+  drop_na()
+
+cat(sprintf("Dataset ACM : %d individus × %d variables\n",
+            nrow(df_acm), ncol(df_acm)))
+cat("Modalités totales :", sum(sapply(df_acm, nlevels)), "\n\n")
+
+res_acm <- MCA(df_acm, ncp = 5, graph = FALSE)
+
+# Valeurs propres et variance expliquée
+eig_acm <- as.data.frame(res_acm$eig) |>
+  tibble::rownames_to_column("Dim") |>
+  rename(lambda=eigenvalue, pct=`percentage of variance`,
+         cum=`cumulative percentage of variance`) |>
+  mutate(across(where(is.numeric), \(x) round(x, 3)))
+
+# Taux d'inertie corrigé (formule de Benzécri)
+p_var_acm <- length(vars_acm)
+k_benzecri <- sum(res_acm$eig[, 1] > 1/p_var_acm)
+cat(sprintf("Axes retenus (λ > 1/p = %.3f) : %d\n", 1/p_var_acm, k_benzecri))
+cat("\nValeurs propres ACM (5 premiers axes) :\n")
+print(head(eig_acm, 5))
+```
+
+> **Correction — particularité de l'ACM** : les valeurs propres de l'ACM sont systématiquement faibles car chaque variable binaire contribue peu individuellement. Le seuil de Kaiser pour l'ACM est λ \> 1/p (où p = nombre de variables), non λ \> 1. La **correction de Benzécri** recalibre les taux de variance pour être comparables à l'AFC.
+
+------------------------------------------------------------------------
+
+### Q15 — Graphique des modalités ACM
+
+```{r}
+#| label: fig-d6-q15
+#| fig-cap: "Q15 — ACM : carte des modalités (variables catégorielles) — axes 1 et 2"
+fviz_mca_var(res_acm,
+             repel         = TRUE,
+             col.var       = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             labelsize     = 3.5) +
+  labs(title    = "ACM — Carte des modalités",
+       subtitle = "Couleur = contribution à l'axe — Modalités proches = co-occurrentes",
+       color    = "Contribution (%)") +
+  theme(plot.subtitle = element_text(size = 9))
+```
+
+> **Correction** : Deux modalités proches sur la carte ACM **co-occurrent** fréquemment chez les mêmes individus. Les modalités éloignées du centre sont rares ou spécifiques à un sous-groupe. Les modalités proches du centre ont une distribution homogène dans l'échantillon. La couleur indique la contribution à la construction de l'axe (rouge = forte contribution).
+
+------------------------------------------------------------------------
+
+### Q16 — Classification sur scores ACM (HCPC)
+
+La **HCPC** (*Hierarchical Clustering on Principal Components*) combine la CAH avec les résultats de l'ACM pour identifier des **classes d'individus** basées sur leurs profils de réponses aux variables catégorielles.
+
+```{r}
+#| label: fig-d6-q16
+#| fig-cap: "Q16 — HCPC sur ACM : classification des individus en 3 profils"
+set.seed(3142)
+res_hcpc <- HCPC(res_acm, nb.clust = 3, graph = FALSE)
+
+cat("Distribution des classes HCPC :\n")
+print(table(res_hcpc$data.clust$clust))
+
+# Profil des classes par les variables actives
+fviz_cluster(res_hcpc,
+             geom       = "point",
+             ellipse.type = "convex",
+             palette    = c("#E7B800", "#2166ac", "#FC4E07"),
+             alpha      = 0.3,
+             pointsize  = 0.8) +
+  labs(title    = "HCPC — Classes d'individus dans l'espace ACM",
+       subtitle = "3 profils socio-épidémiologiques identifiés")
+```
+
+```{r}
+#| label: d6-q16-profil
+# Variables les plus discriminantes des classes (v-test > 1.96)
+cat("=== Variables caractérisant les classes HCPC ===\n")
+desc_cl <- res_hcpc$desc.clust$test.chi2
+if (!is.null(desc_cl)) {
+  cat("Test χ² d'association classe × variable :\n")
+  tibble::rownames_to_column(as.data.frame(desc_cl), "Variable") |>
+    mutate(across(where(is.numeric), \(x) round(x, 4))) |>
+    arrange(p.value) |>
+    print()
+}
+
+# Prévalence TDR par classe HCPC
+paludisme_final |>
+  slice(seq_len(nrow(res_hcpc$data.clust))) |>
+  mutate(classe_hcpc = res_hcpc$data.clust$clust) |>
+  group_by(classe_hcpc) |>
+  summarise(
+    n          = n(),
+    prev_tdr   = round(mean(resultat_tdr == "Positif") * 100, 1),
+    prev_anemie= round(mean(hemoglobine_g_dl < 11, na.rm = TRUE) * 100, 1),
+    pct_rural  = round(mean(milieu == "Rural") * 100, 1),
+    pct_pauvre = round(mean(pauvre == "Oui") * 100, 1),
+    .groups = "drop"
+  )
+```
+
+::: callout-note
+## Bilan — Devoir 6 (16 questions)
+
+| Section | Méthode | Questions | Objectif |
+|----|----|----|----|
+| A | ACP | Q1–Q4 | Réduction dimensionnelle sur variables continues ; identification des axes de variance |
+| B | Clustering | Q5–Q8 | Segmentation de la population en profils homogènes (K-means + CAH) |
+| C | FAMD | Q9–Q11 | Analyse simultanée de variables numériques et catégorielles |
+| D | AFC | Q12–Q13 | Association entre deux variables catégorielles (profils-lignes/colonnes) |
+| E | ACM + HCPC | Q14–Q16 | Structure latente des variables catégorielles ; classification typologique |
+
+**Points clés** : standardisation obligatoire pour l'ACP ; test de Bartlett pour justifier l'ACP ; silhouette pour k optimal ; FAMD pour données mixtes ; AFC = χ² décomposé en axes ; ACM = AFC multi-variables ; HCPC = clustering sur composantes factorielles.
+:::
