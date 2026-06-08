@@ -1,0 +1,6 @@
+"Classe","AUC_ROC","PR_AUC","Baseline"
+"BRCA",1,1,0.3774
+"KIRC",1,1,0.1824
+"COAD",1,1,0.0943
+"LUAD",1,1,0.1761
+"PRAD",1,1,0.1698

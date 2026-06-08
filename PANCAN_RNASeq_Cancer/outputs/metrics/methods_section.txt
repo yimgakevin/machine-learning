@@ -1,0 +1,53 @@
+Gene expression data from the TCGA PANCAN HiSeq dataset (UCI Machine
+Learning Repository, DOI: 10.24432/C5R88H; n = 801 samples, 5 tumor types:
+BRCA, KIRC, COAD, LUAD, PRAD, 20531 genes, Illumina HiSeq platform) were analysed in R (vR version 4.5.2 (2025-10-31 ucrt)) using a
+multi-stage machine learning pipeline with random seed 2026.
+
+Data Preprocessing and Split. Samples were randomly partitioned into
+training (60%, n = 483), validation (20%, n = 159), and held-out test
+(20%, n = 159) sets via stratified sampling to preserve class proportions.
+All feature selection and scaling operations were performed exclusively on
+the training set to prevent data leakage.
+
+Feature Selection. A five-stage statistical filtering pipeline was applied,
+each stage using objective criteria without arbitrary thresholds:
+(i) MAD filter: genes with median absolute deviation below the first
+quartile (Q1) were removed to exclude low-variability transcripts;
+(ii) ANOVA: one-way analysis of variance across the 5 tumor types with
+Bonferroni correction (FWER < 0.05) identified linearly discriminative
+genes; (iii) Mutual Information: permutation-based significance testing
+(n = 1,000 permutations, max-T procedure) captured non-linear associations;
+(iv) Boruta: random forest-based feature selection (ranger, 200 trees,
+maxRuns = 150) with class-weighted importance identified genes exceeding
+shadow feature importance; (v) Stability Selection: 100 bootstrap
+iterations with selection probability threshold pi >= 0.60 (Meinshausen &
+Buhlmann, 2010) ensured robustness to sampling variability. The final
+panel comprised 64 biomarker genes satisfying all five independent criteria.
+
+Machine Learning. Eight classifiers spanning distinct paradigms were
+evaluated: Logistic Regression (ElasticNet), Linear SVM, RBF SVM,
+K-Nearest Neighbors, Random Forest, XGBoost, LightGBM, and Multi-Layer
+Perceptron. Hyperparameters were optimized via randomized search
+(50 iterations, Bergstra & Bengio, 2012) with 5-fold cross-validation
+repeated 3 times on the training set, using macro-averaged AUC as the
+optimization metric. The best model was selected based on Matthews
+Correlation Coefficient (MCC; Gorodkin, 2004) on the validation set and
+evaluated once on the held-out test set.
+
+Evaluation Metrics. Performance was assessed using 12 complementary
+metrics covering discrimination (Accuracy, Balanced Accuracy, MCC,
+F1-macro, Cohen's Kappa, G-mean), probabilistic quality (AUC-ROC,
+PR-AUC, Log-Loss, Brier Score, Brier Skill Score), and calibration
+(Expected Calibration Error, 10 equal-width bins; Naeini et al., 2015).
+
+Statistical Validation. Nested cross-validation (5 outer x 5 inner folds;
+Cawley & Talbot, 2010) provided unbiased performance estimates. A
+permutation test (n = 1,000) assessed whether observed performance
+exceeded chance levels. Bootstrap BCa 95% confidence intervals
+(B = 2,000; Efron, 1987) were computed for key metrics. Model
+interpretability was assessed using TreeSHAP (Lundberg et al., 2020)
+for tree-based models.
+
+The best model (MLP) achieved MCC = 0.9917 (95% BCa CI [0.9562, 1.0000]),
+AUC-ROC = 1.0000 [1.0000, 1.0000], and Brier Skill Score = 0.9955 [0.9748, 0.9999]
+on the held-out test set.
