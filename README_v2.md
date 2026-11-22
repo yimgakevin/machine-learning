@@ -5,12 +5,24 @@
 
 ## Structure du projet
 
+Le code a été découpé en modules (novembre 2026). `app_v2_final.R` n'est plus
+qu'un orchestrateur de ~60 lignes ; tout le code est dans `app_parts/`.
+
 ```
-mon_projet/
-├── app_v2.R      ← Application principale
-├── utils.R       ← Fonctions utilitaires (OBLIGATOIRE — dans le même dossier)
-└── data/         ← Optionnel : vos fichiers de données
+Shiny_entreprise/
+├── app.R                  ← Point d'entrée (shiny::runApp)
+├── app_v2_final.R         ← Orchestrateur : setup + UI + serveur
+├── app_parts/
+│   ├── 00_setup.R         ← Packages, modules, moteurs
+│   ├── 01_css.R           ← Feuille de style
+│   ├── ui/                ← Coquille UI + 23 onglets
+│   └── server/            ← 32 fichiers serveur par domaine
+├── tools/                 ← Scripts de vérification
+└── data/                  ← Fichiers de données
 ```
+
+📖 Détail de l'architecture, conventions et plan de conversion en vrais modules
+Shiny : **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## Installation des packages (une seule fois)
 
