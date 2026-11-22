@@ -27,9 +27,10 @@ app_parts/
 │   ├── ui_sidebar.R
 │   ├── ui_body.R          # login, chatbot, tabItems()
 │   ├── ui_tabs_index.R
-│   └── tabs/              # 23 fichiers tab_<nom>.R
+│   └── tabs/              # 22 fichiers tab_<nom>.R
 └── server/                # 32 fichiers server_<domaine>.R
     └── README.md          # description de chaque fichier
+mod_oms.R                  # 1er vrai module Shiny (UI + serveur namespacés)
 ```
 
 ## Comment ça fonctionne
@@ -117,27 +118,56 @@ et le serveur dans `server_modules.R` ou `server_modules_externes.R`.
 
 ## Phase 2 — conversion en vrais modules Shiny
 
-Le découpage actuel est **mécanique** : il réduit la taille des fichiers mais
-conserve les IDs globaux. L'étape suivante consiste à convertir les onglets
-inline en vrais modules `mod_<nom>_ui/server` avec `ns()`, **un onglet à la fois**.
+Le découpage mécanique est terminé. La conversion en modules namespacés a
+commencé. État :
 
-Ordre recommandé (du plus isolé au plus imbriqué) :
+| Onglet | Statut |
+|---|---|
+| `oms` | ✅ converti (`mod_oms.R`) — sert de modèle |
+| `about`, `uni`, `biv`, `descoms` | à faire |
+| `infer`, `clust`, `qualite`, `prevalence` | à faire |
+| `secu_alim`, `zscore`, `rdim` | à faire |
+| `import`, `accueil` | à faire (les plus couplés aux réactifs globaux) |
 
-1. `about`, `oms`, `uni`, `biv`, `descoms`
-2. `infer`, `clust`, `qualite`, `prevalence`
-3. `secu_alim`, `zscore`, `rdim`
-4. `import`, `accueil` (les plus couplés aux réactifs globaux)
+### Pattern validé par le pilote `oms`
 
-Pour chaque onglet :
+```r
+# mod_<nom>.R — UI
+mod_<nom>_ui <- function(id) {
+  ns <- shiny::NS(id)
+  tabItem(
+    tabName = "<nom>",                       # PAS namespacé (lien du menu)
+    checkboxGroupInput(ns("groupe"), ...),   # IDs namespacés
+    DTOutput(ns("table")),
+    ...
+  )
+}
 
-1. Créer `mod_<nom>.R` avec `mod_<nom>_ui(id)` et
-   `mod_<nom>_server(id, df_f, map_cols, lang, ...)`.
-2. Remplacer `ui_tab_<nom>()` par `mod_<nom>_ui("<nom>")`.
-3. Remplacer le contenu de `server_<nom>.R` par l'appel `mod_<nom>_server(...)`.
-4. Préfixer tous les `input$` / `output$` avec `ns()` dans l'UI et le serveur.
-5. Vérifier les sélecteurs JS/CSS qui ciblent des IDs (`#dashboard_filters`,
-   `#ai_float_btn`, etc.).
-6. Lancer les quatre vérifications ci-dessus, puis committer.
+# mod_<nom>.R — serveur
+mod_<nom>_server <- function(id, df_f, map_cols, lang, ...) {
+  moduleServer(id, function(input, output, session) {
+    output$table <- renderDT({ ... })        # input$/output$ inchangés :
+  })                                         # moduleServer les namespacé
+}
+```
 
-Ne pas convertir plusieurs onglets dans le même commit : un onglet = un commit,
-pour pouvoir revenir en arrière précisément.
+Points d'attention :
+
+1. **UI uniquement** : les IDs sont préfixés avec `ns()`. Côté serveur, on garde
+   `input$` / `output$` tels quels — `moduleServer` applique le namespace.
+2. **Réactifs partagés** : les passer en arguments (`df_f`, `map_cols`, `lang`,
+   `vars_cat`, `has_oms`, `filter_context`…).
+3. **Helpers locaux au serveur** : `gpal()` dépend de `input$global_palette` et
+   n'est pas global. Il doit être passé en argument, comme dans `mod_oms.R`.
+4. **IDs JS/CSS** : vérifier les sélecteurs qui ciblent des IDs globaux.
+5. **Un onglet = un commit**, avec les vérifications ci-dessus.
+
+### Procédure
+
+1. Créer `mod_<nom>.R` avec `mod_<nom>_ui(id)` et `mod_<nom>_server(id, ...)`.
+2. Ajouter `source("mod_<nom>.R")` dans `00_setup.R`.
+3. Remplacer `ui_tab_<nom>()` par `mod_<nom>_ui("<nom>")` dans `ui_body.R`.
+4. Remplacer le contenu de `server_<nom>.R` par l'appel `mod_<nom>_server(...)`.
+5. Supprimer `app_parts/ui/tabs/tab_<nom>.R` (devenu inutile).
+6. Lancer `check_app`, `check_server`, `launch_test`, `run_tests`, puis un test
+   d'isolation du module comme `tools/check_mod_oms.R`.

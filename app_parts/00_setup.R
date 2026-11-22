@@ -139,6 +139,7 @@ source("mod_epidemio.R")
 source("mod_survie.R")
 source("mod_predictif.R")
 source("mod_rapport.R")
+source("mod_oms.R")               # Indicateurs OMS / PAM / UNICEF (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS

@@ -18,6 +18,8 @@ app_parts/
 └── server/
     ├── README.md       # liste et rôle des 32 fichiers
     └── server_<domaine>.R
+
+mod_oms.R               # premier vrai module Shiny (UI + serveur namespacés)
 ```
 
 ## Règles importantes
@@ -29,7 +31,8 @@ app_parts/
    réactifs locaux (`df_f`, `map_cols`, `lang`, `mapped_data`, `audit_log_rv`…).
    Ne jamais les sourcer au niveau global.
 3. Les fichiers `app_parts/ui/tabs/*.R` définissent des fonctions
-   `ui_tab_<nom>()` ; elles sont appelées dans `ui_body.R`.
+   `ui_tab_<nom>()` ; elles sont appelées dans `ui_body.R`. Les onglets déjà
+   convertis utilisent à la place `mod_<nom>_ui("<nom>")` (voir `mod_oms.R`).
 4. L'ordre des `source()` du serveur est l'ordre d'origine du monolithe.
    Le préserver évite de déplacer des `moduleServer()` ou des `observeEvent()`
    qui dépendent de réactifs définis plus haut.
