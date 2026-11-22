@@ -1,0 +1,706 @@
+---
+title: "NutriAnalyse Pro v2 — Dictionnaire Complet des Variables SMART-SENS"
+subtitle: "Guide exhaustif de toutes les variables nécessaires au fonctionnement intégral de l'application"
+author: "NutriAnalyse Pro"
+date: today
+format:
+  docx:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+---
+
+\newpage
+
+# Introduction
+
+Ce document décrit **l'ensemble des variables** reconnues et utilisées par l'application **NutriAnalyse Pro v2**, couvrant la méthodologie **SMART-SENS** (Standardized Monitoring and Assessment of Relief and Transitions — Simplified, Efficient, Necessary, and Sufficient).
+
+Le document est organisé en trois parties :
+
+1. **Variables d'entrée détectées automatiquement** (58 variables du dictionnaire OMS) — ce sont les variables que l'application reconnaît automatiquement dans votre fichier CSV grâce à un système d'alias multilingue.
+2. **Variables additionnelles** (ménage, santé, chocs, modules avancés) — variables complémentaires pour alimenter tous les modules.
+3. **Variables calculées automatiquement** (~25 indicateurs) — générées par l'application à partir des données brutes.
+
+**Format attendu :** CSV (UTF-8), séparateur virgule ou point-virgule.
+
+**Système d'auto-détection :** L'application reconnaît automatiquement vos colonnes même si elles ne portent pas exactement les noms listés ici. Par exemple, `weight_kg`, `poids`, `wt`, `body_weight` sont tous reconnus comme la variable **poids**. Les alias acceptés sont indiqués pour chaque variable.
+
+\newpage
+
+# PARTIE 1 : Variables SMART-SENS Auto-Détectées (Dictionnaire OMS)
+
+Ces 58 variables constituent le cœur du dictionnaire OMS intégré dans l'application. Elles sont organisées par catégorie thématique.
+
+## Anthropométrie (7 variables)
+
+### WHZ — Score Poids-pour-Taille
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `whz` |
+| **Description** | Z-score Poids-pour-Taille (Weight-for-Height Z-score), indicateur principal de la malnutrition aiguë |
+| **Type** | Numérique |
+| **Unité** | z-score |
+| **Plage valide** | -5.0 à +5.0 (flags SMART en dehors de cette plage) |
+| **Seuils OMS** | < -2 = MAG (Malnutrition Aiguë Globale), < -3 = MAS (Malnutrition Aiguë Sévère) |
+| **Alias acceptés** | `whz`, `whz_score`, `wfh`, `wfhz`, `weight_for_height_z`, `peso_talla_z`, `zscore_whz`, `wasting_zscore`, `indice_pt`, `zwhz`, `zwfl`, `zscore_pt`, `weight_height_z`... |
+| **Modules** | Dashboard, Prévalences SMART, Qualité SMART, Descriptif, Inférentiel, Benchmarking |
+
+### HAZ — Score Taille-pour-Âge
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `haz` |
+| **Description** | Z-score Taille-pour-Âge (Height-for-Age Z-score), indicateur du retard de croissance (stunting) |
+| **Type** | Numérique |
+| **Unité** | z-score |
+| **Plage valide** | -6.0 à +6.0 |
+| **Seuils OMS** | < -2 = Retard de croissance, < -3 = Retard de croissance sévère |
+| **Alias acceptés** | `haz`, `haz_score`, `hfa`, `hfaz`, `height_for_age_z`, `talla_edad_z`, `stunting_zscore`, `indice_ta`, `zhaz`, `zlfl`, `zscore_ta`, `height_age_z`... |
+| **Modules** | Dashboard, Prévalences SMART, Qualité SMART |
+
+### WAZ — Score Poids-pour-Âge
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `waz` |
+| **Description** | Z-score Poids-pour-Âge (Weight-for-Age Z-score), indicateur de l'insuffisance pondérale |
+| **Type** | Numérique |
+| **Unité** | z-score |
+| **Plage valide** | -6.0 à +5.0 |
+| **Seuils OMS** | < -2 = Insuffisance pondérale, < -3 = Insuffisance pondérale sévère |
+| **Alias acceptés** | `waz`, `waz_score`, `wfa`, `wfaz`, `weight_for_age_z`, `peso_edad_z`, `underweight_zscore`, `indice_pa`, `zwaz`, `zscore_pa`... |
+| **Modules** | Dashboard, Prévalences SMART, Qualité SMART |
+
+### MUAC — Périmètre Brachial
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `muac` |
+| **Description** | Périmètre brachial (Mid-Upper Arm Circumference), mesure rapide de la malnutrition |
+| **Type** | Numérique |
+| **Unité** | mm (l'app convertit automatiquement si les valeurs sont en cm) |
+| **Plage typique** | 100 – 180 mm |
+| **Seuils OMS** | < 125 mm = MAG, < 115 mm = MAS |
+| **Alias acceptés** | `muac`, `muac_mm`, `muac_cm`, `pb`, `pbm`, `mid_upper_arm_circumference`, `perimeter_brachial`, `arm_circumference`, `tour_de_bras`, `peri_brachial`, `brachial`... |
+| **Modules** | Dashboard, Prévalences, Qualité SMART |
+
+### Poids de l'enfant
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `poids` |
+| **Description** | Poids corporel de l'enfant |
+| **Type** | Numérique |
+| **Unité** | kg |
+| **Plage typique** | 2.5 – 25.0 kg (enfants 6-59 mois) |
+| **Alias acceptés** | `weight`, `weight_kg`, `poids`, `poids_kg`, `pesos`, `body_weight`, `child_weight`, `wt`, `wgt`, `masse`, `poids_enfant`... |
+| **Modules** | Calcul z-scores, Dashboard, IMC |
+
+### Taille / Longueur de l'enfant
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `taille` |
+| **Description** | Taille debout (≥87 cm) ou longueur couchée (<87 cm) de l'enfant |
+| **Type** | Numérique |
+| **Unité** | cm |
+| **Plage typique** | 50 – 120 cm (enfants 6-59 mois) |
+| **Alias acceptés** | `height`, `height_cm`, `taille`, `taille_cm`, `altura`, `talla`, `body_height`, `child_height`, `ht`, `hgt`, `longueur`, `taille_enfant`, `length`, `length_cm`... |
+| **Modules** | Calcul z-scores, Dashboard, IMC |
+
+### Œdèmes bilatéraux
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `oedema` |
+| **Description** | Présence d'œdèmes nutritionnels bilatéraux (signe de kwashiorkor) |
+| **Type** | Binaire |
+| **Modalités** | **Oui** / **Non** (ou Yes/No, 1/0, True/False — l'app normalise) |
+| **Prévalence réaliste** | < 2% de la population enquêtée |
+| **Seuils** | Présence = classification automatique MAS |
+| **Alias acceptés** | `oedema`, `oedeme`, `edema`, `bilateral_oedema`, `oedemes`, `nutritional_oedema`... |
+| **Modules** | Dashboard, Prévalences SMART (GAM/SAM) |
+
+## Démographie (4 variables)
+
+### Âge en mois
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `age_m` |
+| **Description** | Âge de l'enfant en mois révolus |
+| **Type** | Numérique |
+| **Plage SMART** | **6 – 59 mois** (obligatoire pour les z-scores OMS) |
+| **Alias acceptés** | `age_months`, `child_age_months`, `age_mois`, `age_en_mois`, `agemos`, `agem`, `age_month`, `mois`... |
+| **Modules** | Tous les modules anthropométriques, Qualité SMART |
+
+### Sexe de l'enfant
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `sexe` |
+| **Description** | Sexe biologique de l'enfant |
+| **Type** | Catégorielle |
+| **Modalités** | **M** (Masculin) / **F** (Féminin) |
+| **Alias acceptés** | `sex`, `sexe`, `child_sex`, `gender`, `genre`, `child_gender`, `sexe_enfant`, `sexo`... |
+| **Modules** | Qualité SMART (ratio garçons/filles), Descriptif, Inférentiel |
+
+### Date de naissance
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `date_naissance` |
+| **Description** | Date de naissance de l'enfant (pour calcul de l'âge si `age_m` absent) |
+| **Type** | Date |
+| **Format** | YYYY-MM-DD (ex : 2022-03-15) |
+| **Alias acceptés** | `dob`, `date_of_birth`, `birthdate`, `date_naissance`, `naissance`, `birth_date`, `ddn`, `fecha_nacimiento`... |
+| **Modules** | Calcul automatique de l'âge |
+
+### Date de mesure / visite
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `date_mesure` |
+| **Description** | Date à laquelle les mesures anthropométriques ont été prises |
+| **Type** | Date |
+| **Format** | YYYY-MM-DD (ex : 2025-06-15) |
+| **Alias acceptés** | `measurement_date`, `date_mesure`, `date_visite`, `visit_date`, `survey_date`, `date_enquete`, `fecha_encuesta`, `date_survey`... |
+| **Modules** | Module Temporel, Prévision, Calcul d'âge |
+
+## Géographie (6 variables)
+
+### Région / Admin1
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `region` |
+| **Description** | Premier niveau administratif (région, province, wilaya, état...) |
+| **Type** | Catégorielle |
+| **Exemples** | Extrême-Nord, Nord, Adamaoua... |
+| **Alias acceptés** | `region`, `regions`, `zone`, `area`, `admin1`, `wilaya`, `gouvernorat`, `province`, `state`, `adm1_name`, `nom_region`... |
+| **Modules** | Dashboard, Prévalences stratifiées, Benchmarking |
+
+### Département / District / Admin2
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `dept` |
+| **Description** | Deuxième niveau administratif (département, district sanitaire, commune, cercle...) |
+| **Type** | Catégorielle |
+| **Alias acceptés** | `department`, `departement`, `dept`, `district`, `admin2`, `commune`, `cercle`, `prefecture`, `adm2_name`, `nom_district`, `lga`, `woreda`... |
+| **Modules** | Stratification, Dashboard |
+
+### Village / Localité
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `village` |
+| **Description** | Nom du village, site, camp ou localité d'enquête |
+| **Type** | Catégorielle |
+| **Alias acceptés** | `village`, `village_name`, `localite`, `locality`, `site`, `camp`, `settlement`, `nom_village`, `communaute`, `aldea`... |
+| **Modules** | Dashboard, Identification |
+
+### Grappe / PSU (Unité Primaire d'Échantillonnage)
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `cluster` |
+| **Description** | Identifiant de la grappe d'échantillonnage (Primary Sampling Unit) — essentiel pour le plan de sondage |
+| **Type** | Catégorielle |
+| **Exemples** | CL001, CL002, Grappe_01... |
+| **Alias acceptés** | `cluster`, `grappe`, `psu`, `cluster_id`, `cluster_no`, `primary_sampling_unit`, `unite_echantillonnage`, `numero_grappe`... |
+| **Modules** | Plan de sondage (DEFF), Prévalences SMART, Qualité SMART |
+
+### Latitude GPS
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `lat` |
+| **Description** | Coordonnée GPS latitude en degrés décimaux |
+| **Type** | Numérique |
+| **Plage** | -90 à +90 (Cameroun : ~4 à ~13) |
+| **Format** | Degrés décimaux (pas DMS) |
+| **Alias acceptés** | `latitude`, `gps_latitude`, `lat`, `gps_lat`, `coord_lat`, `y_coord`, `gps_y`, `lat_deg`... |
+| **Modules** | Module Géolocalisation (carte, clustering spatial) |
+
+### Longitude GPS
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `lon` |
+| **Description** | Coordonnée GPS longitude en degrés décimaux |
+| **Type** | Numérique |
+| **Plage** | -180 à +180 (Cameroun : ~8 à ~16) |
+| **Format** | Degrés décimaux (pas DMS) |
+| **Alias acceptés** | `longitude`, `gps_longitude`, `lon`, `lng`, `gps_lon`, `coord_lon`, `x_coord`, `gps_x`, `lon_deg`... |
+| **Modules** | Module Géolocalisation (carte, clustering spatial) |
+
+## Sécurité Alimentaire — Scores Composites (4 variables)
+
+### FCS — Score de Consommation Alimentaire
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `fcs` |
+| **Description** | Score composite PAM mesurant la fréquence de consommation de 8 groupes alimentaires sur 7 jours, pondéré par la valeur nutritionnelle |
+| **Type** | Numérique |
+| **Unité** | Score 0 – 112 |
+| **Seuils** | ≤ 21 = Pauvre, 21.5 – 35 = Limite, > 35 = Acceptable |
+| **Alias acceptés** | `fcs`, `food_consumption_score`, `fcs_score`, `score_conso`, `score_consommation`, `sca`, `score_conso_alim`... |
+| **Note** | Peut être recalculé automatiquement à partir des 8 composantes FCS |
+| **Modules** | Dashboard, Sécurité Alimentaire, Benchmarking |
+
+### rCSI — Indice de Stratégies d'Adaptation Réduit
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `rcsi` |
+| **Description** | Indice PAM mesurant la fréquence d'adoption de 5 stratégies de survie alimentaire sur 7 jours, pondéré par sévérité |
+| **Type** | Numérique |
+| **Unité** | Score 0 – 56 |
+| **Seuils** | < 4 = Pas/peu de coping, 4-18 = Moyen, ≥ 19 = Élevé |
+| **Alias acceptés** | `rcsi`, `rcsi_score`, `csi`, `reduced_csi`, `reduced_coping_strategy`, `coping_strategy_index`, `indice_strategies`... |
+| **Note** | Peut être recalculé automatiquement à partir des 5 composantes rCSI |
+| **Modules** | Dashboard, Sécurité Alimentaire |
+
+### HDDS — Score de Diversité Alimentaire du Ménage
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `hdds` |
+| **Description** | Score FAO comptant le nombre de groupes alimentaires consommés dans les dernières 24h |
+| **Type** | Numérique |
+| **Unité** | Score 0 – 12 |
+| **Seuils** | ≤ 3 = Faible diversité, 4-5 = Moyenne, ≥ 6 = Bonne diversité |
+| **Alias acceptés** | `hdds`, `hdds_score`, `dietary_diversity_score`, `score_diversite`, `household_dietary_diversity`, `dds`, `diversite_alimentaire`... |
+| **Note** | Peut être recalculé à partir des 12 composantes HDDS |
+| **Modules** | Dashboard, Sécurité Alimentaire |
+
+### HHS — Échelle de la Faim du Ménage
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `hhs` |
+| **Description** | Échelle FANTA/USAID mesurant la sévérité de la faim au niveau du ménage via 3 questions |
+| **Type** | Numérique |
+| **Unité** | Score 0 – 6 |
+| **Seuils** | 0-1 = Aucune/légère faim, 2-3 = Faim modérée, 4-6 = Faim sévère |
+| **Alias acceptés** | `hhs`, `hhs_score`, `household_hunger_scale`, `echelle_faim`, `hunger_scale`, `score_faim`... |
+| **Note** | Peut être recalculé à partir des 3 composantes HHS |
+| **Modules** | Dashboard, Sécurité Alimentaire |
+
+## Composantes FCS (8 variables)
+
+Les 8 groupes alimentaires PAM, chacun mesuré en **nombre de jours de consommation** sur les 7 derniers jours.
+
+| N° | Clé interne | Description | Poids PAM | Alias principaux |
+|----|-------------|-------------|-----------|------------------|
+| 1 | `fcs_cereales` | Céréales, tubercules, racines | ×2 | `fcs_staples`, `fcs_cereals`, `fcs1`, `cereales`, `fcscereales` |
+| 2 | `fcs_legumineuses` | Légumineuses (haricots, lentilles, noix) | ×3 | `fcs_pulses`, `fcs_legumes_sec`, `fcs2`, `legumineuses`, `fcslegumineuses` |
+| 3 | `fcs_lait` | Lait et produits laitiers | ×4 | `fcs_dairy`, `fcs_milk`, `fcs3`, `lait`, `dairy`, `fcslait` |
+| 4 | `fcs_proteines` | Viande, poisson, œufs | ×4 | `fcs_protein`, `fcs_meat`, `fcs4`, `proteines`, `viande`, `fcsprot` |
+| 5 | `fcs_legumes` | Légumes (y compris feuilles vertes) | ×1 | `fcs_vegetables`, `fcs_veg`, `fcs5`, `legumes`, `fcsveg` |
+| 6 | `fcs_fruits` | Fruits | ×1 | `fcs_fruit`, `fcs6`, `fruits`, `fcsfruit` |
+| 7 | `fcs_huile` | Huile, graisse, beurre | ×0.5 | `fcs_oil`, `fcs_fat`, `fcs7`, `huile`, `graisse`, `fcsfat` |
+| 8 | `fcs_sucre` | Sucre, miel, condiments | ×0.5 | `fcs_sugar`, `fcs_sweet`, `fcs8`, `sucre`, `fcssugar` |
+
+**Type :** Numérique entier, **Plage :** 0 – 7 jours
+
+**Formule FCS :** `FCS = Σ (jours_groupe × poids_groupe)`
+
+## Composantes HHS (3 variables)
+
+Les 3 questions de l'Échelle de la Faim FANTA, codées en fréquence.
+
+| N° | Clé interne | Description (question) | Alias principaux |
+|----|-------------|------------------------|------------------|
+| 1 | `hhs_nofood` | « Y a-t-il eu un moment où il n'y avait pas de nourriture à manger dans votre ménage ? » | `hhs1`, `hhs_no_food`, `pas_nourriture`, `no_food_eat`, `hhsnofood` |
+| 2 | `hhs_sleep` | « Un membre du ménage s'est-il couché avec la faim ? » | `hhs2`, `hhs_bed_hungry`, `dormi_faim`, `sleep_hungry`, `hhsbedhungry` |
+| 3 | `hhs_wholeday` | « Un membre du ménage a-t-il passé une journée entière sans manger ? » | `hhs3`, `hhs_whole_day`, `journee_sans_manger`, `hhsnomealday` |
+
+**Type :** Numérique, **Plage :** 0 = Jamais, 1 = Rarement/Parfois, 2 = Souvent
+
+**Formule HHS :** `HHS = hhs_nofood + hhs_sleep + hhs_wholeday`
+
+## Composantes rCSI (5 variables)
+
+Les 5 stratégies de survie PAM, mesurées en jours sur les 7 derniers jours.
+
+| N° | Clé interne | Description (stratégie) | Poids | Alias principaux |
+|----|-------------|-------------------------|-------|------------------|
+| 1 | `rcsi_lessqlty` | Consommer des aliments moins appréciés/préférés | ×1 | `rcsi_less_qlty`, `rcsi_lesspref`, `less_preferred`, `alim_moins_pref`, `moinsqualite` |
+| 2 | `rcsi_borrow` | Emprunter de la nourriture ou recevoir de l'aide | ×2 | `rcsiborrow`, `rcsi_emprunter`, `borrow_food`, `emprunter_nourriture` |
+| 3 | `rcsi_meal_nb` | Réduire le nombre de repas par jour | ×1 | `rcsimealnb`, `rcsi_repas`, `reduce_meals`, `reduire_repas`, `fewer_meals` |
+| 4 | `rcsi_meal_size` | Réduire les portions / taille des repas | ×1 | `rcsimealsize`, `rcsi_portions`, `reduce_portions`, `reduire_portions` |
+| 5 | `rcsi_meal_adult` | Réduire la consommation des adultes pour les enfants | ×3 | `rcsimealadult`, `rcsi_adultes`, `restrict_adults`, `reduire_adultes` |
+
+**Type :** Numérique entier, **Plage :** 0 – 7 jours
+
+**Formule rCSI :** `rCSI = (lessqlty×1) + (borrow×2) + (meal_nb×1) + (meal_size×1) + (meal_adult×3)`
+
+## Composantes HDDS (12 variables)
+
+Les 12 groupes alimentaires FAO pour la diversité alimentaire (consommation au cours des dernières 24h).
+
+| N° | Clé interne | Description (groupe alimentaire) | Alias principaux |
+|----|-------------|----------------------------------|------------------|
+| 1 | `hdds_cereales` | Céréales (riz, maïs, mil, sorgho, blé...) | `hdds_cereal`, `hdds1`, `hdds_staples`, `hdds_grain` |
+| 2 | `hdds_tubercules` | Tubercules et racines (manioc, igname, patate...) | `hdds_tuber`, `hdds_roots`, `hdds2`, `hdds_roottuber` |
+| 3 | `hdds_legumes_hdds` | Légumes (feuilles vertes, tomates, oignons...) | `hdds_legumes`, `hdds_veg`, `hdds3`, `hdds_greens` |
+| 4 | `hdds_fruits_hdds` | Fruits (mangue, banane, orange, papaye...) | `hdds_fruits`, `hdds_fruit`, `hdds4` |
+| 5 | `hdds_viande` | Viande (bœuf, mouton, chèvre, volaille, abats...) | `hdds_meat`, `hdds5`, `hdds_organ_meat` |
+| 6 | `hdds_oeufs` | Œufs | `hdds_eggs`, `hdds_egg`, `hdds6` |
+| 7 | `hdds_poisson` | Poisson et fruits de mer | `hdds_fish`, `hdds_seafood`, `hdds7`, `hdds_fishseafood` |
+| 8 | `hdds_legumineuses_hdds` | Légumineuses, noix et graines | `hdds_pulses`, `hdds_legum`, `hdds8`, `hdds_bean`, `hdds_nuts` |
+| 9 | `hdds_lait` | Lait et produits laitiers | `hdds_dairy`, `hdds_milk`, `hdds9`, `hdds_milk_dairy` |
+| 10 | `hdds_huile` | Huiles et graisses | `hdds_oil`, `hdds_fat`, `hdds10`, `hdds_oil_fat` |
+| 11 | `hdds_sucre` | Sucre et produits sucrés | `hdds_sugar`, `hdds_sweet`, `hdds11`, `hdds_sugar_honey` |
+| 12 | `hdds_condiments` | Condiments et épices | `hdds_cond`, `hdds_spices`, `hdds12`, `hdds_spice` |
+
+**Type :** Binaire (0/1), **Plage :** 0 = Non consommé, 1 = Consommé
+
+**Formule HDDS :** `HDDS = Σ des 12 groupes (0 ou 1)` → Score de 0 à 12
+
+## Enquête et Métadonnées (4 variables)
+
+### Équipe / Enquêteur
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `equipe` |
+| **Description** | Identifiant de l'équipe d'enquête ou de l'enquêteur individuel |
+| **Type** | Catégorielle |
+| **Exemples** | Team_A, Equipe_01, ENQ_003... |
+| **Alias acceptés** | `team`, `equipe`, `team_id`, `enqueteur`, `enumerator`, `data_collector`, `superviseur`, `collecteur`, `interviewer`, `agent`... |
+| **Modules** | Qualité SMART (digit preference par équipe, performance inter-enquêteurs) |
+
+### Strate d'échantillonnage
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `strate` |
+| **Description** | Variable de stratification dans le plan de sondage (ex : urbain/rural) |
+| **Type** | Catégorielle |
+| **Modalités typiques** | **Rural**, **Urbain** (ou toute autre stratification pertinente) |
+| **Alias acceptés** | `strata`, `strate`, `stratum`, `strat`, `sampling_strata`, `strate_echantillonnage`, `stratification`... |
+| **Modules** | Plan de sondage, Prévalences stratifiées |
+
+### Statut de déplacement
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `depl` |
+| **Description** | Statut de déplacement de la population (ménage ou individu) |
+| **Type** | Catégorielle |
+| **Modalités typiques** | **Host** (hôte), **IDP** (déplacé interne), **Refugee** (réfugié), **Returnee** (retourné) |
+| **Alias acceptés** | `displacement_status`, `statut_deplacement`, `statut`, `status`, `population_type`, `pop_type`, `idp_status`, `refugee_status`, `idp`, `refugie`... |
+| **Modules** | Descriptif, Stratification, Inférentiel |
+
+### Vague d'enquête
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `survey` |
+| **Description** | Numéro ou nom de la vague (round) de l'enquête pour comparaisons temporelles |
+| **Type** | Catégorielle |
+| **Modalités typiques** | **Round 1**, **Round 2**, **Round 3** (ou Vague 1, Passage 1...) |
+| **Alias acceptés** | `survey_round`, `round`, `vague`, `enquete_round`, `wave`, `survey_wave`, `round_number`, `passage`... |
+| **Modules** | Module Temporel (comparaison multi-vagues) |
+
+## Santé SMART+ (4 variables)
+
+Variables de santé du volet SMART+ (Santé, Mortalité, Anthropométrie et Rétention dans les Traitements).
+
+### Vaccination rougeole
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `rougeole` |
+| **Description** | Statut de vaccination contre la rougeole (enfants 9-59 mois). Indicateur clé pour la couverture vaccinale |
+| **Type** | Catégorielle |
+| **Modalités** | **Oui** (vacciné, carnet vu ou déclaratif), **Non** (non vacciné), **NSP** (ne sait pas) |
+| **Alias acceptés** | `measles`, `rougeole`, `measles_vaccination`, `vac_measles`, `vaccin_rougeole`, `measles_card`, `sarampion`... |
+| **Modules** | Dashboard Santé, Descriptif |
+
+### Supplémentation en vitamine A
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `vita` |
+| **Description** | Supplémentation en vitamine A au cours des 6 derniers mois (enfants 6-59 mois) |
+| **Type** | Binaire |
+| **Modalités** | **Oui** / **Non** |
+| **Alias acceptés** | `vitamin_a`, `vita`, `vitamine_a`, `vit_a`, `vitamin_a_supp`, `supplementation_vita`, `vit_a_6months`... |
+| **Modules** | Dashboard Santé, Descriptif |
+
+### Diarrhée (2 dernières semaines)
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `diarrhee` |
+| **Description** | Épisode de diarrhée dans les 2 semaines précédant l'enquête (≥3 selles liquides/jour) |
+| **Type** | Binaire |
+| **Modalités** | **Oui** / **Non** |
+| **Alias acceptés** | `diarrhea`, `diarrhoea`, `diarrhee`, `has_diarrhea`, `diarrhea_2w`, `loose_stools`, `diarrhea_last_2w`... |
+| **Modules** | Dashboard Santé, Descriptif, Épidémiologie |
+
+### IRA — Infection Respiratoire Aiguë
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `ira` |
+| **Description** | Infection respiratoire aiguë (toux + fièvre) dans les 2 dernières semaines. Indicateur clé SMART-SENS |
+| **Type** | Binaire |
+| **Modalités** | **Oui** / **Non** |
+| **Alias acceptés** | `ari`, `ira`, `acute_respiratory_infection`, `infection_respiratoire`, `cough_fever`, `toux_fievre`, `pneumonia`, `ira_2sem`... |
+| **Modules** | Dashboard Santé, Descriptif |
+
+## IMC / BMI (1 variable)
+
+### Indice de Masse Corporelle
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Clé interne** | `bmi` |
+| **Description** | Indice de Masse Corporelle (adultes ou enfants >5 ans). Peut être pré-calculé ou calculé par l'app à partir du poids et de la taille |
+| **Type** | Numérique |
+| **Unité** | kg/m² |
+| **Plage typique** | 12 – 40 |
+| **Seuils adultes OMS** | < 16.0 = Dénutrition sévère, 16.0–16.9 = Modérée, 17.0–18.4 = Légère, 18.5–24.9 = Normal, ≥ 25 = Surpoids |
+| **Alias acceptés** | `bmi`, `imc`, `body_mass_index`, `indice_masse_corporelle`, `bmi_zscore`, `bmiz`, `baz`, `bmi_for_age_z`... |
+| **Modules** | Descriptif, Dashboard (adultes) |
+
+\newpage
+
+# PARTIE 2 : Variables Additionnelles (Modules Complémentaires)
+
+Ces variables ne font pas partie du dictionnaire OMS auto-détecté mais sont utilisées par les modules spécifiques de l'application. L'utilisateur doit les nommer **exactement** comme indiqué (pas d'auto-détection par alias).
+
+## Ménage — Identification et Caractéristiques
+
+| N° | Variable | Type | Description | Modalités / Plage |
+|----|----------|------|-------------|-------------------|
+| 1 | `household_id` | Texte | Identifiant unique du ménage | Ex : HH0001, HH0002... |
+| 2 | `household_size` | Numérique | Taille du ménage (nombre total de personnes) | Entier, typiquement 3 – 15 |
+| 3 | `number_children_u5` | Numérique | Nombre d'enfants de moins de 5 ans dans le ménage | Entier, typiquement 1 – 5 |
+| 4 | `child_id` | Texte | Identifiant unique de l'enfant mesuré | Ex : CH0001, CH0002... |
+
+## Ménage — Chef de Ménage
+
+| N° | Variable | Type | Description | Modalités |
+|----|----------|------|-------------|-----------|
+| 5 | `head_gender` | Texte | Sexe du chef de ménage | **Feminin**, **Masculin** |
+| 6 | `head_age` | Numérique | Âge du chef de ménage | 18 – 80 ans |
+| 7 | `head_education` | Texte | Niveau d'éducation du chef de ménage | **Aucune**, **Primaire**, **Secondaire**, **Higher** |
+
+## Ménage — Moyens d'Existence
+
+| N° | Variable | Type | Description | Modalités |
+|----|----------|------|-------------|-----------|
+| 8 | `main_livelihood` | Texte | Principale source de revenus | **Agriculture**, **Commerce**, **Elevage**, **Peche**, **Travail_journalier** |
+
+## WASH — Eau, Hygiène, Assainissement
+
+| N° | Variable | Type | Description | Modalités |
+|----|----------|------|-------------|-----------|
+| 9 | `shelter_type` | Texte | Type d'abri | **Dur**, **Semi-dur**, **Bache**, **Tente** |
+| 10 | `water_source` | Texte | Source principale d'eau potable | **Forage**, **Borne_fontaine**, **Puits_protege**, **Riviere** |
+| 11 | `sanitation_type` | Texte | Type d'installation sanitaire | **Latrine_VIP**, **Fosse_amelioree**, **Fosse_simple**, **Plein_air** |
+
+## Sécurité Alimentaire — Compléments
+
+| N° | Variable | Type | Description | Modalités / Plage |
+|----|----------|------|-------------|-------------------|
+| 12 | `meals_per_day` | Numérique | Nombre de repas pris par jour (ménage) | 1 – 4 |
+| 13 | `months_food_insecurity` | Numérique | Nombre de mois d'insécurité alimentaire sur les 12 derniers mois | 0 – 12 |
+| 14 | `market_access` | Texte | Niveau d'accès au marché | **Good**, **Limited**, **None** |
+| 15 | `food_aid_received` | Texte | Aide alimentaire reçue | **Oui**, **Non** |
+
+## Santé Complémentaire de l'Enfant
+
+| N° | Variable | Type | Description | Modalités |
+|----|----------|------|-------------|-----------|
+| 16 | `fever_last_2w` | Texte | Fièvre dans les 2 dernières semaines | **Oui**, **Non** |
+| 17 | `malaria_test` | Texte | Résultat du test de diagnostic rapide (TDR) paludisme | **Positif**, **Negatif**, **Non_teste** |
+| 18 | `vaccination_status` | Texte | Statut vaccinal global (PEV) | **Up_to_date**, **Incomplete**, **Non_vaccine** |
+| 19 | `breastfeeding_status` | Texte | Mode d'allaitement actuel | **Exclusive**, **Complementary**, **None** |
+
+## Données de la Mère
+
+| N° | Variable | Type | Description | Modalités / Plage |
+|----|----------|------|-------------|-------------------|
+| 20 | `mother_age` | Numérique | Âge de la mère (années) | 15 – 49 |
+| 21 | `mother_muac` | Numérique | Périmètre brachial de la mère (mm) | 170 – 340 mm (seuil : < 230 mm = malnutrition) |
+| 22 | `mother_pregnant` | Texte | Mère actuellement enceinte | **Oui**, **Non** |
+| 23 | `mother_lactating` | Texte | Mère actuellement allaitante | **Oui**, **Non** |
+| 24 | `anc_visits` | Numérique | Nombre de consultations prénatales (CPN) | 0 – 8+ |
+| 25 | `health_facility_distance_km` | Numérique | Distance au centre de santé le plus proche (km) | 0.5 – 50+ |
+
+## Prise en Charge Nutritionnelle
+
+| N° | Variable | Type | Description | Modalités |
+|----|----------|------|-------------|-----------|
+| 26 | `nutrition_program_access` | Texte | Accès à un programme nutritionnel | **Oui**, **Non** |
+| 27 | `sam_treatment` | Texte | Enfant actuellement pris en charge pour MAS (CRENAS/CRENI) | **Oui**, **Non** |
+| 28 | `mam_treatment` | Texte | Enfant actuellement pris en charge pour MAM (CRENAM) | **Oui**, **Non** |
+| 29 | `referral_made` | Texte | Référence vers un centre de santé effectuée | **Oui**, **Non** |
+
+## Chocs et Exposition
+
+| N° | Variable | Type | Description | Modalités |
+|----|----------|------|-------------|-----------|
+| 30 | `conflict_exposure` | Texte | Le ménage a été exposé à un conflit armé | **Oui**, **Non** |
+| 31 | `climate_shock` | Texte | Type de choc climatique subi | **None**, **Flood**, **Dry_spell** |
+| 32 | `crop_failure` | Texte | Perte de récolte au cours de la dernière saison | **Oui**, **Non** |
+| 33 | `livestock_loss` | Texte | Perte de bétail | **Oui**, **Non** |
+| 34 | `price_shock` | Texte | Choc de prix (forte hausse des prix alimentaires) | **Oui**, **Non** |
+
+## Module Analyse de Survie
+
+| N° | Variable | Type | Description | Modalités / Plage |
+|----|----------|------|-------------|-------------------|
+| 35 | `time_in_program_days` | Numérique | Durée de séjour dans le programme nutritionnel (variable de temps pour Kaplan-Meier) | 1 – 90+ jours |
+| 36 | `event_recovery` | Numérique | Événement de guérison observé (1 = guéri, 0 = censuré/abandon/non guéri) | **0** ou **1** |
+
+## Module Épidémiologie
+
+Variables binaires numériques (0/1) pour les tableaux 2×2 et le calcul des Odds Ratios.
+
+| N° | Variable | Type | Description | Modalités |
+|----|----------|------|-------------|-----------|
+| 37 | `exposure_conflict` | Numérique | Exposition au conflit (facteur de risque) | **0** (non) ou **1** (oui) |
+| 38 | `exposure_poor_water` | Numérique | Exposition à une eau insalubre (facteur de risque) | **0** (non) ou **1** (oui) |
+| 39 | `outcome_gam` | Numérique | Résultat sanitaire : malnutrition aiguë globale | **0** (non GAM) ou **1** (GAM) |
+| 40 | `outcome_diarrhea` | Numérique | Résultat sanitaire : épisode diarrhéique | **0** (non) ou **1** (oui) |
+
+## Module NLP (Analyse Textuelle)
+
+| N° | Variable | Type | Description | Exemple |
+|----|----------|------|-------------|---------|
+| 41 | `field_notes` | Texte | Notes de terrain rédigées par l'enquêteur. Texte libre en français décrivant l'état de l'enfant, les observations du ménage, etc. | "Enfant en bon état général, allaitement maternel exclusif" |
+
+\newpage
+
+# PARTIE 3 : Variables Calculées Automatiquement par l'Application
+
+Ces variables sont **générées automatiquement** par la fonction `calc_indicateurs()` à partir des données d'entrée. Vous n'avez **pas besoin** de les inclure dans votre fichier CSV — l'application les crée pour vous.
+
+## Indicateurs Binaires de Malnutrition
+
+| Variable calculée | Formule / Définition | Interprétation |
+|--------------------|---------------------|----------------|
+| `GAM` | WHZ < -2 OU Œdème = Oui | Malnutrition Aiguë Globale |
+| `SAM` | WHZ < -3 OU Œdème = Oui | Malnutrition Aiguë Sévère |
+| `MAM` | -3 ≤ WHZ < -2 ET Œdème = Non | Malnutrition Aiguë Modérée |
+| `Oedema_seul` | WHZ ≥ -2 ET Œdème = Oui | Kwashiorkor sans émaciation |
+| `Stunting` | HAZ < -2 | Retard de croissance |
+| `Sev_Stunting` | HAZ < -3 | Retard de croissance sévère |
+| `Mod_Stunting` | -3 ≤ HAZ < -2 | Retard de croissance modéré |
+| `Underweight` | WAZ < -2 | Insuffisance pondérale |
+| `Sev_Underweight` | WAZ < -3 | Insuffisance pondérale sévère |
+| `MUAC_GAM` | MUAC < 125 mm | MAG par périmètre brachial |
+| `MUAC_MAM` | 115 ≤ MUAC < 125 mm | MAM par périmètre brachial |
+| `MUAC_SAM` | MUAC < 115 mm | MAS par périmètre brachial |
+
+## Catégories Nutritionnelles
+
+| Variable calculée | Description | Modalités |
+|--------------------|-------------|-----------|
+| `nutr_cat` | Statut nutritionnel WHZ + Œdème | Normal / MAM / SAM |
+| `muac_cat` | Statut nutritionnel MUAC | Normal (≥125) / MAM (115-124) / SAM (<115) |
+| `age_group` | Tranche d'âge détaillée | 0-5m, 6-11m, 12-17m, 18-23m, 24-35m, 36-47m, 48-59m, 60+m |
+| `age_group5` | Tranche d'âge simplifiée | <12m, 12-23m, 24-35m, 36-47m, 48-59m, 60+m |
+
+## Catégories Sécurité Alimentaire
+
+| Variable calculée | Description | Modalités |
+|--------------------|-------------|-----------|
+| `fcs_cat` | Classification FCS | Pauvre (≤21) / Limite (21.5-35) / Acceptable (>35) |
+| `hhs_cat` | Classification HHS | Aucune faim / Faim légère / Faim modérée / Faim sévère |
+| `rcsi_cat` | Classification rCSI | Pas/peu de coping (<4) / Moyen (4-18) / Élevé (≥19) |
+| `hdds_cat` | Classification HDDS | Faible diversité (≤3) / Moyenne (4-5) / Bonne (≥6) |
+
+## Scores Recalculés
+
+Si les composantes sont présentes, l'application recalcule les scores pour vérification :
+
+| Variable calculée | Formule |
+|--------------------|---------|
+| `.fcs` | Σ (composantes FCS × poids PAM) |
+| `.hhs` | hhs_nofood + hhs_sleep + hhs_wholeday |
+| `.rcsi` | (lessqlty×1) + (borrow×2) + (meal_nb×1) + (meal_size×1) + (meal_adult×3) |
+| `.hdds` | Σ (12 composantes binaires HDDS) |
+
+## Indices Composites
+
+| Variable calculée | Description |
+|--------------------|-------------|
+| `ICV` | Indice Composite de Vulnérabilité (0-100) : intègre FCS, HHS, rCSI, HDDS, MUAC et âge |
+| `cat_vulner` | Catégorie de vulnérabilité : Très vulnérable / Vulnérable / Modéré / Résilient |
+| `IMC` | Indice de Masse Corporelle : Poids / (Taille en mètres)² |
+
+\newpage
+
+# PARTIE 4 : Résumé par Module de l'Application
+
+| Module | Variables obligatoires | Variables recommandées |
+|--------|----------------------|----------------------|
+| **Dashboard** | whz, haz, waz, muac, oedema, fcs, hhs | region, sexe, age_m, rcsi, hdds |
+| **Prévalences SMART** | whz, haz, waz, muac, oedema, cluster | strate, region |
+| **Qualité SMART** | whz, haz, waz, sexe, age_m, equipe | cluster, poids, taille |
+| **Sécurité Alimentaire** | fcs + 8 composantes, hhs + 3 composantes, rcsi + 5 composantes | hdds + 12 composantes |
+| **Descriptif Expert** | Toute variable numérique ou catégorielle | — |
+| **Inférentiel Expert** | Toute variable (tests auto-sélectionnés) | — |
+| **Temporel Expert** | survey (vague), date_mesure + variable numérique | — |
+| **Survie (Kaplan-Meier)** | time_in_program_days, event_recovery | region, sexe |
+| **Épidémiologie** | exposure_*, outcome_* (variables 0/1) | — |
+| **Géolocalisation** | lat, lon | Variables numériques pour clustering |
+| **Benchmarking** | region + indicateurs numériques | whz, fcs, muac |
+| **Prévision (Forecasting)** | date_mesure + indicateurs agrégés | — |
+| **NLP** | field_notes | — |
+
+\newpage
+
+# PARTIE 5 : Règles de Validation et Bonnes Pratiques
+
+## Règles de codage obligatoires
+
+1. **Variables binaires texte** (oedema, diarrhée, etc.) : utiliser **Oui** / **Non** (majuscule initiale, en français). L'app accepte aussi Yes/No, 1/0, TRUE/FALSE.
+2. **Sexe** : utiliser **M** et **F** uniquement (une seule lettre).
+3. **Z-scores** : doivent rester dans les bornes SMART — WHZ [-5, +5], HAZ [-6, +6], WAZ [-6, +5]. Les valeurs hors bornes sont flaggées.
+4. **Âge enfant** : strictement entre **6 et 59 mois** inclus pour les z-scores OMS.
+5. **MUAC** : en **millimètres** (ex : 125, pas 12.5). Si valeurs < 30, l'app convertit automatiquement cm → mm.
+6. **FCS composantes** : entiers entre **0 et 7** (nombre de jours sur une semaine).
+7. **HHS composantes** : entiers entre **0 et 2** (fréquence : 0=jamais, 1=parfois, 2=souvent).
+8. **HDDS composantes** : binaire **0 ou 1** uniquement.
+9. **Dates** : format **YYYY-MM-DD** (ex : 2025-06-15). L'app tente aussi de parser d'autres formats.
+10. **GPS** : coordonnées en **degrés décimaux** (ex : 10.5912, 13.6847) — pas en DMS.
+11. **Variables épidémiologiques** : codées en **0/1 numérique** (pas en texte Oui/Non).
+12. **Pas de cellules vides** pour les variables anthropométriques critiques (whz, haz, waz, muac, oedema, age, sexe).
+
+## Recommandations de qualité
+
+- **Minimum 300 observations** (idéalement 1000+) pour des analyses statistiques fiables.
+- **Au moins 25 grappes** (clusters) pour le calcul du DEFF.
+- **Au moins 2 vagues** (survey_round) pour le module temporel.
+- **Oedema réaliste** : prévalence < 2% dans la plupart des contextes.
+- **6 équipes minimum** pour une analyse de qualité inter-équipes pertinente.
+- **Coordonnées GPS variées** (pas un seul point) pour le module géolocalisation.
+
+## Nombre total de variables
+
+| Catégorie | Nombre |
+|-----------|--------|
+| Variables auto-détectées (OMS_DICT) | 58 |
+| Variables additionnelles (modules complémentaires) | 41 |
+| **Total variables d'entrée** | **99** |
+| Variables calculées automatiquement | ~25 |
+| **Total dans l'application après enrichissement** | **~124** |
+
+---
+
+*Document généré pour NutriAnalyse Pro v2 — Application Shiny d'analyse nutritionnelle SMART-SENS.*
+
+*Référence : Méthodologie SMART (Action Against Hunger / UNICEF), Standards PAM pour le FCS/rCSI, FAO pour le HDDS, FANTA/USAID pour le HHS.*

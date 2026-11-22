@@ -1,0 +1,39 @@
+# golem-config.yml — NutriAnalyse Pro v2
+# Accès dans le code : golem::get_golem_options("option_name")
+# Ou via config : config::get("option_name")
+
+default:
+  golem_name: "NutriAnalysePro"
+  golem_version: "2.0.0"
+  app_prod: false
+
+  # ── Modèle IA ─────────────────────────────────────────────────────────────
+  gemini_model: "gemini-2.5-flash"
+  gemini_max_tokens: 8192
+  gemini_rate_limit: 60
+
+  # ── Cartographie GADM ─────────────────────────────────────────────────────
+  gadm_cache_dir: "gadm_cache"
+  gadm_use_cache: true
+  gadm_offline_fallback: true
+
+  # ── Upload & Performance ──────────────────────────────────────────────────
+  max_upload_mb: 100
+  max_cols_display: 100
+  debounce_ms: 400
+
+  # ── Authentification ──────────────────────────────────────────────────────
+  session_timeout_min: 120
+  max_login_attempts: 5
+
+  # ── Standards OMS ─────────────────────────────────────────────────────────
+  gam_threshold: 10.0
+  sam_threshold: 2.0
+  stunting_threshold: 20.0
+  underweight_threshold: 10.0
+
+production:
+  app_prod: true
+  gemini_model: "gemini-2.5-pro"
+  gemini_max_tokens: 16384
+  max_upload_mb: 200

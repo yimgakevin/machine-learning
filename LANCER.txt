@@ -1,0 +1,42 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║  🚀 LANCER NUTRIANALYSE PRO V2 LEVEL 3                              ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+
+✅ LA FAÇON LA PLUS SIMPLE:
+═══════════════════════════════════════════════════════════════════════
+
+   Double-cliquer sur: LANCER_APP.bat
+
+   C'est tout! L'application s'ouvre dans votre navigateur.
+
+   Pour arrêter: Fermer la fenêtre cmd
+
+
+✅ ALTERNATIVE (RStudio):
+═══════════════════════════════════════════════════════════════════════
+
+   1. Ouvrir app_v2_final.R dans RStudio
+   2. Cliquer "Run App" (bouton en haut à droite)
+   3. L'application s'ouvre
+
+
+✅ ALTERNATIVE (Console R):
+═══════════════════════════════════════════════════════════════════════
+
+   Dans la console RStudio, coller:
+
+      shiny::runApp("app_v2_final.R")
+
+   Appuyer ENTER. L'application s'ouvre.
+
+   Pour arrêter: Ctrl+C
+
+
+═══════════════════════════════════════════════════════════════════════
+
+Fichier principal: app_v2_final.R (8234 lignes)
+
+═══════════════════════════════════════════════════════════════════════

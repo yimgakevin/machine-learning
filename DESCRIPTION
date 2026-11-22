@@ -1,0 +1,86 @@
+Package: NutriAnalysePro
+Title: NutriAnalyse Pro v2 — Plateforme d'Analyse Nutritionnelle et de Sécurité Alimentaire
+Version: 2.0.0
+Authors@R:
+    person("YIMGA WANDJI", "KEVIN",
+           email   = "contact@dsamid.com",
+           role    = c("aut", "cre"),
+           comment = c(ORCID = "0009-0006-1000-7339"))
+Description: Plateforme de référence pour l'analyse nutritionnelle,
+    épidémiologique et de sécurité alimentaire selon les standards OMS 2006,
+    UNICEF, SMART, PAM/FAO et CDC. Inclut 32+ modules analytiques (Z-scores,
+    prévalences, clustering, épidémiologie, survie, cartographie GADM,
+    connecteurs SQL/DHIS2/ODK/REDCap) et 4 agents IA Gemini.
+License: AGPL-3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Language: fr
+URL: https://github.com/yimgakevin/NutriAnalysePro
+BugReports: https://github.com/yimgakevin/NutriAnalysePro/issues
+Imports:
+    shiny (>= 1.8.0),
+    shinydashboard (>= 0.7.2),
+    shinyWidgets (>= 0.8.0),
+    shinyjs (>= 2.1.0),
+    shinyauthr (>= 1.0.0),
+    sodium,
+    tidyverse,
+    dplyr,
+    tidyr,
+    readr,
+    purrr,
+    stringr,
+    forcats,
+    lubridate,
+    ggplot2,
+    scales,
+    DT (>= 0.31),
+    plotly (>= 4.10.0),
+    ggiraph,
+    leaflet (>= 2.2.0),
+    leaflet.extras,
+    sf (>= 1.0.0),
+    binom,
+    gtsummary (>= 1.7.0),
+    gt (>= 0.10.0),
+    corrplot,
+    RColorBrewer,
+    viridis,
+    ggdist,
+    e1071,
+    readxl,
+    haven,
+    arrow,
+    FactoMineR,
+    factoextra,
+    cluster,
+    rnaturalearth,
+    rnaturalearthdata,
+    rmarkdown,
+    officer,
+    flextable,
+    writexl,
+    openxlsx,
+    httr,
+    jsonlite,
+    digest,
+    DBI,
+    RSQLite,
+    promises,
+    future,
+    config,
+    golem (>= 0.5.0)
+Suggests:
+    httr2,
+    RPostgres,
+    RMariaDB,
+    odbc,
+    waiter,
+    testthat (>= 3.0.0),
+    shinytest2,
+    devtools,
+    usethis,
+    roxygen2,
+    pkgload
+Config/testthat/edition: 3

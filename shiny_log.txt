@@ -1,0 +1,797 @@
+Le chargement a nécessité le package : shiny
+
+Attachement du package : 'shinydashboard'
+
+L'objet suivant est masqué depuis 'package:graphics':
+
+    box
+
+Avis : le package 'shinyWidgets' a été compilé avec la version R 4.5.3
+
+Attachement du package : 'shinyjs'
+
+L'objet suivant est masqué depuis 'package:shinyWidgets':
+
+    alert
+
+L'objet suivant est masqué depuis 'package:shiny':
+
+    runExample
+
+Les objets suivants sont masqués depuis 'package:methods':
+
+    removeClass, show
+
+── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.2.0     ✔ readr     2.2.0
+✔ forcats   1.0.1     ✔ stringr   1.6.0
+✔ ggplot2   4.0.2     ✔ tibble    3.3.1
+✔ lubridate 1.9.5     ✔ tidyr     1.3.2
+✔ purrr     1.2.1     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter()   masks stats::filter()
+✖ dplyr::lag()      masks stats::lag()
+✖ lubridate::show() masks shinyjs::show(), methods::show()
+ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+
+Attachement du package : 'scales'
+
+L'objet suivant est masqué depuis 'package:purrr':
+
+    discard
+
+L'objet suivant est masqué depuis 'package:readr':
+
+    col_factor
+
+
+Attachement du package : 'DT'
+
+Les objets suivants sont masqués depuis 'package:shiny':
+
+    dataTableOutput, renderDataTable
+
+
+Attachement du package : 'plotly'
+
+L'objet suivant est masqué depuis 'package:ggplot2':
+
+    last_plot
+
+L'objet suivant est masqué depuis 'package:stats':
+
+    filter
+
+L'objet suivant est masqué depuis 'package:graphics':
+
+    layout
+
+Linking to GEOS 3.13.1, GDAL 3.11.4, PROJ 9.7.0; sf_use_s2() is TRUE
+
+Attachement du package : 'gt'
+
+L'objet suivant est masqué depuis 'package:shinyjs':
+
+    html
+
+corrplot 0.95 loaded
+Le chargement a nécessité le package : viridisLite
+
+Attachement du package : 'viridis'
+
+L'objet suivant est masqué depuis 'package:scales':
+
+    viridis_pal
+
+
+Attachement du package : 'e1071'
+
+L'objet suivant est masqué depuis 'package:ggplot2':
+
+    element
+
+Avis : le package 'arrow' a été compilé avec la version R 4.5.3
+
+Attachement du package : 'arrow'
+
+L'objet suivant est masqué depuis 'package:plotly':
+
+    schema
+
+L'objet suivant est masqué depuis 'package:lubridate':
+
+    duration
+
+L'objet suivant est masqué depuis 'package:utils':
+
+    timestamp
+
+Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa
+
+Attachement du package : 'rnaturalearthdata'
+
+L'objet suivant est masqué depuis 'package:rnaturalearth':
+
+    countries110
+
+
+Attachement du package : 'officer'
+
+L'objet suivant est masqué depuis 'package:readxl':
+
+    read_xlsx
+
+Avis : le package 'flextable' a été compilé avec la version R 4.5.3
+
+Attachement du package : 'flextable'
+
+L'objet suivant est masqué depuis 'package:gtsummary':
+
+    continuous_summary
+
+Les objets suivants sont masqués depuis 'package:plotly':
+
+    highlight, style
+
+L'objet suivant est masqué depuis 'package:purrr':
+
+    compose
+
+Avis : le package 'ggdist' a été compilé avec la version R 4.5.3
+
+Attachement du package : 'jsonlite'
+
+L'objet suivant est masqué depuis 'package:purrr':
+
+    flatten
+
+L'objet suivant est masqué depuis 'package:shiny':
+
+    validate
+
+config_oms.R chargé — 6 indicateurs configurés
+utils.R chargé
+inferentiel_v4.R chargé — Module unifié de tests statistiques
+module_qualite_smart.R chargé — Contrôle qualité SMART complet
+Avis : le package 'survey' a été compilé avec la version R 4.5.3
+Le chargement a nécessité le package : grid
+Le chargement a nécessité le package : Matrix
+
+Attachement du package : 'Matrix'
+
+Les objets suivants sont masqués depuis 'package:tidyr':
+
+    expand, pack, unpack
+
+Le chargement a nécessité le package : survival
+
+Attachement du package : 'survey'
+
+L'objet suivant est masqué depuis 'package:graphics':
+
+    dotchart
+
+module_prevalence_smart.R chargé — Prévalences SMART pondérées (DEFF + IC 95%)
+module_secu_alimentaire.R chargé — FCS · rCSI · HDDS · HHS
+module_kobo_import.R chargé — Import KoboToolbox/ODK
+Avis : le package 'spdep' a été compilé avec la version R 4.5.3
+Le chargement a nécessité le package : spData
+Avis : le package 'spData' a été compilé avec la version R 4.5.3
+To access larger datasets in this package, install the spDataLarge
+package with: `install.packages('spDataLarge',
+repos='https://nowosad.github.io/drat/', type='source')`
+Le chargement a nécessité le package : lattice
+
+Attachement du package : 'caret'
+
+L'objet suivant est masqué depuis 'package:survival':
+
+    cluster
+
+L'objet suivant est masqué depuis 'package:purrr':
+
+    lift
+
+
+Attachement du package : 'data.table'
+
+Les objets suivants sont masqués depuis 'package:lubridate':
+
+    hour, isoweek, isoyear, mday, minute, month, quarter, second, wday,
+    week, yday, year
+
+Les objets suivants sont masqués depuis 'package:dplyr':
+
+    between, first, last
+
+L'objet suivant est masqué depuis 'package:purrr':
+
+    transpose
+
+module_carto_v2.R chargé — 143 objets
+ui_carto_pro.R charge
+
+Attachement du package : 'epitools'
+
+L'objet suivant est masqué depuis 'package:survival':
+
+    ratetable
+
+Les objets suivants sont masqués depuis 'package:binom':
+
+    binom.exact, binom.wilson
+
+Avis : le package 'epiR' a été compilé avec la version R 4.5.3
+Package epiR 2.0.91 is loaded
+Type help(epi.about) for summary information
+Type browseVignettes(package = 'epiR') to learn how to use epiR for applied epidemiological analyses
+
+
+module_epidemio.R chargé
+Le chargement a nécessité le package : ggpubr
+
+Attachement du package : 'ggpubr'
+
+Les objets suivants sont masqués depuis 'package:flextable':
+
+    border, font, rotate
+
+
+Attachement du package : 'survminer'
+
+L'objet suivant est masqué depuis 'package:survival':
+
+    myeloma
+
+module_survie.R chargé
+mod_survie.R chargé
+Type 'citation("pROC")' for a citation.
+
+Attachement du package : 'pROC'
+
+Les objets suivants sont masqués depuis 'package:stats':
+
+    cov, smooth, var
+
+Loaded ROSE 0.0-4
+
+Avis : le package 'ResourceSelection' a été compilé avec la version R 4.5.3
+ResourceSelection 0.3-6 	 2023-06-27
+module_predictif.R chargé
+module_rapport.R chargé
+mod_dashboard_exec.R chargé — Dashboard Exécutif Expert
+mod_qualite_auto.R chargé — Contrôle Qualité Automatisé Expert
+mod_audit_trail.R chargé — Audit Trail & Traçabilité Expert
+mod_temporal_tests.R chargé — Tests Statistiques Temporels Expert
+
+Listening on http://127.0.0.1:4819
+config_oms.R chargé — 6 indicateurs configurés
+utils.R chargé
+inferentiel_v4.R chargé — Module unifié de tests statistiques
+module_qualite_smart.R chargé — Contrôle qualité SMART complet
+module_prevalence_smart.R chargé — Prévalences SMART pondérées (DEFF + IC 95%)
+module_secu_alimentaire.R chargé — FCS · rCSI · HDDS · HHS
+module_kobo_import.R chargé — Import KoboToolbox/ODK
+module_carto_v2.R chargé — 199 objets
+ui_carto_pro.R charge
+module_epidemio.R chargé
+module_survie.R chargé
+mod_survie.R chargé
+module_predictif.R chargé
+module_rapport.R chargé
+mod_dashboard_exec.R chargé — Dashboard Exécutif Expert
+mod_qualite_auto.R chargé — Contrôle Qualité Automatisé Expert
+mod_audit_trail.R chargé — Audit Trail & Traçabilité Expert
+mod_temporal_tests.R chargé — Tests Statistiques Temporels Expert
+
+Attachement du package : 'forecast'
+
+L'objet suivant est masqué depuis 'package:ggpubr':
+
+    gghistogram
+
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+The `name` provided ('crystal-ball') does not correspond to a known icon
+The `name` provided ('crystal-ball') does not correspond to a known icon
+Avis : Error in callModule: session must be a ShinySession or session_proxy object.
+  65: stop
+  64: callModule
+  63: moduleServer
+  62: advancedForecastingServer
+   1: shiny::runApp
+config_oms.R chargé — 6 indicateurs configurés
+utils.R chargé
+inferentiel_v4.R chargé — Module unifié de tests statistiques
+module_qualite_smart.R chargé — Contrôle qualité SMART complet
+module_prevalence_smart.R chargé — Prévalences SMART pondérées (DEFF + IC 95%)
+module_secu_alimentaire.R chargé — FCS · rCSI · HDDS · HHS
+module_kobo_import.R chargé — Import KoboToolbox/ODK
+module_carto_v2.R chargé — 207 objets
+ui_carto_pro.R charge
+module_epidemio.R chargé
+module_survie.R chargé
+mod_survie.R chargé
+module_predictif.R chargé
+module_rapport.R chargé
+mod_dashboard_exec.R chargé — Dashboard Exécutif Expert
+mod_qualite_auto.R chargé — Contrôle Qualité Automatisé Expert
+mod_audit_trail.R chargé — Audit Trail & Traçabilité Expert
+mod_temporal_tests.R chargé — Tests Statistiques Temporels Expert
+The `name` provided ('crystal-ball') does not correspond to a known icon
+The `name` provided ('crystal-ball') does not correspond to a known icon
+Avis : Error in callModule: session must be a ShinySession or session_proxy object.
+  65: stop
+  64: callModule
+  63: moduleServer
+  62: advancedForecastingServer
+   1: shiny::runApp
+config_oms.R chargé — 6 indicateurs configurés
+utils.R chargé
+inferentiel_v4.R chargé — Module unifié de tests statistiques
+module_qualite_smart.R chargé — Contrôle qualité SMART complet
+module_prevalence_smart.R chargé — Prévalences SMART pondérées (DEFF + IC 95%)
+module_secu_alimentaire.R chargé — FCS · rCSI · HDDS · HHS
+module_kobo_import.R chargé — Import KoboToolbox/ODK
+module_carto_v2.R chargé — 207 objets
+ui_carto_pro.R charge
+module_epidemio.R chargé
+module_survie.R chargé
+mod_survie.R chargé
+module_predictif.R chargé
+module_rapport.R chargé
+mod_dashboard_exec.R chargé — Dashboard Exécutif Expert
+mod_qualite_auto.R chargé — Contrôle Qualité Automatisé Expert
+mod_audit_trail.R chargé — Audit Trail & Traçabilité Expert
+mod_temporal_tests.R chargé — Tests Statistiques Temporels Expert
+The `name` provided ('crystal-ball') does not correspond to a known icon
+The `name` provided ('crystal-ball') does not correspond to a known icon
+Avis : Error in callModule: session must be a ShinySession or session_proxy object.
+  65: stop
+  64: callModule
+  63: moduleServer
+  62: advancedForecastingServer
+   1: shiny::runApp
+config_oms.R chargé — 6 indicateurs configurés
+utils.R chargé
+inferentiel_v4.R chargé — Module unifié de tests statistiques
+module_qualite_smart.R chargé — Contrôle qualité SMART complet
+module_prevalence_smart.R chargé — Prévalences SMART pondérées (DEFF + IC 95%)
+module_secu_alimentaire.R chargé — FCS · rCSI · HDDS · HHS
+module_kobo_import.R chargé — Import KoboToolbox/ODK
+module_carto_v2.R chargé — 207 objets
+ui_carto_pro.R charge
+module_epidemio.R chargé
+module_survie.R chargé
+mod_survie.R chargé
+module_predictif.R chargé
+module_rapport.R chargé
+mod_dashboard_exec.R chargé — Dashboard Exécutif Expert
+mod_qualite_auto.R chargé — Contrôle Qualité Automatisé Expert
+mod_audit_trail.R chargé — Audit Trail & Traçabilité Expert
+mod_temporal_tests.R chargé — Tests Statistiques Temporels Expert
+The `name` provided ('crystal-ball') does not correspond to a known icon
+The `name` provided ('crystal-ball') does not correspond to a known icon
+Avis : Error in callModule: session must be a ShinySession or session_proxy object.
+  65: stop
+  64: callModule
+  63: moduleServer
+  62: advancedForecastingServer
+   1: shiny::runApp
+config_oms.R chargé — 6 indicateurs configurés
+utils.R chargé
+inferentiel_v4.R chargé — Module unifié de tests statistiques
+module_qualite_smart.R chargé — Contrôle qualité SMART complet
+module_prevalence_smart.R chargé — Prévalences SMART pondérées (DEFF + IC 95%)
+module_secu_alimentaire.R chargé — FCS · rCSI · HDDS · HHS
+module_kobo_import.R chargé — Import KoboToolbox/ODK
+module_carto_v2.R chargé — 207 objets
+ui_carto_pro.R charge
+module_epidemio.R chargé
+module_survie.R chargé
+mod_survie.R chargé
+module_predictif.R chargé
+module_rapport.R chargé
+mod_dashboard_exec.R chargé — Dashboard Exécutif Expert
+mod_qualite_auto.R chargé — Contrôle Qualité Automatisé Expert
+mod_audit_trail.R chargé — Audit Trail & Traçabilité Expert
+mod_temporal_tests.R chargé — Tests Statistiques Temporels Expert
+The `name` provided ('crystal-ball') does not correspond to a known icon
+Avis : Error in callModule: session must be a ShinySession or session_proxy object.
+  65: stop
+  64: callModule
+  63: moduleServer
+  62: advancedForecastingServer
+   1: shiny::runApp
+config_oms.R chargé — 6 indicateurs configurés
+utils.R chargé
+inferentiel_v4.R chargé — Module unifié de tests statistiques
+module_qualite_smart.R chargé — Contrôle qualité SMART complet
+module_prevalence_smart.R chargé — Prévalences SMART pondérées (DEFF + IC 95%)
+module_secu_alimentaire.R chargé — FCS · rCSI · HDDS · HHS
+module_kobo_import.R chargé — Import KoboToolbox/ODK
+module_carto_v2.R chargé — 207 objets
+ui_carto_pro.R charge
+module_epidemio.R chargé
+module_survie.R chargé
+mod_survie.R chargé
+module_predictif.R chargé
+module_rapport.R chargé
+mod_dashboard_exec.R chargé — Dashboard Exécutif Expert
+mod_qualite_auto.R chargé — Contrôle Qualité Automatisé Expert
+mod_audit_trail.R chargé — Audit Trail & Traçabilité Expert
+mod_temporal_tests.R chargé — Tests Statistiques Temporels Expert
+The `name` provided ('crystal-ball') does not correspond to a known icon
+Avis : Error in callModule: session must be a ShinySession or session_proxy object.
+  65: stop
+  64: callModule
+  63: moduleServer
+  62: advancedForecastingServer
+   1: shiny::runApp
+config_oms.R chargé — 6 indicateurs configurés
+utils.R chargé
+inferentiel_v4.R chargé — Module unifié de tests statistiques
+module_qualite_smart.R chargé — Contrôle qualité SMART complet
+module_prevalence_smart.R chargé — Prévalences SMART pondérées (DEFF + IC 95%)
+module_secu_alimentaire.R chargé — FCS · rCSI · HDDS · HHS
+module_kobo_import.R chargé — Import KoboToolbox/ODK
+module_carto_v2.R chargé — 207 objets
+ui_carto_pro.R charge
+module_epidemio.R chargé
+module_survie.R chargé
+mod_survie.R chargé
+module_predictif.R chargé
+module_rapport.R chargé
+mod_dashboard_exec.R chargé — Dashboard Exécutif Expert
+mod_qualite_auto.R chargé — Contrôle Qualité Automatisé Expert
+mod_audit_trail.R chargé — Audit Trail & Traçabilité Expert
+mod_temporal_tests.R chargé — Tests Statistiques Temporels Expert
+config_oms.R chargé — 6 indicateurs configurés
+utils.R chargé
+inferentiel_v4.R chargé — Module unifié de tests statistiques
+module_qualite_smart.R chargé — Contrôle qualité SMART complet
+module_prevalence_smart.R chargé — Prévalences SMART pondérées (DEFF + IC 95%)
+module_secu_alimentaire.R chargé — FCS · rCSI · HDDS · HHS
+module_kobo_import.R chargé — Import KoboToolbox/ODK
+module_carto_v2.R chargé — 219 objets
+ui_carto_pro.R charge
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Context Manager v3 loaded
+
+Attachement du package : 'httr'
+
+L'objet suivant est masqué depuis 'package:caret':
+
+    progress
+
+L'objet suivant est masqué depuis 'package:plotly':
+
+    config
+
+✅ Gemini Session Initialized
+   Session ID: session_20260325_105355 
+   Model: gemini-2.5-flash 
+✅ Gemini API v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+config_oms.R chargé — 6 indicateurs configurés
+✅ Chat Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+config_oms.R chargé — 6 indicateurs configurés
+✅ Analysis Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+✅ Report Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+✅ Diagnose Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+config_oms.R chargé — 6 indicateurs configurés
+✅ Chat Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+config_oms.R chargé — 6 indicateurs configurés
+✅ Analysis Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+✅ Report Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+✅ Diagnose Agent v3 loaded
+✅ Master Agent v3 loaded
+
+Attachement du package : 'bslib'
+
+L'objet suivant est masqué depuis 'package:broom':
+
+    bootstrap
+
+L'objet suivant est masqué depuis 'package:spdep':
+
+    card
+
+L'objet suivant est masqué depuis 'package:shinyWidgets':
+
+    show_toast
+
+L'objet suivant est masqué depuis 'package:utils':
+
+    page
+
+✅ Chatbot UI v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+config_oms.R chargé — 6 indicateurs configurés
+✅ Chat Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+config_oms.R chargé — 6 indicateurs configurés
+✅ Analysis Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+✅ Report Agent v3 loaded
+
+╔═════════════════════════════════════════════════════════════╗
+║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║
+║                                                             ║
+║  Utilisez:                                                 ║
+║    • print_config_safe() - Afficher config (clé masquée)   ║
+║    • call_gemini_api(prompt) - Appeler l'API              ║
+║    • test_gemini_connection() - Tester la connexion       ║
+║                                                             ║
+║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║
+╚═════════════════════════════════════════════════════════════╝
+
+✅ Gemini API v3 loaded
+✅ Context Manager v3 loaded
+✅ Diagnose Agent v3 loaded
+✅ Master Agent v3 loaded
+✅ Chatbot Server v3 loaded
+module_epidemio.R chargé
+module_survie.R chargé
+module_predictif.R charge (binaire + multiclasse)
+module_rapport.R chargé
+mod_dashboard_exec.R chargé — Dashboard Exécutif Expert
+mod_qualite_auto.R chargé — Contrôle Qualité Automatisé Expert
+mod_audit_trail.R chargé — Audit Trail & Traçabilité Expert
+mod_temporal_tests.R chargé — Tests Statistiques Temporels Expert
+carto_pro_engine.R charge avec succes
+carto_server_pro.R charge
+Avis : Error in if: l'argument est de longueur nulle
+  116: renderUI
+  115: func
+   99: output$country_selector-selection_display
+    1: shiny::runApp
+Avis : Error in if: l'argument est de longueur nulle
+  74: <reactive>
+  52: selected_geo
+  51: observe [C:/Users/Yimga kevin/Documents/Shiny_entreprise/app_v2_final.R#2340]
+  50: <observer>
+   1: shiny::runApp
+✅ Chat Agent Initialized
+   Specialization: nutrition 
+   Language: french 
+✅ Analysis Agent Initialized
+✅ Report Agent Initialized
+   Style: technical 
+   Export: html 
+✅ Diagnose Agent Initialized
+✅ Master Agent Initialized with 4 Sub-Agents
+   ├─ Chat Agent (Support & Q&A)
+   ├─ Analysis Agent (Analyses Autonomes)
+   ├─ Report Agent (Rapports Publication-Ready)
+   └─ Diagnose Agent (Diagnostic Erreurs)
+carto_pro_engine.R charge avec succes
+carto_server_pro.R charge
+Avis : Error in if: l'argument est de longueur nulle
+  116: renderUI
+  115: func
+   99: output$country_selector-selection_display
+    1: shiny::runApp
+Avis : Error in if: l'argument est de longueur nulle
+  74: <reactive>
+  52: selected_geo
+  51: observe [C:/Users/Yimga kevin/Documents/Shiny_entreprise/app_v2_final.R#2340]
+  50: <observer>
+   1: shiny::runApp
+✅ Chat Agent Initialized
+   Specialization: nutrition 
+   Language: french 
+✅ Analysis Agent Initialized
+✅ Report Agent Initialized
+   Style: technical 
+   Export: html 
+✅ Diagnose Agent Initialized
+✅ Master Agent Initialized with 4 Sub-Agents
+   ├─ Chat Agent (Support & Q&A)
+   ├─ Analysis Agent (Analyses Autonomes)
+   ├─ Report Agent (Rapports Publication-Ready)
+   └─ Diagnose Agent (Diagnostic Erreurs)

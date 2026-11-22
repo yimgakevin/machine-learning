@@ -1,0 +1,481 @@
+---
+title:  "`r params$titre`"
+date:   "`r params$date_rapport`"
+output:
+  word_document:
+    toc: true
+    toc_depth: 2
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    self_contained: true
+    theme: flatly
+params:
+  data_file:   ""
+  titre:       "Rapport de sécurité alimentaire"
+  date_rapport: ""
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = FALSE, warning = FALSE, message = FALSE,
+  fig.width = 6.5, fig.height = 3.6, dpi = 150, out.width = "100%"
+)
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(scales)
+library(knitr)
+
+# ── Chargement des données ─────────────────────────────────────────────────────
+rpt <- readRDS(params$data_file)
+
+# ── Palette couleurs (identique à l'application) ─────────────────────────────
+C <- list(
+  rouge  = "#c9161d", orange = "#e88400",
+  vert   = "#1D9E75", bleu   = "#008DC9", fonce  = "#00426A",
+  gris   = "#64748b", clair  = "#f1f5f9"
+)
+
+# ── Palette catégories FCS ─────────────────────────────────────────────────────
+pal_fcs  <- c("Pauvre (<21)" = C$rouge, "Limite (21-35)" = C$orange,
+              "Acceptable (>35)" = C$vert)
+pal_rcsi <- c("Pas/Peu de coping"     = C$vert,
+              "Coping moyen"          = C$orange,
+              "Coping élevé (≥19)"    = C$rouge)
+pal_hdds <- c("Faible diversité (≤3)" = C$rouge,
+              "Diversité moyenne (4-5)" = C$orange,
+              "Bonne diversité (≥6)"  = C$vert)
+
+# ── Thème ggplot minimal ─────────────────────────────────────────────────────
+theme_rpt <- function() {
+  theme_minimal(base_size = 10) +
+    theme(
+      panel.grid.minor  = element_blank(),
+      plot.caption      = element_text(size = 8, color = "#94a3b8", face = "italic"),
+      axis.text         = element_text(size = 9),
+      legend.position   = "bottom",
+      legend.title      = element_text(size = 9, face = "bold"),
+      legend.text       = element_text(size = 8),
+      strip.text        = element_text(face = "bold", size = 9)
+    )
+}
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+fmt_pct <- function(x) paste0(round(x, 1), " %")
+fmt_n   <- function(x) format(as.integer(x), big.mark = " ", scientific = FALSE)
+sig_etoiles <- function(p) {
+  if (is.na(p))     return("")
+  if (p < 0.001)    return("***")
+  if (p < 0.01)     return("**")
+  if (p < 0.05)     return("*")
+  return("n.s.")
+}
+```
+
+---
+
+> **Note :** Ce rapport a été généré automatiquement par **NutriAnalyse Pro v2**
+> le `r rpt$date_rapport`. Les résultats doivent être validés par un analyste
+> qualifié avant toute diffusion ou prise de décision.
+
+---
+
+# Résumé exécutif
+
+```{r exec-summary-meta}
+meta <- data.frame(
+  Champ  = c("Pays / Zone d'enquête", "Ménages analysés",
+              "Date de génération", "Rounds disponibles"),
+  Valeur = c(
+    if (nzchar(rpt$pays)) rpt$pays else "Non spécifié",
+    fmt_n(rpt$n_total),
+    rpt$date_rapport,
+    if (rpt$has_temporal && length(rpt$rounds) > 0)
+      paste(rpt$rounds, collapse = " → ")
+    else "—"
+  )
+)
+knitr::kable(meta, col.names = c("", ""), align = c("l", "l"))
+```
+
+## Indicateurs clés
+
+```{r kpi-table}
+kpi <- data.frame(Indicateur = character(), Valeur = character(),
+                  Seuil = character(), Statut = character(),
+                  stringsAsFactors = FALSE)
+
+add_kpi <- function(ind, val, seuil = "", statut = "") {
+  kpi <<- rbind(kpi, data.frame(Indicateur = ind, Valeur = val,
+                                 Seuil = seuil, Statut = statut,
+                                 stringsAsFactors = FALSE))
+}
+
+if (rpt$has_fcs) {
+  add_kpi("FCS moyen",
+          paste0(round(rpt$fcs_mean, 1), " ± ", round(rpt$fcs_sd, 1)),
+          "Seuil acceptable : > 35",
+          if (rpt$fcs_mean > 35) "✓ Acceptable" else if (rpt$fcs_mean > 21) "⚠ Limite" else "✗ Pauvre")
+  add_kpi("% FCS Pauvre (<21)",       fmt_pct(rpt$pct_fcs_poor),       "< 5 % recommandé",  "")
+  add_kpi("% FCS Acceptable (>35)",   fmt_pct(rpt$pct_fcs_acceptable),  "> 70 % souhaité",   "")
+}
+if (rpt$has_rcsi) {
+  add_kpi("rCSI moyen",
+          paste0(round(rpt$rcsi_mean, 1), " ± ", round(rpt$rcsi_sd, 1)),
+          "Seuil préoccupant : ≥ 19",
+          if (rpt$rcsi_mean >= 19) "✗ Élevé" else if (rpt$rcsi_mean >= 10) "⚠ Modéré" else "✓ Faible")
+  add_kpi("% rCSI Élevé (≥ 19)", fmt_pct(rpt$pct_rcsi_high), "< 10 % recommandé", "")
+}
+if (rpt$has_hdds) {
+  add_kpi("HDDS moyen",
+          paste0(round(rpt$hdds_mean, 1), " ± ", round(rpt$hdds_sd, 1)),
+          "Diversité acceptable : ≥ 6",
+          if (rpt$hdds_mean >= 6) "✓ Bonne" else if (rpt$hdds_mean >= 4) "⚠ Moyenne" else "✗ Faible")
+}
+if (rpt$has_hhs) {
+  add_kpi("HHS moyen",
+          paste0(round(rpt$hhs_mean, 1), " ± ", round(rpt$hhs_sd, 1)),
+          "Pas de faim sévère : < 3",
+          if (rpt$hhs_mean < 1) "✓ Faible" else if (rpt$hhs_mean < 3) "⚠ Modéré" else "✗ Élevé")
+}
+add_kpi("Ménages en double vulnérabilité",
+        paste0(fmt_n(rpt$n_dv), " (", fmt_pct(rpt$pct_dv), ")"),
+        "FCS Pauvre + rCSI ≥ 19", "")
+
+knitr::kable(kpi, col.names = c("Indicateur", "Valeur", "Référence", "Statut"),
+             align = c("l", "c", "l", "l"))
+```
+
+---
+
+# Distribution des indicateurs de sécurité alimentaire
+
+## Score de consommation alimentaire (FCS)
+
+```{r fcs-stats, eval=rpt$has_fcs}
+fcs_s <- data.frame(
+  Statistique = c("Moyenne", "Médiane", "Écart-type", "Minimum", "Maximum",
+                  "% Pauvre (<21)", "% Limite (21-35)", "% Acceptable (>35)"),
+  Valeur = c(round(rpt$fcs_mean, 1), round(rpt$fcs_median, 1),
+             round(rpt$fcs_sd, 1),   round(rpt$fcs_min, 1),
+             round(rpt$fcs_max, 1),
+             fmt_pct(rpt$pct_fcs_poor),
+             fmt_pct(rpt$pct_fcs_limit),
+             fmt_pct(rpt$pct_fcs_acceptable))
+)
+knitr::kable(fcs_s, col.names = c("Statistique", "Valeur"), align = c("l", "c"))
+```
+
+```{r fcs-bar, eval=rpt$has_fcs && !is.null(rpt$fcs_cat_by_grp)}
+d_fcs <- rpt$fcs_cat_by_grp
+fcs_lvls <- c("Pauvre (<21)", "Limite (21-35)", "Acceptable (>35)")
+d_fcs$fcs_cat <- factor(d_fcs$fcs_cat, levels = fcs_lvls)
+
+ggplot(d_fcs, aes(x = grp, y = pct, fill = fcs_cat)) +
+  geom_col(position = "fill", width = 0.7) +
+  geom_text(aes(label = ifelse(pct >= 5, paste0(round(pct), "%"), "")),
+            position = position_fill(vjust = 0.5),
+            size = 2.8, color = "white", fontface = "bold") +
+  scale_fill_manual(values = pal_fcs, name = "Catégorie FCS") +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x = rpt$grp_label, y = "Proportion",
+       caption = "Seuils OMS/WFP : Pauvre <21 | Limite 21-35 | Acceptable >35") +
+  coord_flip() +
+  theme_rpt()
+```
+
+## Stratégies d'adaptation alimentaire (rCSI)
+
+```{r rcsi-stats, eval=rpt$has_rcsi}
+rcsi_s <- data.frame(
+  Statistique = c("Moyenne", "Médiane", "Écart-type", "Minimum", "Maximum",
+                  "% Pas/Peu de coping", "% Coping moyen", "% Coping élevé (≥19)"),
+  Valeur = c(round(rpt$rcsi_mean, 1), round(rpt$rcsi_median, 1),
+             round(rpt$rcsi_sd, 1),   round(rpt$rcsi_min, 1),
+             round(rpt$rcsi_max, 1),
+             fmt_pct(rpt$pct_rcsi_low),
+             fmt_pct(rpt$pct_rcsi_mid),
+             fmt_pct(rpt$pct_rcsi_high))
+)
+knitr::kable(rcsi_s, col.names = c("Statistique", "Valeur"), align = c("l", "c"))
+```
+
+```{r rcsi-bar, eval=rpt$has_rcsi && !is.null(rpt$rcsi_cat_by_grp)}
+d_rcsi <- rpt$rcsi_cat_by_grp
+rcsi_lvls <- c("Pas/Peu de coping", "Coping moyen", "Coping élevé (≥19)")
+d_rcsi$rcsi_cat <- factor(d_rcsi$rcsi_cat, levels = rcsi_lvls)
+
+ggplot(d_rcsi, aes(x = grp, y = pct, fill = rcsi_cat)) +
+  geom_col(position = "fill", width = 0.7) +
+  geom_text(aes(label = ifelse(pct >= 5, paste0(round(pct), "%"), "")),
+            position = position_fill(vjust = 0.5),
+            size = 2.8, color = "white", fontface = "bold") +
+  scale_fill_manual(values = pal_rcsi, name = "Catégorie rCSI") +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x = rpt$grp_label, y = "Proportion",
+       caption = "Seuil PAM/WFP : Coping élevé ≥ 19") +
+  coord_flip() +
+  theme_rpt()
+```
+
+```{r hdds-section, eval=rpt$has_hdds, results='asis'}
+cat("\n## Diversité alimentaire (HDDS)\n")
+```
+
+```{r hdds-stats, eval=rpt$has_hdds}
+hdds_s <- data.frame(
+  Statistique = c("Moyenne", "Médiane", "Écart-type",
+                  "% Faible (≤3)", "% Moyenne (4-5)", "% Bonne (≥6)"),
+  Valeur = c(round(rpt$hdds_mean, 1), round(rpt$hdds_median, 1),
+             round(rpt$hdds_sd, 1),
+             fmt_pct(rpt$pct_hdds_low),
+             fmt_pct(rpt$pct_hdds_mid),
+             fmt_pct(rpt$pct_hdds_high))
+)
+knitr::kable(hdds_s, col.names = c("Statistique", "Valeur"), align = c("l", "c"))
+```
+
+```{r hdds-bar, eval=rpt$has_hdds && !is.null(rpt$hdds_cat_by_grp)}
+d_hdds <- rpt$hdds_cat_by_grp
+hdds_lvls <- c("Faible diversité (≤3)", "Diversité moyenne (4-5)", "Bonne diversité (≥6)")
+d_hdds$hdds_cat <- factor(d_hdds$hdds_cat, levels = hdds_lvls)
+
+ggplot(d_hdds, aes(x = grp, y = pct, fill = hdds_cat)) +
+  geom_col(position = "fill", width = 0.7) +
+  geom_text(aes(label = ifelse(pct >= 5, paste0(round(pct), "%"), "")),
+            position = position_fill(vjust = 0.5),
+            size = 2.8, color = "white", fontface = "bold") +
+  scale_fill_manual(values = pal_hdds, name = "Catégorie HDDS") +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x = rpt$grp_label, y = "Proportion",
+       caption = "Seuils FAO/FANTA : Faible ≤3 | Moyenne 4-5 | Bonne ≥6") +
+  coord_flip() +
+  theme_rpt()
+```
+
+---
+
+# Cohérence FCS × rCSI
+
+```{r scatter-fcs-rcsi, eval=rpt$has_fcs && rpt$has_rcsi && !is.null(rpt$scatter_data)}
+sc  <- rpt$scatter_data
+cor_val <- cor(sc$.fcs, sc$.rcsi, use = "complete.obs")
+cor_lbl <- paste0("r de Pearson = ", round(cor_val, 3),
+                  if (cor_val < 0) "  (relation négative attendue ✓)"
+                  else             "  (relation positive — atypique ✗)")
+
+ggplot(sc, aes(x = .fcs, y = .rcsi)) +
+  annotate("rect", xmin = -Inf, xmax = 21,  ymin = -Inf, ymax = Inf,
+           fill = "#c9161d", alpha = 0.04) +
+  annotate("rect", xmin = 21,  xmax = 35,  ymin = -Inf, ymax = Inf,
+           fill = "#e88400", alpha = 0.04) +
+  annotate("rect", xmin = 35,  xmax = Inf, ymin = -Inf, ymax = Inf,
+           fill = "#1D9E75", alpha = 0.04) +
+  geom_vline(xintercept = c(21, 35), linetype = "dashed",
+             color = c("#c9161d", "#e88400"), linewidth = 0.5, alpha = 0.7) +
+  geom_hline(yintercept = 19, linetype = "dashed",
+             color = "#c9161d", linewidth = 0.5, alpha = 0.7) +
+  geom_point(aes(color = rcsi_cat), size = 1.2, alpha = 0.45, shape = 16) +
+  geom_smooth(method = "lm", se = TRUE, color = "#334155",
+              fill = "#94a3b8", linewidth = 0.8, alpha = 0.15) +
+  scale_color_manual(
+    values = c("Pas/Peu de coping" = "#1D9E75", "Coping moyen" = "#e88400",
+               "Coping élevé (≥19)" = "#c9161d"),
+    name = "Niveau coping rCSI"
+  ) +
+  labs(x = "Score FCS", y = "Score rCSI",
+       caption = cor_lbl) +
+  theme_rpt()
+```
+
+La corrélation de Pearson entre le FCS et le rCSI est `r if (rpt$has_fcs && rpt$has_rcsi && !is.null(rpt$scatter_data)) round(cor(rpt$scatter_data$.fcs, rpt$scatter_data$.rcsi, use="complete.obs"), 3) else "—"`.
+Une valeur **négative** confirme la cohérence attendue entre les deux indicateurs : les ménages consommant moins (FCS faible) ont tendance à recourir davantage à des stratégies d'adaptation (rCSI élevé).
+
+---
+
+```{r temporal-section, eval=rpt$has_temporal, results='asis'}
+cat("\n# Analyse temporelle\n\n")
+cat("Évolution des scores moyens FCS et rCSI au fil des rounds d'enquête.\n\n")
+```
+
+```{r temporal-fcs, eval=rpt$has_temporal && !is.null(rpt$temporal_fcs)}
+tf <- rpt$temporal_fcs
+
+ggplot(tf, aes(x = .round_chr, y = mean_val, group = 1)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 21,
+           fill = "#c9161d", alpha = 0.05) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 21, ymax = 35,
+           fill = "#e88400", alpha = 0.05) +
+  geom_hline(yintercept = c(21, 35), linetype = "dashed",
+             color = c("#c9161d", "#e88400"), linewidth = 0.5, alpha = 0.6) +
+  geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), fill = "#008DC9", alpha = 0.15) +
+  geom_line(color = "#008DC9", linewidth = 1.2) +
+  geom_point(color = "#008DC9", size = 3, shape = 21,
+             fill = "white", stroke = 1.5) +
+  labs(x = "Round de collecte", y = "FCS moyen (± IC 95%)",
+       caption = "Tirets : seuils Pauvre <21 et Limite <35. Ruban = IC 95%.") +
+  theme_rpt()
+```
+
+```{r temporal-rcsi, eval=rpt$has_temporal && !is.null(rpt$temporal_rcsi)}
+tr <- rpt$temporal_rcsi
+
+ggplot(tr, aes(x = .round_chr, y = mean_val, group = 1)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 19, ymax = Inf,
+           fill = "#c9161d", alpha = 0.05) +
+  geom_hline(yintercept = 19, linetype = "dashed",
+             color = "#c9161d", linewidth = 0.5, alpha = 0.6) +
+  geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), fill = "#e88400", alpha = 0.15) +
+  geom_line(color = "#e88400", linewidth = 1.2) +
+  geom_point(color = "#e88400", size = 3, shape = 21,
+             fill = "white", stroke = 1.5) +
+  labs(x = "Round de collecte", y = "rCSI moyen (± IC 95%)",
+       caption = "Tiret rouge : seuil coping élevé ≥ 19. Ruban = IC 95%.") +
+  theme_rpt()
+```
+
+---
+
+# Double vulnérabilité alimentaire
+
+Les ménages en **double vulnérabilité** cumulent simultanément un FCS Pauvre (< 21) et un rCSI élevé (≥ 19), signalant une situation de crise alimentaire sévère.
+
+**`r fmt_n(rpt$n_dv)` ménages (`r fmt_pct(rpt$pct_dv)`)** présentent cette double vulnérabilité sur `r fmt_n(rpt$n_total)` ménages analysés.
+
+## Tableau croisé rCSI × FCS par `r rpt$grp_label`
+
+```{r crosstab-table, eval=!is.null(rpt$crosstab_disp)}
+ct <- rpt$crosstab_disp
+
+# Mise en forme simple
+knitr::kable(
+  ct,
+  align = c("l", "l", rep("c", ncol(ct) - 2)),
+  caption = paste0(
+    "Effectifs et proportions (% du groupe) — ",
+    "Les cellules en gras correspondent à la double vulnérabilité."
+  )
+)
+```
+
+## Test statistique d'association rCSI × FCS
+
+```{r chi2-results, eval=!is.null(rpt$chi2_stat)}
+test_nom <- if (isTRUE(rpt$use_fisher)) {
+  "Test exact de Fisher (Monte Carlo, B = 10 000)"
+} else {
+  "Test du Chi² d'indépendance"
+}
+
+pval_ref  <- if (isTRUE(rpt$use_fisher)) rpt$fisher_pval else rpt$chi2_pval
+pval_txt  <- if (pval_ref < 0.001) "< 0,001" else round(pval_ref, 4)
+etoiles   <- sig_etoiles(pval_ref)
+sig_txt   <- if (pval_ref < 0.05) "**significative**" else "non significative"
+
+v_lbl <- if (rpt$cramer_v < 0.10) "négligeable"  else
+         if (rpt$cramer_v < 0.20) "faible"        else
+         if (rpt$cramer_v < 0.30) "modérée"       else "forte"
+
+test_df <- data.frame(
+  Paramètre = c("Test utilisé", "Statistique χ²", "Degrés de liberté",
+                "p-valeur (Chi²)", "p-valeur (Fisher MC)",
+                "V de Cramér", "Force de l'association",
+                "Fréquence attendue min.", "Hypothèse χ² vérifiée"),
+  Valeur = c(
+    test_nom,
+    round(rpt$chi2_stat, 3),
+    rpt$chi2_df,
+    if (rpt$chi2_pval < 0.001) "< 0,001" else round(rpt$chi2_pval, 4),
+    if (!is.null(rpt$fisher_pval)) {
+      if (rpt$fisher_pval < 0.001) "< 0,001" else round(rpt$fisher_pval, 4)
+    } else "—",
+    round(rpt$cramer_v, 4),
+    paste0(toupper(substr(v_lbl, 1, 1)), substr(v_lbl, 2, nchar(v_lbl)),
+           " (V = ", round(rpt$cramer_v, 3), ")"),
+    rpt$min_exp,
+    if (rpt$min_exp >= 5) "Oui ✓" else "Non ⚠ — Fisher recommandé"
+  )
+)
+knitr::kable(test_df, col.names = c("Paramètre", "Valeur"), align = c("l", "c"))
+```
+
+Le `r if (!is.null(rpt$chi2_stat)) test_nom else "test"` révèle une association `r sig_txt` entre les catégories rCSI et FCS (p `r if (!is.null(rpt$chi2_stat)) pval_txt else "—"` `r if (!is.null(rpt$chi2_stat)) etoiles`).
+`r if (!is.null(rpt$cramer_v)) paste0("La force de l'association est ", v_lbl, " (V de Cramér = ", round(rpt$cramer_v, 3), ").")`
+
+---
+
+# Conclusions et recommandations
+
+```{r conclusions-text, results='asis'}
+# ── Situation FCS ─────────────────────────────────────────────────────────────
+if (rpt$has_fcs) {
+  fcs_sit <- if (rpt$fcs_mean > 35) {
+    paste0("Le FCS moyen de **", round(rpt$fcs_mean, 1),
+           "** indique une consommation alimentaire globalement *acceptable*",
+           " (seuil > 35).")
+  } else if (rpt$fcs_mean > 21) {
+    paste0("Le FCS moyen de **", round(rpt$fcs_mean, 1),
+           "** se situe dans la zone *limite* (21–35), signalant une",
+           " situation alimentaire précaire qui nécessite un suivi.")
+  } else {
+    paste0("Le FCS moyen de **", round(rpt$fcs_mean, 1),
+           "** est *pauvre* (< 21), indiquant une crise alimentaire sévère.")
+  }
+  cat("**Score de consommation alimentaire (FCS) :**", fcs_sit, "\n\n")
+}
+
+# ── Situation rCSI ─────────────────────────────────────────────────────────────
+if (rpt$has_rcsi) {
+  rcsi_sit <- if (rpt$rcsi_mean >= 19) {
+    paste0("Le rCSI moyen de **", round(rpt$rcsi_mean, 1),
+           "** dépasse le seuil de coping élevé (≥ 19) — les ménages",
+           " adoptent des stratégies d'adaptation sévères.")
+  } else if (rpt$rcsi_mean >= 10) {
+    paste0("Le rCSI moyen de **", round(rpt$rcsi_mean, 1),
+           "** indique un niveau de coping *modéré* (10–18).")
+  } else {
+    paste0("Le rCSI moyen de **", round(rpt$rcsi_mean, 1),
+           "** est *faible* (< 10) — situation relativement stable.")
+  }
+  cat("**Stratégies d'adaptation (rCSI) :**", rcsi_sit, "\n\n")
+}
+
+# ── Double vulnérabilité ──────────────────────────────────────────────────────
+dv_sit <- if (rpt$pct_dv >= 20) {
+  paste0("**", fmt_pct(rpt$pct_dv), "** des ménages sont en double",
+         " vulnérabilité (FCS Pauvre + rCSI Élevé) — situation *critique*",
+         " nécessitant une réponse humanitaire urgente.")
+} else if (rpt$pct_dv >= 10) {
+  paste0("**", fmt_pct(rpt$pct_dv), "** des ménages sont en double",
+         " vulnérabilité — situation *préoccupante*.")
+} else {
+  paste0("**", fmt_pct(rpt$pct_dv), "** des ménages sont en double",
+         " vulnérabilité — niveau *contenu* mais à surveiller.")
+}
+cat("**Double vulnérabilité :**", dv_sit, "\n\n")
+
+# ── Cohérence inter-indicateurs ────────────────────────────────────────────────
+if (rpt$has_fcs && rpt$has_rcsi && !is.null(rpt$scatter_data)) {
+  cor_v <- cor(rpt$scatter_data$.fcs, rpt$scatter_data$.rcsi, use = "complete.obs")
+  coh_txt <- if (cor_v < -0.3) {
+    paste0("La corrélation de Pearson entre FCS et rCSI est **",
+           round(cor_v, 2), "** — cohérence inter-indicateurs *bonne* (relation négative attendue ✓).")
+  } else if (cor_v < 0) {
+    paste0("La corrélation FCS/rCSI est **", round(cor_v, 2),
+           "** — cohérence *acceptable* mais modeste.")
+  } else {
+    paste0("La corrélation FCS/rCSI est **positive** (",
+           round(cor_v, 2), ") — résultat *inattendu*, investigation recommandée.")
+  }
+  cat("**Cohérence FCS × rCSI :**", coh_txt, "\n\n")
+}
+
+# ── Note méthodologique ────────────────────────────────────────────────────────
+cat("---\n\n")
+cat("*Les indicateurs ont été calculés selon les normes internationales :",
+    "FCS (WFP/PAM), rCSI (Maxwell & Caldwell 2008), HDDS (FAO/FANTA).",
+    "Ce rapport a été généré par NutriAnalyse Pro v2.*\n")
+```
