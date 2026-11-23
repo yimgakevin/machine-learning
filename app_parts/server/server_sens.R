@@ -400,40 +400,8 @@
   # ── PALUDISME — module namespacé (mod_paludisme.R) ─────────────────────────
   mod_paludisme_server("paludisme", df_f = df_f)
 
-  # ── WASH ───────────────────────────────────────────────────────────────────
-  observe({
-    d <- df_f(); req(d)
-    output$wash_source_ui  <- renderUI(sens_select("wash_source", "Source d'eau", "source_eau", d))
-    output$wash_time_ui    <- renderUI(sens_select("wash_time", "Temps collecte (min)", "temps_collecte_eau", d))
-    output$wash_qty_ui     <- renderUI(sens_select("wash_qty", "Quantité eau (L/p/j)", "quantite_eau", d))
-    output$wash_treat_ui   <- renderUI(sens_select("wash_treat", "Traitement eau", "traitement_eau", d))
-    output$wash_latrine_ui <- renderUI(sens_select("wash_latrine", "Type latrine", "type_latrine", d))
-    output$wash_shared_ui  <- renderUI(sens_select("wash_shared", "Latrine partagée", "latrine_partagee", d))
-    output$wash_oda_ui     <- renderUI(sens_select("wash_oda", "DAL", "defecation_air_libre", d))
-    output$wash_hw_ui      <- renderUI(sens_select("wash_hw", "Dispositif lavage", "lavage_mains", d))
-    output$wash_soap_ui    <- renderUI(sens_select("wash_soap", "Savon", "savon_disponible", d))
-    output$wash_hwsoap_ui  <- renderUI(sens_select("wash_hwsoap", "Lavage + savon", "eau_savon_lavage", d))
-  }) |> bindEvent(df_f())
-
-  wash_res <- reactiveVal(NULL)
-
-  observeEvent(input$run_wash, {
-    d <- df_f(); req(d)
-    g <- function(id) { v <- input[[id]]; if (!is.null(v) && v != "") v else NULL }
-    result <- calc_wash_indicators(d, g("wash_source"), g("wash_time"), g("wash_qty"), g("wash_treat"),
-      g("wash_latrine"), g("wash_shared"), g("wash_oda"), g("wash_hw"), g("wash_soap"), g("wash_hwsoap"))
-    wash_res(result)
-    showNotification("WASH calculé ✓", type = "message")
-  })
-
-  output$wash_kpi <- renderUI({ req(wash_res()); HTML(render_wash_kpi(wash_res())) })
-  output$wash_ladder_plot <- renderPlot({ req(wash_res()); plot_wash_ladder(wash_res()) })
-  output$wash_sources_table <- DT::renderDT({
-    req(wash_res()); if (!is.null(wash_res()$results$water_sources)) DT::datatable(wash_res()$results$water_sources)
-  })
-  output$wash_treatment_table <- DT::renderDT({
-    req(wash_res()); if (!is.null(wash_res()$results$treatment_methods)) DT::datatable(wash_res()$results$treatment_methods)
-  })
+  # ── WASH — module namespacé (mod_wash.R) ───────────────────────────────────
+  mod_wash_server("wash", df_f = df_f)
 
   # ── MÉNAGE & PROTECTION ───────────────────────────────────────────────────
   observe({
