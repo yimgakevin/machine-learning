@@ -27,7 +27,7 @@ app_parts/
 │   ├── ui_sidebar.R
 │   ├── ui_body.R          # login, chatbot, tabItems()
 │   ├── ui_tabs_index.R
-│   └── tabs/              # 4 fichiers tab_<nom>.R
+│   └── tabs/              # 3 fichiers tab_<nom>.R
 └── server/                # 32 fichiers server_<domaine>.R
     └── README.md          # description de chaque fichier
 mod_oms.R                  # 1er vrai module Shiny (UI + serveur namespacés)
@@ -142,12 +142,12 @@ commencé. État :
 | `handicap` | ✅ converti (`mod_handicap.R`) |
 | `anemie` | ✅ converti (`mod_anemie.R`) |
 | `menage` | ✅ converti (`mod_menage.R`) |
+| `iycf` | ✅ converti (`mod_iycf.R`) — bloc SENS 71-424 |
 | `accueil` | à faire |
 | `import` | à faire (couplé aux réactifs globaux) |
-| `iycf` | à faire |
 | `zscore` | à faire (réactif `zs_data` partagé avec d'autres onglets) |
 
-Reste 4 onglets à convertir.
+Reste 3 onglets à convertir.
 
 ### Pattern validé par le pilote `oms`
 
