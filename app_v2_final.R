@@ -32,7 +32,6 @@ server <- function(input, output, session) {
   source("app_parts/server/server_accueil_sa_crosstab.R", local = TRUE)
   source("app_parts/server/server_accueil_sa_map.R", local = TRUE)
   source("app_parts/server/server_accueil_sa_report.R", local = TRUE)
-  source("app_parts/server/server_mappeur.R", local = TRUE)
   source("app_parts/server/server_exploration.R", local = TRUE)
   source("app_parts/server/server_univarie.R", local = TRUE)
   source("app_parts/server/server_bivarie.R", local = TRUE)
