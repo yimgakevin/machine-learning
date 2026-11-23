@@ -232,7 +232,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # 6c — PRÉVALENCES SMART (pondérées + DEFF)
       # ════════════════════════════════════════════
-      ui_tab_prevalence(),
+      mod_prevalence_ui("prevalence"),
 
       # ════════════════════════════════════════════
       # 6d — SÉCURITÉ ALIMENTAIRE (FCS/rCSI/HDDS/HHS)
