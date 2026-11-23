@@ -242,7 +242,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # SENS-1 — MORTALITÉ SMART
       # ════════════════════════════════════════════
-      ui_tab_mortalite(),
+      mod_mortalite_ui("mortalite"),
 
       # ════════════════════════════════════════════
       # SENS-2 — IYCF / ANJE
