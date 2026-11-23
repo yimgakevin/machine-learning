@@ -4,10 +4,10 @@
 
 | Élément | Avant | Après |
 |---|---|---|
-| `app_v2_final.R` | **15 754 lignes** | **61 lignes** (orchestrateur) |
-| UI | 1 bloc `dashboardPage` de ~3 030 lignes | `app_parts/ui/` : coquille + 23 onglets |
-| Serveur | 1 fonction de ~11 750 lignes | 28 fichiers dans `app_parts/server/` |
-| Onglets UI inline | 23 | 0 (tous dans `app_parts/ui/tabs/`) |
+| `app_v2_final.R` | **15 754 lignes** | **54 lignes** (orchestrateur) |
+| UI | 1 bloc `dashboardPage` de ~3 030 lignes | `app_parts/ui/` : coquille + 23 modules `mod_*.R` |
+| Serveur | 1 fonction de ~11 750 lignes | 25 fichiers dans `app_parts/server/` + modules |
+| Onglets UI inline | 23 | 0 (tous convertis en modules namespacés) |
 
 Le code n'a **pas** été réécrit : chaque fichier contient une tranche exacte de
 l'ancien monolithe. Le comportement est identique, ce qui a été vérifié par
@@ -25,23 +25,27 @@ app_parts/
 │   ├── ui.R               # dashboardPage(ui_header(), ui_sidebar(), ui_body())
 │   ├── ui_header.R
 │   ├── ui_sidebar.R
-│   ├── ui_body.R          # login, chatbot, tabItems()
-│   ├── ui_tabs_index.R
-│   └── tabs/              # 1 fichier tab_<nom>.R (zscore)
-└── server/                # 28 fichiers server_<domaine>.R
+│   └── ui_body.R          # login, chatbot, tabItems(mod_*_ui("<nom>"))
+└── server/                # 25 fichiers server_<domaine>.R
     └── README.md          # description de chaque fichier
-mod_oms.R                  # 1er vrai module Shiny (UI + serveur namespacés)
+mod_*.R                   # 23 modules Shiny (UI + serveur namespacés)
 ```
+
+Quelques ponts racine restent volontairement dans `app_parts/server/` :
+`server_import.R` (store `raw_data`/`mapped_data`/`df_f`), `server_accueil.R`
+(`event_data` plotly + `update*()` des filtres `f_*`) et
+`server_zscore_setup.R` (réactif `zs_data` partagé).
 
 ## Comment ça fonctionne
 
 ### UI
-Chaque ancien `tabItem(...)` est devenu une fonction :
+Chaque ancien `tabItem(...)` est devenu un module namespacé :
 
 ```r
-# app_parts/ui/tabs/tab_accueil.R
-ui_tab_accueil <- function() {
-  tabItem(tabName = "accueil", ...)
+# mod_accueil.R
+mod_accueil_ui <- function(id) {
+  ns <- shiny::NS(id)
+  tabItem(tabName = "accueil", ...)   # tabName reste global (lien du menu)
 }
 ```
 
@@ -49,8 +53,8 @@ ui_tab_accueil <- function() {
 
 ```r
 tabItems(
-  ui_tab_accueil(),
-  ui_tab_import(),
+  mod_accueil_ui("accueil"),
+  mod_import_ui("import"),
   ...
 )
 ```
@@ -60,17 +64,18 @@ tabItems(
 
 ```r
 server <- function(input, output, session) {
-  source("app_parts/server/server_core.R", local = TRUE)
-  source("app_parts/server/server_import.R", local = TRUE)
+  source("app_parts/server/server_core.R", local = TRUE)     # réactifs racine
+  source("app_parts/server/server_import.R", local = TRUE)   # store + df_f
   ...
+  source("app_parts/server/server_zscore_setup.R", local = TRUE)  # zs_data + module
 }
 ```
 
 `local = TRUE` est essentiel : chaque fichier est évalué **dans** l'environnement
-de `server()`. Tous partagent donc `input`, `output`, `session`, ainsi que les
-réactifs locaux existants (`df_f`, `map_cols`, `lang`, `mapped_data`,
-`audit_log_rv`, `filter_context`…). C'est ce qui permet de découper 527 `output$`
-et 76 observers sans réécrire une seule reactive.
+de `server()`. Les réactifs racine (`df_f`, `map_cols`, `lang`, `mapped_data`,
+`audit_log_rv`, `filter_context`, `zs_data`…) sont ensuite passés explicitement
+aux modules (`mod_<nom>_server(id, ...)`). C'est ce qui permet de découper 527
+`output$` et 76 observers sans réécrire une seule reactive.
 
 ### Pourquoi pas un dossier `R/` ?
 Shiny source automatiquement le dossier `R/` d'une application au démarrage.
@@ -88,38 +93,34 @@ Rscript tools/launch_test.R    # démarrage HTTP réel (port 8765)
 
 Résultats obtenus après le découpage :
 
-- `PARSE OK` sur les 63 fichiers R ;
+- `PARSE OK` sur l'ensemble des fichiers R de l'application ;
 - `CHECK_OK` : 84 packages, UI construite, serveur défini ;
-- `CHECK_SERVER_OK` : les 28 fichiers serveur se sourcent et s'enregistrent ;
+- `CHECK_SERVER_OK` : les 25 fichiers serveur se sourcent et s'enregistrent ;
 - `HTTP_OK` : l'application répond sur `http://127.0.0.1:8765/` ;
 - testthat : 0 échec (les 5 erreurs `golem-recommended` sont pré-existantes :
   elles attendent `app_ui`/`app_server`, absents de l'application actuelle).
 
 ## Conventions pour la suite
 
-### Ajouter un onglet
-1. Créer `app_parts/ui/tabs/tab_<nom>.R` avec `ui_tab_<nom> <- function() tabItem(...)`.
-2. Ajouter `ui_tab_<nom>()` dans le `tabItems()` de `ui_body.R`.
-3. Créer `app_parts/server/server_<nom>.R`.
-4. Ajouter le `source(..., local = TRUE)` dans `app_v2_final.R`, au bon endroit
-   dans l'ordre.
-
-### Ajouter un vrai module Shiny
-Le projet utilise déjà ce pattern (`mod_epidemio.R`, `mod_survie.R`,
-`mod_predictif.R`, etc.) :
+### Ajouter un onglet / un module
+1. Créer `mod_<nom>.R` avec `mod_<nom>_ui(id)` et `mod_<nom>_server(id, ...)`.
+2. Ajouter `source("mod_<nom>.R")` dans `00_setup.R`.
+3. Ajouter `mod_<nom>_ui("<nom>")` dans le `tabItems()` de `ui_body.R`.
+4. Ajouter l'appel `mod_<nom>_server("<nom>", ...)` dans un fichier
+   `app_parts/server/server_<domaine>.R` sourcé par l'orchestrateur, au bon
+   endroit dans l'ordre.
 
 ```r
 mod_x_ui <- function(id) { ns <- NS(id); ... }
-mod_x_server <- function(id, df_f, map_cols, lang) { moduleServer(id, function(input, output, session) { ... }) }
+mod_x_server <- function(id, df_f, map_cols, lang) {
+  moduleServer(id, function(input, output, session) { ... })
+}
 ```
-
-Le fichier est sourcé dans `00_setup.R`, l'UI est appelée dans `tabItems()`,
-et le serveur dans `server_modules.R` ou `server_modules_externes.R`.
 
 ## Phase 2 — conversion en vrais modules Shiny
 
-Le découpage mécanique est terminé. La conversion en modules namespacés a
-commencé. État :
+Le découpage mécanique et la conversion en modules namespacés sont terminés.
+État :
 
 | Onglet | Statut |
 |---|---|
@@ -145,9 +146,9 @@ commencé. État :
 | `iycf` | ✅ converti (`mod_iycf.R`) — bloc SENS 71-424 |
 | `import` | ✅ converti (`mod_import.R`) — store racine conservé dans `server_import.R` |
 | `accueil` | ✅ converti (`mod_accueil.R`) — filtres `f_*` globaux, pont dans `server_accueil.R` |
-| `zscore` | à faire (réactif `zs_data` partagé avec d'autres onglets) |
+| `zscore` | ✅ converti (`mod_zscore.R`) — `zs_data` racine partagé, pont dans `server_zscore_setup.R` |
 
-Reste 1 onglet à convertir.
+Les 23 onglets sont convertis. Aucun fichier `app_parts/ui/tabs/` ne subsiste.
 
 ### Pattern validé par le pilote `oms`
 
@@ -186,8 +187,8 @@ Points d'attention :
 
 1. Créer `mod_<nom>.R` avec `mod_<nom>_ui(id)` et `mod_<nom>_server(id, ...)`.
 2. Ajouter `source("mod_<nom>.R")` dans `00_setup.R`.
-3. Remplacer `ui_tab_<nom>()` par `mod_<nom>_ui("<nom>")` dans `ui_body.R`.
-4. Remplacer le contenu de `server_<nom>.R` par l'appel `mod_<nom>_server(...)`.
-5. Supprimer `app_parts/ui/tabs/tab_<nom>.R` (devenu inutile).
-6. Lancer `check_app`, `check_server`, `launch_test`, `run_tests`, puis un test
+3. Ajouter `mod_<nom>_ui("<nom>")` dans `ui_body.R`.
+4. Créer ou adapter `app_parts/server/server_<domaine>.R` pour appeler
+   `mod_<nom>_server(...)` avec les réactifs racine nécessaires.
+5. Lancer `check_app`, `check_server`, `launch_test`, `run_tests`, puis un test
    d'isolation du module comme `tools/check_mod_oms.R`.

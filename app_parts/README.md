@@ -11,15 +11,12 @@ app_parts/
 │   ├── ui.R            # assemblage : dashboardPage(ui_header(), ui_sidebar(), ui_body())
 │   ├── ui_header.R     # dashboardHeader()
 │   ├── ui_sidebar.R    # dashboardSidebar()
-│   ├── ui_body.R       # dashboardBody() + login + chatbot + tabItems()
-│   ├── ui_tabs_index.R # source tous les onglets de tabs/
-│   └── tabs/
-│       └── tab_<nom>.R # ui_tab_<nom>() <- function() tabItem(...)
+│   └── ui_body.R       # dashboardBody() + login + chatbot + tabItems()
 └── server/
-    ├── README.md       # liste et rôle des 32 fichiers
+    ├── README.md       # liste et rôle des 25 fichiers
     └── server_<domaine>.R
 
-mod_oms.R               # premier vrai module Shiny (UI + serveur namespacés)
+mod_<nom>.R             # 23 modules Shiny (UI + serveur namespacés)
 ```
 
 ## Règles importantes
@@ -30,9 +27,9 @@ mod_oms.R               # premier vrai module Shiny (UI + serveur namespacés)
    `local = TRUE`. Ils partagent donc `input`, `output`, `session` et tous les
    réactifs locaux (`df_f`, `map_cols`, `lang`, `mapped_data`, `audit_log_rv`…).
    Ne jamais les sourcer au niveau global.
-3. Les fichiers `app_parts/ui/tabs/*.R` définissent des fonctions
-   `ui_tab_<nom>()` ; elles sont appelées dans `ui_body.R`. Les onglets déjà
-   convertis utilisent à la place `mod_<nom>_ui("<nom>")` (voir `mod_oms.R`).
+3. Les onglets sont des modules `mod_<nom>.R` : `mod_<nom>_ui("<nom>")` est
+   appelée dans `ui_body.R` et `mod_<nom>_server(...)` dans un fichier serveur
+   (`server_<domaine>.R` ou un pont dédié).
 4. L'ordre des `source()` du serveur est l'ordre d'origine du monolithe.
    Le préserver évite de déplacer des `moduleServer()` ou des `observeEvent()`
    qui dépendent de réactifs définis plus haut.

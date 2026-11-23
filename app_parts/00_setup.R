@@ -162,6 +162,7 @@ source("mod_menage.R")            # Ménage & Protection SENS (module Shiny)
 source("mod_iycf.R")              # IYCF / ANJE OMS-UNICEF (module Shiny)
 source("mod_import.R")            # Import & Mappeur intelligent (module Shiny)
 source("mod_accueil.R")           # Accueil / tableau de bord (module Shiny)
+source("mod_zscore.R")            # Z-scores OMS / MUAC / âge (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS
@@ -212,7 +213,7 @@ tryCatch(
   error = function(e) message("\u26a0\ufe0f spdep non installé — analyses spatiales désactivées")
 )
 source("gadm_predownload_all.R")
-if (interactive()) gadm_cache_status()# zscore_expert_integration.R et carto_expert_integration.R
+if (interactive()) gadm_cache_status()# carto_expert_integration.R
 # sont sourcés dans le server (utilisent output/input)
 
 # ── Restaurer library() original après chargement de tous les fichiers ──────

@@ -45,8 +45,6 @@ server <- function(input, output, session) {
   source("app_parts/server/server_clustering.R", local = TRUE)
   source("app_parts/server/server_zscore_setup.R", local = TRUE)
   source("app_parts/server/server_sens.R", local = TRUE)
-  source("app_parts/server/server_zscore.R", local = TRUE)
-  source("app_parts/server/server_muac_age.R", local = TRUE)
   source("app_parts/server/server_oms.R", local = TRUE)
   source("app_parts/server/server_modules.R", local = TRUE)
   source("app_parts/server/server_dplyr.R", local = TRUE)
