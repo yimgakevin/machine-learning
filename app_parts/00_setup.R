@@ -143,6 +143,7 @@ source("mod_oms.R")               # Indicateurs OMS / PAM / UNICEF (module Shiny
 source("mod_uni.R")               # Analyse univariée (module Shiny)
 source("mod_biv.R")               # Analyse bivariée (module Shiny)
 source("mod_clust.R")             # Clustering K-means / CAH / DBSCAN (module Shiny)
+source("mod_qualite.R")           # Contrôle qualité SMART / plausibility (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS

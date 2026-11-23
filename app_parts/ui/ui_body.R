@@ -227,7 +227,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # 6b — QUALITÉ SMART (Plausibility Check)
       # ════════════════════════════════════════════
-      ui_tab_qualite(),
+      mod_qualite_ui("qualite"),
 
       # ════════════════════════════════════════════
       # 6c — PRÉVALENCES SMART (pondérées + DEFF)
