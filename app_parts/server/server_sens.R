@@ -370,32 +370,8 @@
     )
   })
 
-  # ── ANÉMIE ─────────────────────────────────────────────────────────────────
-  observe({
-    d <- df_f(); req(d)
-    output$anem_hb_ui    <- renderUI(sens_select("anem_hb", "Hémoglobine (g/dL)", "hemoglobine", d))
-    output$anem_alt_ui   <- renderUI(sens_select("anem_alt", "Altitude (m)", "altitude", d))
-    output$anem_smoke_ui <- renderUI(sens_select("anem_smoke", "Fumeur", "fumeur", d))
-    output$anem_preg_ui  <- renderUI(sens_select("anem_preg", "Enceinte", "enceinte", d))
-  }) |> bindEvent(df_f())
-
-  anem_res <- reactiveVal(NULL)
-
-  observeEvent(input$run_anem, {
-    d <- df_f(); req(d)
-    g <- function(id) { v <- input[[id]]; if (!is.null(v) && v != "") v else NULL }
-    result <- calc_anemia_prevalence(d, col_hb = g("anem_hb"), col_altitude = g("anem_alt"),
-      col_smoker = g("anem_smoke"), col_pregnant = g("anem_preg"), population = input$anem_pop)
-    anem_res(result)
-    showNotification(paste0("Anémie totale: ", result$total_anemia, "% ✓"), type = "message")
-  })
-
-  output$anem_kpi <- renderUI({ req(anem_res()); HTML(render_anemia_kpi(anem_res())) })
-  output$anem_summary_table <- DT::renderDT({
-    req(anem_res()); DT::datatable(anem_res()$summary, options = list(dom = "t"))
-  })
-  output$anem_hb_dist <- renderPlot({ req(anem_res()); plot_hb_distribution(anem_res()) })
-  output$anem_donut <- plotly::renderPlotly({ req(anem_res()); plot_anemia_donut(anem_res()) })
+  # ── ANÉMIE — module namespacé (mod_anemie.R) ───────────────────────────────
+  mod_anemie_server("anemie", df_f = df_f)
 
   # ── PALUDISME — module namespacé (mod_paludisme.R) ─────────────────────────
   mod_paludisme_server("paludisme", df_f = df_f)

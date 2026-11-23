@@ -157,6 +157,7 @@ source("mod_mortalite.R")         # Mortalité SMART CMR / U5MR (module Shiny)
 source("mod_paludisme.R")         # Paludisme / LLIN / TDR (module Shiny)
 source("mod_wash.R")              # WASH JMP / Sphère (module Shiny)
 source("mod_handicap.R")          # Handicap Washington Group (module Shiny)
+source("mod_anemie.R")            # Anémie SENS / classification OMS (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS
