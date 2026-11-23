@@ -148,6 +148,7 @@ source("mod_prevalence.R")        # Prévalences SMART pondérées / DEFF (modul
 source("mod_secu_alim.R")         # Sécurité alimentaire FCS/rCSI/HDDS/HHS (module Shiny)
 source("mod_explor.R")            # Exploration interactive des données (module Shiny)
 source("mod_dplyr.R")             # Manipulation des données dplyr (module Shiny)
+source("mod_rdim.R")              # Réduction de dimension / ACP / t-SNE (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS
