@@ -176,7 +176,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # 0 — TABLEAU DE BORD EXÉCUTIF
       # ════════════════════════════════════════════
-      ui_tab_accueil(),
+      mod_accueil_ui("accueil"),
 
       # ════════════════════════════════════════════
       # 1 — IMPORT & MAPPEUR

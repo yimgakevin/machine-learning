@@ -161,6 +161,7 @@ source("mod_anemie.R")            # Anémie SENS / classification OMS (module Sh
 source("mod_menage.R")            # Ménage & Protection SENS (module Shiny)
 source("mod_iycf.R")              # IYCF / ANJE OMS-UNICEF (module Shiny)
 source("mod_import.R")            # Import & Mappeur intelligent (module Shiny)
+source("mod_accueil.R")           # Accueil / tableau de bord (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS

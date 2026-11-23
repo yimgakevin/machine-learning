@@ -6,7 +6,7 @@
 |---|---|---|
 | `app_v2_final.R` | **15 754 lignes** | **61 lignes** (orchestrateur) |
 | UI | 1 bloc `dashboardPage` de ~3 030 lignes | `app_parts/ui/` : coquille + 23 onglets |
-| Serveur | 1 fonction de ~11 750 lignes | 32 fichiers dans `app_parts/server/` |
+| Serveur | 1 fonction de ~11 750 lignes | 28 fichiers dans `app_parts/server/` |
 | Onglets UI inline | 23 | 0 (tous dans `app_parts/ui/tabs/`) |
 
 Le code n'a **pas** été réécrit : chaque fichier contient une tranche exacte de
@@ -27,8 +27,8 @@ app_parts/
 │   ├── ui_sidebar.R
 │   ├── ui_body.R          # login, chatbot, tabItems()
 │   ├── ui_tabs_index.R
-│   └── tabs/              # 2 fichiers tab_<nom>.R
-└── server/                # 32 fichiers server_<domaine>.R
+│   └── tabs/              # 1 fichier tab_<nom>.R (zscore)
+└── server/                # 28 fichiers server_<domaine>.R
     └── README.md          # description de chaque fichier
 mod_oms.R                  # 1er vrai module Shiny (UI + serveur namespacés)
 ```
@@ -90,7 +90,7 @@ Résultats obtenus après le découpage :
 
 - `PARSE OK` sur les 63 fichiers R ;
 - `CHECK_OK` : 84 packages, UI construite, serveur défini ;
-- `CHECK_SERVER_OK` : les 32 fichiers serveur se sourcent et s'enregistrent ;
+- `CHECK_SERVER_OK` : les 28 fichiers serveur se sourcent et s'enregistrent ;
 - `HTTP_OK` : l'application répond sur `http://127.0.0.1:8765/` ;
 - testthat : 0 échec (les 5 erreurs `golem-recommended` sont pré-existantes :
   elles attendent `app_ui`/`app_server`, absents de l'application actuelle).
@@ -144,10 +144,10 @@ commencé. État :
 | `menage` | ✅ converti (`mod_menage.R`) |
 | `iycf` | ✅ converti (`mod_iycf.R`) — bloc SENS 71-424 |
 | `import` | ✅ converti (`mod_import.R`) — store racine conservé dans `server_import.R` |
-| `accueil` | à faire |
+| `accueil` | ✅ converti (`mod_accueil.R`) — filtres `f_*` globaux, pont dans `server_accueil.R` |
 | `zscore` | à faire (réactif `zs_data` partagé avec d'autres onglets) |
 
-Reste 2 onglets à convertir.
+Reste 1 onglet à convertir.
 
 ### Pattern validé par le pilote `oms`
 

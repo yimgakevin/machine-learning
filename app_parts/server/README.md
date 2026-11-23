@@ -2,15 +2,10 @@
 
 Chaque fichier est sourcé dans `server()` avec `local = TRUE`.
 
-- `server_core.R` — i18n, palette, authentification, réactifs de base, géo, chatbot, audit trail (272 lignes)
-- `server_import.R` — import fichier, KoboToolbox / ODK (392 lignes)
-- `server_dashboard_shell.R` — statut sidebar, filtres du dashboard, thème (410 lignes)
-- `server_accueil.R` — KPI et cartes du tableau de bord d'accueil (561 lignes)
-- `server_accueil_sa_distributions.R` — dashboard accueil — distributions rCSI / HDDS / FCS×rCSI (796 lignes)
-- `server_accueil_sa_crosstab.R` — dashboard accueil — tableau croisé rCSI × FCS (648 lignes)
-- `server_accueil_sa_map.R` — dashboard accueil — carte double vulnérabilité (424 lignes)
-- `server_accueil_sa_report.R` — dashboard accueil — rapport automatique Word/HTML (326 lignes)
-- `server_mappeur.R` — mappeur de colonnes et conformité OMS (416 lignes)
+- `server_core.R` — i18n, palette, authentification, réactifs de base, géo, chatbot, audit trail (265 lignes)
+- `server_import.R` — import fichier, KoboToolbox / ODK, store racine `df_f` (180 lignes)
+- `server_dashboard_shell.R` — statut sidebar, déclencheur des filtres, thème (53 lignes)
+- `server_accueil.R` — pont racine vers le module Accueil : `event_data` plotly et `update*()` des filtres `f_*` (13 lignes)
 - `server_exploration.R` — exploration et statistiques complètes (448 lignes)
 - `server_univarie.R` — analyses univariées (192 lignes)
 - `server_bivarie.R` — analyses bivariées (242 lignes)

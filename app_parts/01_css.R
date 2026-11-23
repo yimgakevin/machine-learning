@@ -760,11 +760,11 @@ table.dataTable.stripe tbody tr.odd { background: #F8FAFC; }
 #dashboard_filter_details summary:hover { color: #0077B6 !important; }
 #dashboard_filter_details summary .fa-chevron-down { transition: transform .2s; }
 #dashboard_filter_details[open] summary .fa-chevron-down { transform: rotate(180deg); }
-#dashboard_filters .control-label { color: #334155 !important; font-weight: 600; }
-#dashboard_filters .f-section-hdr {
+#dashboard_filters .control-label, [id$='-dashboard_filters'] .control-label { color: #334155 !important; font-weight: 600; }
+#dashboard_filters .f-section-hdr, [id$='-dashboard_filters'] .f-section-hdr {
   color: #0077B6 !important;
   border-bottom-color: #e2e8f0 !important;
 }
-#dashboard_filters .checkbox label,
-#dashboard_filters .radio label { color: #334155; }
+#dashboard_filters .checkbox label, [id$='-dashboard_filters'] .checkbox label,
+#dashboard_filters .radio label, [id$='-dashboard_filters'] .radio label { color: #334155; }
 "

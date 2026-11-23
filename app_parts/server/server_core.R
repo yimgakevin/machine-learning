@@ -114,14 +114,6 @@
     )
   })
 
-  # ── Filtres du dashboard (label réactif) ────────────────────────────────────
-  output$dashboard_filters_label <- renderUI({
-    tags$small(
-      style = "color:#5a9ec4;text-transform:uppercase;font-size:10px;letter-spacing:1px;",
-      tr("sidebar_filters", lang())
-    )
-  })
-
   # ── Réactifs de base (déclarés EN PREMIER — utilisés par tous les modules) ───
   raw_data    <- reactiveVal(NULL)
   mapped_data <- reactiveVal(NULL)
