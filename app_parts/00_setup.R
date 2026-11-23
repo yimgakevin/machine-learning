@@ -146,6 +146,7 @@ source("mod_clust.R")             # Clustering K-means / CAH / DBSCAN (module Sh
 source("mod_qualite.R")           # Contrôle qualité SMART / plausibility (module Shiny)
 source("mod_prevalence.R")        # Prévalences SMART pondérées / DEFF (module Shiny)
 source("mod_secu_alim.R")         # Sécurité alimentaire FCS/rCSI/HDDS/HHS (module Shiny)
+source("mod_explor.R")            # Exploration interactive des données (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS

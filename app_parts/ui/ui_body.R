@@ -186,7 +186,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # 2 — EXPLORATION
       # ════════════════════════════════════════════
-      ui_tab_explor(),
+      mod_explor_ui("explor"),
 
       # ════════════════════════════════════════════
       # DPLYR — Manipulation des données
