@@ -237,7 +237,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # 6d — SÉCURITÉ ALIMENTAIRE (FCS/rCSI/HDDS/HHS)
       # ════════════════════════════════════════════
-      ui_tab_secu_alim(),
+      mod_secu_alim_ui("secu_alim"),
 
       # ════════════════════════════════════════════
       # SENS-1 — MORTALITÉ SMART

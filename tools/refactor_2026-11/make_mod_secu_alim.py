@@ -35,8 +35,11 @@ ui_body = "\n".join(strip_function_wrapper(read_lines(UI_SRC)))
 ui_body = ns_widgets(
     ui_body,
     ["uiOutput", "plotlyOutput", "DTOutput", "downloadButton", "actionButton",
-     "checkboxGroupInput", "selectInput", "numericInput", "sliderInput"],
+     "radioButtons", "checkboxInput", "checkboxGroupInput", "selectInput",
+     "numericInput", "sliderInput"],
 )
+# Les conditions des conditionalPanel doivent aussi être namespacées.
+ui_body = ui_body.replace("conditionalPanel(", "conditionalPanel(ns = ns, ")
 
 server_parts = []
 for path in SERVER_SRCS:
