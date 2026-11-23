@@ -467,32 +467,6 @@
     req(hh_prot_res()); DT::datatable(hh_prot_res()$summary, options = list(dom = "t"))
   })
 
-  # ── HANDICAP (WASHINGTON GROUP) ────────────────────────────────────────────
-  observe({
-    d <- df_f(); req(d)
-    output$wg_voir_ui     <- renderUI(sens_select("wg_voir", "Vision", "handicap_voir", d))
-    output$wg_entendre_ui <- renderUI(sens_select("wg_entendre", "Audition", "handicap_entendre", d))
-    output$wg_marcher_ui  <- renderUI(sens_select("wg_marcher", "Mobilité", "handicap_marcher", d))
-    output$wg_memoire_ui  <- renderUI(sens_select("wg_memoire", "Cognition", "handicap_memoire", d))
-    output$wg_soins_ui    <- renderUI(sens_select("wg_soins", "Soins personnels", "handicap_soins_personnels", d))
-    output$wg_comm_ui     <- renderUI(sens_select("wg_comm", "Communication", "handicap_communication", d))
-  }) |> bindEvent(df_f())
-
-  wg_res <- reactiveVal(NULL)
-
-  observeEvent(input$run_wg, {
-    d <- df_f(); req(d)
-    g <- function(id) { v <- input[[id]]; if (!is.null(v) && v != "") v else NULL }
-    result <- calc_wg_prevalence(d, g("wg_voir"), g("wg_entendre"), g("wg_marcher"),
-      g("wg_memoire"), g("wg_soins"), g("wg_comm"), threshold = input$wg_threshold)
-    wg_res(result)
-    showNotification(paste0("Handicap: ", result$prevalence, "% ✓"), type = "message")
-  })
-
-  output$wg_kpi <- renderUI({ req(wg_res()); HTML(render_wg_kpi(wg_res())) })
-  output$wg_domain_table <- DT::renderDT({
-    req(wg_res()); DT::datatable(wg_res()$domain_summary, options = list(dom = "t"))
-  })
-  output$wg_domain_plot <- renderPlot({ req(wg_res()); plot_wg_radar(wg_res()) })
-  output$wg_severity_plot <- renderPlot({ req(wg_res()); plot_wg_severity(wg_res()) })
+  # ── HANDICAP — module namespacé (mod_handicap.R) ───────────────────────────
+  mod_handicap_server("handicap", df_f = df_f)
 

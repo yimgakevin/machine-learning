@@ -272,7 +272,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # SENS-7 — HANDICAP (WASHINGTON GROUP)
       # ════════════════════════════════════════════
-      ui_tab_handicap(),
+      mod_handicap_ui("handicap"),
 
       # ════════════════════════════════════════════
       # 7b — Z-SCORES OMS 2006
