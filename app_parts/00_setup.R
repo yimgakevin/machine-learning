@@ -158,6 +158,7 @@ source("mod_paludisme.R")         # Paludisme / LLIN / TDR (module Shiny)
 source("mod_wash.R")              # WASH JMP / Sphère (module Shiny)
 source("mod_handicap.R")          # Handicap Washington Group (module Shiny)
 source("mod_anemie.R")            # Anémie SENS / classification OMS (module Shiny)
+source("mod_menage.R")            # Ménage & Protection SENS (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS

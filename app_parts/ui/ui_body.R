@@ -267,7 +267,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # SENS-6 — MÉNAGE & PROTECTION
       # ════════════════════════════════════════════
-      ui_tab_menage(),
+      mod_menage_ui("menage"),
 
       # ════════════════════════════════════════════
       # SENS-7 — HANDICAP (WASHINGTON GROUP)
