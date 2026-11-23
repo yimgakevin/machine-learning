@@ -5,7 +5,7 @@
 
 # ── TABS EXPERT DESCRIPTIF (à insérer dans la section Descriptive OMS) ──────
 
-desc_expert_tabs <- function() {
+desc_expert_tabs <- function(ns = shiny::NS(NULL)) {
   list(
 
     # ── Tab 1 : Bootstrap IC ────────────────────────────────────────────
@@ -14,12 +14,12 @@ desc_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Paramètres Bootstrap"),
-            uiOutput("desc_boot_var_ui"),
-            sliderInput("desc_boot_B", "Nombre de rééchantillonnages :",
+            uiOutput(ns("desc_boot_var_ui")),
+            sliderInput(ns("desc_boot_B"), "Nombre de rééchantillonnages :",
                         min = 500, max = 5000, value = 2000, step = 500, width = "100%"),
-            sliderInput("desc_boot_conf", "Niveau de confiance :",
+            sliderInput(ns("desc_boot_conf"), "Niveau de confiance :",
                         min = 0.80, max = 0.99, value = 0.95, step = 0.01, width = "100%"),
-            actionButton("run_desc_boot", "Lancer Bootstrap",
+            actionButton(ns("run_desc_boot"), "Lancer Bootstrap",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
@@ -33,10 +33,10 @@ desc_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "IC Bootstrap pour statistiques descriptives"),
-            DTOutput("desc_boot_table"),
+            DTOutput(ns("desc_boot_table")),
             br(),
             tags$div(class = "section-header", "Comparaison : classique vs robuste"),
-            uiOutput("desc_boot_comparison")
+            uiOutput(ns("desc_boot_comparison"))
           )
         )
       )
@@ -48,8 +48,8 @@ desc_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Variable à analyser"),
-            uiOutput("desc_robust_var_ui"),
-            actionButton("run_desc_robust", "Calculer",
+            uiOutput(ns("desc_robust_var_ui")),
+            actionButton(ns("run_desc_robust"), "Calculer",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
@@ -63,7 +63,7 @@ desc_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Tableau comparatif : classique vs robuste"),
-            DTOutput("desc_robust_table")
+            DTOutput(ns("desc_robust_table"))
           )
         )
       )
@@ -75,14 +75,14 @@ desc_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Paramètres"),
-            uiOutput("desc_norm_var_ui"),
-            sliderInput("desc_norm_alpha", "Seuil α :",
+            uiOutput(ns("desc_norm_var_ui")),
+            sliderInput(ns("desc_norm_alpha"), "Seuil α :",
                         min = 0.01, max = 0.10, value = 0.05, step = 0.01, width = "100%"),
-            actionButton("run_desc_norm", "Lancer batterie",
+            actionButton(ns("run_desc_norm"), "Lancer batterie",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
-            uiOutput("desc_norm_verdict"),
+            uiOutput(ns("desc_norm_verdict")),
             hr(),
             tags$div(style = "font-size:11px;color:#555;line-height:1.7;",
               tags$b("6 tests de normalité :"), tags$br(),
@@ -95,10 +95,10 @@ desc_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Résultats de la batterie de normalité"),
-            DTOutput("desc_norm_table"),
+            DTOutput(ns("desc_norm_table")),
             br(),
             tags$div(class = "section-header", "QQ-plot diagnostique"),
-            plotlyOutput("desc_norm_qqplot", height = "350px")
+            plotlyOutput(ns("desc_norm_qqplot"), height = "350px")
           )
         )
       )
@@ -110,8 +110,8 @@ desc_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Variable"),
-            uiOutput("desc_outlier_var_ui"),
-            actionButton("run_desc_outlier", "Détecter outliers",
+            uiOutput(ns("desc_outlier_var_ui")),
+            actionButton(ns("run_desc_outlier"), "Détecter outliers",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
@@ -125,10 +125,10 @@ desc_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Synthèse multi-méthodes"),
-            DTOutput("desc_outlier_table"),
+            DTOutput(ns("desc_outlier_table")),
             br(),
             tags$div(class = "section-header", "Diagnostic visuel"),
-            plotlyOutput("desc_outlier_plot", height = "380px")
+            plotlyOutput(ns("desc_outlier_plot"), height = "380px")
           )
         )
       )
@@ -140,12 +140,12 @@ desc_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Variable"),
-            uiOutput("desc_distfit_var_ui"),
-            actionButton("run_desc_distfit", "Ajuster distributions",
+            uiOutput(ns("desc_distfit_var_ui")),
+            actionButton(ns("run_desc_distfit"), "Ajuster distributions",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
-            uiOutput("desc_distfit_best"),
+            uiOutput(ns("desc_distfit_best")),
             hr(),
             tags$div(style = "font-size:11px;color:#555;line-height:1.7;",
               tags$b("5 distributions testées :"), tags$br(),
@@ -157,10 +157,10 @@ desc_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Classement des distributions (AIC)"),
-            DTOutput("desc_distfit_table"),
+            DTOutput(ns("desc_distfit_table")),
             br(),
             tags$div(class = "section-header", "Superposition graphique"),
-            plotlyOutput("desc_distfit_plot", height = "400px")
+            plotlyOutput(ns("desc_distfit_plot"), height = "400px")
           )
         )
       )
@@ -172,9 +172,9 @@ desc_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Paramètres"),
-            uiOutput("desc_profile_grp_ui"),
-            uiOutput("desc_profile_vars_ui"),
-            actionButton("run_desc_profile", "Générer profil",
+            uiOutput(ns("desc_profile_grp_ui")),
+            uiOutput(ns("desc_profile_vars_ui")),
+            actionButton(ns("run_desc_profile"), "Générer profil",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;")
           )
@@ -182,10 +182,10 @@ desc_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Tableau descriptif complet par groupe"),
-            DTOutput("desc_profile_table"),
+            DTOutput(ns("desc_profile_table")),
             br(),
             tags$div(class = "section-header", "Heatmap des moyennes normalisées"),
-            plotlyOutput("desc_profile_heatmap", height = "400px")
+            plotlyOutput(ns("desc_profile_heatmap"), height = "400px")
           )
         )
       )
@@ -197,30 +197,30 @@ desc_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Paramètres"),
-            uiOutput("desc_cor_adv_vars_ui"),
-            selectInput("desc_cor_method", "Méthode :",
+            uiOutput(ns("desc_cor_adv_vars_ui")),
+            selectInput(ns("desc_cor_method"), "Méthode :",
                         choices = c("Spearman" = "spearman", "Pearson" = "pearson", "Kendall" = "kendall"),
                         selected = "spearman", width = "100%"),
-            selectInput("desc_cor_padj", "Correction multiple :",
+            selectInput(ns("desc_cor_padj"), "Correction multiple :",
                         choices = c("BH (Benjamini-Hochberg)" = "BH",
                                     "Bonferroni" = "bonferroni",
                                     "Holm" = "holm",
                                     "Aucune" = "none"),
                         selected = "BH", width = "100%"),
-            actionButton("run_desc_cor_adv", "Calculer corrélations",
+            actionButton(ns("run_desc_cor_adv"), "Calculer corrélations",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
-            uiOutput("desc_cor_adv_summary")
+            uiOutput(ns("desc_cor_adv_summary"))
           )
         ),
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Paires de corrélations (classées par |r|)"),
-            DTOutput("desc_cor_adv_table"),
+            DTOutput(ns("desc_cor_adv_table")),
             br(),
             tags$div(class = "section-header", "Matrice de corrélation avec significativité"),
-            plotOutput("desc_cor_adv_plot", height = "450px")
+            plotOutput(ns("desc_cor_adv_plot"), height = "450px")
           )
         )
       )
@@ -230,7 +230,7 @@ desc_expert_tabs <- function() {
 
 # ── TABS EXPERT INFÉRENTIEL (à insérer dans la section Inférentielle) ──────
 
-infer_expert_tabs <- function() {
+infer_expert_tabs <- function(ns = shiny::NS(NULL)) {
   list(
 
     # ── Tab 1 : Tests appariés ──────────────────────────────────────────
@@ -239,11 +239,11 @@ infer_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Variables appariées"),
-            uiOutput("infer_paired_x1_ui"),
-            uiOutput("infer_paired_x2_ui"),
-            sliderInput("infer_paired_alpha", "Seuil α :",
+            uiOutput(ns("infer_paired_x1_ui")),
+            uiOutput(ns("infer_paired_x2_ui")),
+            sliderInput(ns("infer_paired_alpha"), "Seuil α :",
                         min = 0.01, max = 0.10, value = 0.05, step = 0.01, width = "100%"),
-            actionButton("run_infer_paired", "Lancer tests appariés",
+            actionButton(ns("run_infer_paired"), "Lancer tests appariés",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
@@ -257,10 +257,10 @@ infer_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Résultats des tests appariés"),
-            uiOutput("infer_paired_cards"),
+            uiOutput(ns("infer_paired_cards")),
             br(),
             tags$div(class = "section-header", "Distribution des différences"),
-            plotlyOutput("infer_paired_plot", height = "350px")
+            plotlyOutput(ns("infer_paired_plot"), height = "350px")
           )
         )
       )
@@ -272,35 +272,35 @@ infer_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Paramètres de puissance"),
-            selectInput("infer_power_type", "Type de test :",
+            selectInput(ns("infer_power_type"), "Type de test :",
                         choices = c("t-test 2 groupes" = "t2",
                                     "t-test apparié" = "t_paired",
                                     "ANOVA" = "anova",
                                     "Corrélation" = "cor",
                                     "Chi²" = "chi2"),
                         width = "100%"),
-            numericInput("infer_power_n", "N par groupe :", value = 50, min = 5, max = 10000, width = "100%"),
-            numericInput("infer_power_effect", "Taille d'effet :", value = 0.5, min = 0.01, max = 3, step = 0.05, width = "100%"),
-            sliderInput("infer_power_alpha", "Alpha :",
+            numericInput(ns("infer_power_n"), "N par groupe :", value = 50, min = 5, max = 10000, width = "100%"),
+            numericInput(ns("infer_power_effect"), "Taille d'effet :", value = 0.5, min = 0.01, max = 3, step = 0.05, width = "100%"),
+            sliderInput(ns("infer_power_alpha"), "Alpha :",
                         min = 0.01, max = 0.10, value = 0.05, step = 0.01, width = "100%"),
-            conditionalPanel(
+            conditionalPanel(ns = ns, 
               condition = "input.infer_power_type == 'anova' || input.infer_power_type == 'chi2'",
-              numericInput("infer_power_k", "k (groupes/ddl) :", value = 3, min = 2, max = 20, width = "100%")
+              numericInput(ns("infer_power_k"), "k (groupes/ddl) :", value = 3, min = 2, max = 20, width = "100%")
             ),
-            actionButton("run_infer_power", "Calculer puissance",
+            actionButton(ns("run_infer_power"), "Calculer puissance",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
-            uiOutput("infer_power_result")
+            uiOutput(ns("infer_power_result"))
           )
         ),
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Courbe de puissance"),
-            plotlyOutput("infer_power_curve", height = "420px"),
+            plotlyOutput(ns("infer_power_curve"), height = "420px"),
             br(),
             tags$div(class = "section-header", "Grille de puissance (N × effet)"),
-            DTOutput("infer_power_grid")
+            DTOutput(ns("infer_power_grid"))
           )
         )
       )
@@ -312,9 +312,9 @@ infer_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Variables"),
-            uiOutput("infer_bf_x_ui"),
-            uiOutput("infer_bf_y_ui"),
-            actionButton("run_infer_bf", "Calculer Bayes Factor",
+            uiOutput(ns("infer_bf_x_ui")),
+            uiOutput(ns("infer_bf_y_ui")),
+            actionButton(ns("run_infer_bf"), "Calculer Bayes Factor",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
@@ -331,9 +331,9 @@ infer_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Résultats bayésiens"),
-            DTOutput("infer_bf_table"),
+            DTOutput(ns("infer_bf_table")),
             br(),
-            uiOutput("infer_bf_interpretation")
+            uiOutput(ns("infer_bf_interpretation"))
           )
         )
       )
@@ -345,15 +345,15 @@ infer_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Paramètres TOST"),
-            uiOutput("infer_tost_grp_ui"),
-            uiOutput("infer_tost_y_ui"),
-            numericInput("infer_tost_delta", "Marge d'équivalence (Δ) :",
+            uiOutput(ns("infer_tost_grp_ui")),
+            uiOutput(ns("infer_tost_y_ui")),
+            numericInput(ns("infer_tost_delta"), "Marge d'équivalence (Δ) :",
                          value = NA, min = 0, step = 0.1, width = "100%"),
             tags$div(style = "font-size:10px;color:#888;margin-top:-8px;margin-bottom:8px;",
                      "Laisser vide = 0.5 × SD poolé (auto)"),
-            sliderInput("infer_tost_alpha", "Alpha :",
+            sliderInput(ns("infer_tost_alpha"), "Alpha :",
                         min = 0.01, max = 0.10, value = 0.05, step = 0.01, width = "100%"),
-            actionButton("run_infer_tost", "Test d'équivalence",
+            actionButton(ns("run_infer_tost"), "Test d'équivalence",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
@@ -367,10 +367,10 @@ infer_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Résultat du test d'équivalence"),
-            uiOutput("infer_tost_result"),
+            uiOutput(ns("infer_tost_result")),
             br(),
             tags$div(class = "section-header", "Visualisation TOST"),
-            plotlyOutput("infer_tost_plot", height = "300px")
+            plotlyOutput(ns("infer_tost_plot"), height = "300px")
           )
         )
       )
@@ -382,13 +382,13 @@ infer_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Modèle de régression"),
-            uiOutput("infer_reg_outcome_ui"),
-            uiOutput("infer_reg_pred_ui"),
-            actionButton("run_infer_reg", "Ajuster le modèle",
+            uiOutput(ns("infer_reg_outcome_ui")),
+            uiOutput(ns("infer_reg_pred_ui")),
+            actionButton(ns("run_infer_reg"), "Ajuster le modèle",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
-            uiOutput("infer_reg_summary"),
+            uiOutput(ns("infer_reg_summary")),
             hr(),
             tags$div(style = "font-size:11px;color:#555;line-height:1.7;",
               tags$b("Diagnostics inclus :"), tags$br(),
@@ -404,22 +404,22 @@ infer_expert_tabs <- function() {
             tabsetPanel(
               tabPanel("Coefficients",
                 tags$div(class = "section-header", "Coefficients avec IC 95%"),
-                DTOutput("infer_reg_coef_table"),
+                DTOutput(ns("infer_reg_coef_table")),
                 br(),
-                plotlyOutput("infer_reg_forest", height = "350px")
+                plotlyOutput(ns("infer_reg_forest"), height = "350px")
               ),
               tabPanel("Diagnostics",
                 tags$div(class = "section-header", "Diagnostics du modèle"),
-                DTOutput("infer_reg_diag_table"),
+                DTOutput(ns("infer_reg_diag_table")),
                 br(),
                 tags$div(class = "section-header", "Graphiques diagnostiques"),
-                plotOutput("infer_reg_diag_plots", height = "600px")
+                plotOutput(ns("infer_reg_diag_plots"), height = "600px")
               ),
               tabPanel("VIF",
                 tags$div(class = "section-header", "Facteur d'inflation de la variance (VIF)"),
-                DTOutput("infer_reg_vif_table"),
+                DTOutput(ns("infer_reg_vif_table")),
                 br(),
-                uiOutput("infer_reg_vif_interp")
+                uiOutput(ns("infer_reg_vif_interp"))
               )
             )
           )
@@ -433,10 +433,10 @@ infer_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Variables (mesures répétées)"),
-            uiOutput("infer_repeat_vars_ui"),
-            sliderInput("infer_repeat_alpha", "Seuil α :",
+            uiOutput(ns("infer_repeat_vars_ui")),
+            sliderInput(ns("infer_repeat_alpha"), "Seuil α :",
                         min = 0.01, max = 0.10, value = 0.05, step = 0.01, width = "100%"),
-            actionButton("run_infer_repeat", "Test de Friedman",
+            actionButton(ns("run_infer_repeat"), "Test de Friedman",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
@@ -450,13 +450,13 @@ infer_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Résultat du test de Friedman"),
-            uiOutput("infer_repeat_result"),
+            uiOutput(ns("infer_repeat_result")),
             br(),
             tags$div(class = "section-header", "Comparaisons post-hoc par paires"),
-            DTOutput("infer_repeat_posthoc"),
+            DTOutput(ns("infer_repeat_posthoc")),
             br(),
             tags$div(class = "section-header", "Distribution par mesure"),
-            plotlyOutput("infer_repeat_plot", height = "380px")
+            plotlyOutput(ns("infer_repeat_plot"), height = "380px")
           )
         )
       )
@@ -468,11 +468,11 @@ infer_expert_tabs <- function() {
         column(3,
           tags$div(style = "padding:8px;",
             tags$div(class = "section-header", "Variables"),
-            uiOutput("infer_es_x_ui"),
-            uiOutput("infer_es_y_ui"),
-            sliderInput("infer_es_B", "Bootstrap B :",
+            uiOutput(ns("infer_es_x_ui")),
+            uiOutput(ns("infer_es_y_ui")),
+            sliderInput(ns("infer_es_B"), "Bootstrap B :",
                         min = 500, max = 5000, value = 2000, step = 500, width = "100%"),
-            actionButton("run_infer_es", "Calculer tailles d'effet",
+            actionButton(ns("run_infer_es"), "Calculer tailles d'effet",
                          class = "btn btn-oms btn-block", width = "100%",
                          style = "margin-top:8px;font-size:13px;padding:8px;"),
             hr(),
@@ -486,9 +486,9 @@ infer_expert_tabs <- function() {
         column(9,
           tags$div(style = "padding:4px;",
             tags$div(class = "section-header", "Tailles d'effet avec intervalles de confiance"),
-            DTOutput("infer_es_table"),
+            DTOutput(ns("infer_es_table")),
             br(),
-            uiOutput("infer_es_interpretation")
+            uiOutput(ns("infer_es_interpretation"))
           )
         )
       )
@@ -506,13 +506,13 @@ infer_expert_tabs <- function() {
                       " Tableau de synthèse — Approches fréquentiste + bayésienne + puissance")
             ),
             tags$div(class = "section-header", "Vue unifiée de toutes les analyses"),
-            DTOutput("infer_expert_summary_table"),
+            DTOutput(ns("infer_expert_summary_table")),
             br(),
             tags$div(class = "section-header", "Corrections pour comparaisons multiples"),
-            DTOutput("infer_expert_corrections_table"),
+            DTOutput(ns("infer_expert_corrections_table")),
             br(),
             div(style = "text-align:right;",
-              downloadButton("dl_expert_synthesis", "Télécharger synthèse (CSV)",
+              downloadButton(ns("dl_expert_synthesis"), "Télécharger synthèse (CSV)",
                 style = "background:#27ae60;color:white;border:none;border-radius:6px;padding:6px 14px;")
             )
           )
