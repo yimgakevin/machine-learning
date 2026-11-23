@@ -376,13 +376,7 @@
 
   # ═══ Synchronisation palette globale → sélecteurs locaux ═══
   # ── Synchro palette couleurs vers les modules d'exploration ──
-  observeEvent(input$global_palette, {
-    pn <- input$global_palette
-    if (!is.null(pn) && pn %in% PALETTE_CHOICES) {
-      updateSelectInput(session, "uni_pal", selected = pn)
-      updateSelectInput(session, "biv_pal", selected = pn)
-    }
-  }, ignoreInit = TRUE)
+  # (uni_pal / biv_pal sont désormais synchronisés dans leurs modules respectifs)
 
   # ── Thème d'interface — injection CSS dynamique complète ──
   observeEvent(input$ui_theme, {
