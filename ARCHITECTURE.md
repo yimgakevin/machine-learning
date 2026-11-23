@@ -27,7 +27,7 @@ app_parts/
 │   ├── ui_sidebar.R
 │   ├── ui_body.R          # login, chatbot, tabItems()
 │   ├── ui_tabs_index.R
-│   └── tabs/              # 15 fichiers tab_<nom>.R
+│   └── tabs/              # 14 fichiers tab_<nom>.R
 └── server/                # 32 fichiers server_<domaine>.R
     └── README.md          # description de chaque fichier
 mod_oms.R                  # 1er vrai module Shiny (UI + serveur namespacés)
@@ -131,6 +131,7 @@ commencé. État :
 | `prevalence` | ✅ converti (`mod_prevalence.R`) |
 | `secu_alim` | ✅ converti (`mod_secu_alim.R`) |
 | `explor` | ✅ converti (`mod_explor.R`) |
+| `dplyr` | ✅ converti (`mod_dplyr.R`) |
 | `about`, `descoms` | à faire |
 | `infer` | à faire |
 | `zscore`, `rdim` | à faire |
