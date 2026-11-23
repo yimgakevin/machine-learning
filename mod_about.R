@@ -1,5 +1,9 @@
-# Extrait de app_parts/ui/ui_body.R — onglet about
-ui_tab_about <- function() {
+# Module Shiny — Onglet À propos (contenu statique, aucun input/output)
+# Aucun serveur n'est nécessaire : l'onglet ne contient aucun identifiant.
+
+mod_about_ui <- function(id) {
+  ns <- shiny::NS(id)
+
       tabItem(tabName="about",
         tags$div(style="max-width:960px;margin:0 auto;",
 

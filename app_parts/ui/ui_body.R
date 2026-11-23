@@ -317,7 +317,7 @@ ui_body <- function() {
       tabItem(tabName="temporal_tests", uiOutput("temporal_tests_ui_dyn")),
 
       # ── À PROPOS ──────────────────────────────────────────────────────────
-      ui_tab_about(),
+      mod_about_ui("about"),
 
       # ════════════════════════════════════════════
       # 🔬 RECHERCHE AVANCÉE
