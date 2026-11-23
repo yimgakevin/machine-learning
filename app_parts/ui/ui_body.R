@@ -257,7 +257,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # SENS-4 — PALUDISME / MOUSTIQUAIRES
       # ════════════════════════════════════════════
-      ui_tab_paludisme(),
+      mod_paludisme_ui("paludisme"),
 
       # ════════════════════════════════════════════
       # SENS-5 — WASH

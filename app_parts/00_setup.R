@@ -154,6 +154,7 @@ source("mod_descoms.R")           # Tableau descriptif OMS + expert (module Shin
 source("mod_infer.R")             # Statistiques inférentielles + expert (module Shiny)
 source("mod_sens_helpers.R")      # Sélecteurs dynamiques namespacés des modules SENS
 source("mod_mortalite.R")         # Mortalité SMART CMR / U5MR (module Shiny)
+source("mod_paludisme.R")         # Paludisme / LLIN / TDR (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS

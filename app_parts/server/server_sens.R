@@ -397,39 +397,8 @@
   output$anem_hb_dist <- renderPlot({ req(anem_res()); plot_hb_distribution(anem_res()) })
   output$anem_donut <- plotly::renderPlotly({ req(anem_res()); plot_anemia_donut(anem_res()) })
 
-  # ── PALUDISME ──────────────────────────────────────────────────────────────
-  observe({
-    d <- df_f(); req(d)
-    output$palu_poss_ui    <- renderUI(sens_select("palu_poss", "Possession LLIN", "llin_possession", d))
-    output$palu_use_ui     <- renderUI(sens_select("palu_use", "Utilisation LLIN", "llin_utilisation", d))
-    output$palu_access_ui  <- renderUI(sens_select("palu_access", "Accès LLIN", "llin_acces", d))
-    output$palu_nb_nets_ui <- renderUI(sens_select("palu_nb_nets", "Nb moustiquaires", "nb_moustiquaires", d))
-    output$palu_hh_size_ui <- renderUI(sens_select("palu_hh_size", "Taille ménage", "taille_menage", d))
-    output$palu_tdr_ui     <- renderUI(sens_select("palu_tdr", "Résultat TDR", "tdr_malaria", d))
-    output$palu_fever_ui   <- renderUI(sens_select("palu_fever", "Fièvre", "fievre", d))
-    output$palu_strat_ui   <- renderUI(sens_select("palu_strat", "Stratification", "region", d))
-  }) |> bindEvent(df_f())
-
-  palu_llin <- reactiveVal(NULL); palu_malaria <- reactiveVal(NULL)
-
-  observeEvent(input$run_palu, {
-    d <- df_f(); req(d)
-    g <- function(id) { v <- input[[id]]; if (!is.null(v) && v != "") v else NULL }
-    withProgress(message = "Calcul paludisme...", {
-      palu_llin(calc_llin_indicators(d, g("palu_poss"), g("palu_use"), g("palu_access"), g("palu_nb_nets"), g("palu_hh_size")))
-      if (!is.null(g("palu_tdr"))) palu_malaria(calc_malaria_prevalence(d, g("palu_tdr"), g("palu_fever"), g("palu_strat")))
-    })
-    showNotification("Paludisme calculé ✓", type = "message")
-  })
-
-  output$palu_kpi <- renderUI({ HTML(render_malaria_kpi(palu_malaria(), palu_llin())) })
-  output$palu_cascade_plot <- renderPlot({ req(palu_llin()); plot_llin_cascade(palu_llin()) })
-  output$palu_by_fever <- DT::renderDT({
-    req(palu_malaria()); if (!is.null(palu_malaria()$by_fever)) DT::datatable(palu_malaria()$by_fever, options = list(dom = "t"))
-  })
-  output$palu_by_group <- DT::renderDT({
-    req(palu_malaria()); if (!is.null(palu_malaria()$by_group)) DT::datatable(palu_malaria()$by_group, options = list(dom = "t"))
-  })
+  # ── PALUDISME — module namespacé (mod_paludisme.R) ─────────────────────────
+  mod_paludisme_server("paludisme", df_f = df_f)
 
   # ── WASH ───────────────────────────────────────────────────────────────────
   observe({
