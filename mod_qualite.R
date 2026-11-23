@@ -88,20 +88,8 @@ mod_qualite_server <- function(id, df_f, vars_cat, vars_num) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Helper : chercher les colonnes probables pour chaque variable
-    guess_col <- function(d, patterns, type = "num") {
-      nms <- names(d)
-      for (pat in patterns) {
-        matches <- grep(pat, nms, ignore.case = TRUE, value = TRUE)
-        if (length(matches) == 0) next
-        if (type == "num") matches <- matches[vapply(matches, function(v) is.numeric(d[[v]]), logical(1))]
-        if (type == "cat") matches <- matches[vapply(matches, function(v) !is.numeric(d[[v]]) || length(unique(na.omit(d[[v]]))) <= 30, logical(1))]
-        if (length(matches) > 0) return(matches[1])
-      }
-      NULL
-    }
-
     # UI dynamiques pour les sélecteurs de variables
+    # (guess_col est défini globalement dans utils.R)
     output$sq_col_whz_ui <- renderUI({
       d <- df_f(); vn <- vars_num()
       guess <- guess_col(d, c("^whz$","^WHZ$","wfhz","zscore.*wh","z.*wh","_whz","whz_"))

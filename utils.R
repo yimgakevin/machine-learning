@@ -5,6 +5,20 @@
 # ── Opérateur null-coalescing ─────────────────────────────────────────────────
 `%||%` <- function(a, b) if (!is.null(a) && length(a) > 0 && !all(is.na(a))) a else b
 
+# ── Détection heuristique d'une colonne par motifs de nom ────────────────────
+# Utilisé par plusieurs écrans (qualité, prévalences, sécurité alimentaire).
+guess_col <- function(d, patterns, type = "num") {
+  nms <- names(d)
+  for (pat in patterns) {
+    matches <- grep(pat, nms, ignore.case = TRUE, value = TRUE)
+    if (length(matches) == 0) next
+    if (type == "num") matches <- matches[vapply(matches, function(v) is.numeric(d[[v]]), logical(1))]
+    if (type == "cat") matches <- matches[vapply(matches, function(v) !is.numeric(d[[v]]) || length(unique(na.omit(d[[v]]))) <= 30, logical(1))]
+    if (length(matches) > 0) return(matches[1])
+  }
+  NULL
+}
+
 # ── PALETTE INSTITUTIONNELLE (OMS/UNHCR/PAM) ─────────────────────────────────
 C <- list(
   bleu="#0077B6", bleu_fonce="#0B3954", bleu_moyen="#0C4A6E",
