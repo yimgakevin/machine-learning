@@ -151,6 +151,7 @@ source("mod_dplyr.R")             # Manipulation des données dplyr (module Shin
 source("mod_rdim.R")              # Réduction de dimension / ACP / t-SNE (module Shiny)
 source("mod_about.R")             # Onglet À propos (UI statique, module Shiny)
 source("mod_descoms.R")           # Tableau descriptif OMS + expert (module Shiny)
+source("mod_infer.R")             # Statistiques inférentielles + expert (module Shiny)
 
 # ── Modules Expert (Niveau Expert) ──────────────────────────────────────────
 source("mod_dashboard_exec.R")    # Dashboard Exécutif KPIs OMS

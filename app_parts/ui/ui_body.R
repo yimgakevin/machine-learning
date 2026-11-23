@@ -211,7 +211,7 @@ ui_body <- function() {
       # ════════════════════════════════════════════
       # 4 — INFÉRENTIELLE
       # ════════════════════════════════════════════
-      ui_tab_infer(),
+      mod_infer_ui("infer"),
 
       # ════════════════════════════════════════════
       # 5 — RÉDUCTION DE DIMENSION (FactoMineR)
