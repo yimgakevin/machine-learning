@@ -173,7 +173,79 @@ expert_strat_test <- function(d, var, by) {
   )
 }
 
-# ── 6. Contrôle qualité générique ───────────────────────────────────────────
+# ── 6. Taux d'incidence (mortalité) avec IC et test ─────────────────────────
+# Rate pour `scale` unités de temps-personne (10 000 jours-personne par défaut).
+expert_rate <- function(d, events, time, label = "Taux", cluster = NULL,
+                        strata = NULL, weights = NULL, scale = 10000) {
+  empty <- tibble::tibble(
+    Indicateur = label, Deces = 0, `Temps-personne` = 0, `Taux` = NA_real_,
+    `IC bas` = NA_real_, `IC haut` = NA_real_, Methode = "Non calculable"
+  )
+  if (!all(c(events, time) %in% names(d))) return(empty)
+  d2 <- as.data.frame(d)
+  ev <- suppressWarnings(as.numeric(d2[[events]]))
+  pt <- suppressWarnings(as.numeric(d2[[time]]))
+  keep <- !is.na(ev) & !is.na(pt) & pt > 0
+  d2 <- d2[keep, , drop = FALSE]; ev <- ev[keep]; pt <- pt[keep]
+  if (length(ev) == 0) return(empty)
+  use_design <- !is.null(cluster) || !is.null(strata) || !is.null(weights)
+  if (use_design) {
+    d3 <- d2; d3$.ev <- ev; d3$.pt <- pt
+    des <- expert_design(d3, cluster, strata, weights)
+    if (!is.null(des)) {
+      est <- tryCatch({
+        r <- survey::svyratio(~.ev, ~.pt, des)
+        ci <- stats::confint(r)
+        tibble::tibble(
+          Indicateur = label, Deces = sum(ev), `Temps-personne` = round(sum(pt)),
+          `Taux` = round(as.numeric(stats::coef(r))[1] * scale, 4),
+          `IC bas` = round(ci[1, 1] * scale, 4),
+          `IC haut` = round(ci[1, 2] * scale, 4),
+          Methode = "Design-based (svyratio)"
+        )
+      }, error = function(e) NULL)
+      if (!is.null(est)) return(est)
+    }
+  }
+  k <- sum(ev); tot <- sum(pt)
+  tibble::tibble(
+    Indicateur = label, Deces = k, `Temps-personne` = round(tot),
+    `Taux` = round(k / tot * scale, 4),
+    `IC bas` = round(stats::qpois(0.025, k) / tot * scale, 4),
+    `IC haut` = round(stats::qpois(0.975, k) / tot * scale, 4),
+    Methode = "Poisson exact"
+  )
+}
+
+expert_rate_by <- function(d, events, time, by, label = "Taux", cluster = NULL,
+                           strata = NULL, weights = NULL, scale = 10000) {
+  if (is.null(by) || !by %in% names(d)) return(list(table = tibble::tibble(), test = NULL))
+  d2 <- as.data.frame(d)
+  ev <- suppressWarnings(as.numeric(d2[[events]]))
+  pt <- suppressWarnings(as.numeric(d2[[time]]))
+  keep <- !is.na(ev) & !is.na(pt) & pt > 0 & !is.na(d2[[by]])
+  if (sum(keep) < 5) return(list(table = tibble::tibble(), test = NULL))
+  d2 <- d2[keep, , drop = FALSE]
+  groups <- sort(unique(as.character(d2[[by]])))
+  tab <- purrr::map_dfr(groups, function(g) {
+    sub <- d2[as.character(d2[[by]]) == g, , drop = FALSE]
+    r <- expert_rate(sub, events, time, label, cluster, strata, weights, scale)
+    r$Groupe <- g; r
+  })
+  test <- tryCatch({
+    fit <- stats::glm(stats::as.formula(paste0("`", events, "` ~ `", by, "`")),
+                      data = d2, family = stats::quasipoisson(),
+                      offset = log(pmax(pt, 1e-9)))
+    a <- stats::anova(fit, test = "F")
+    p <- a[["Pr(>F)"]][2]
+    tibble::tibble(Test = "GLM quasi-Poisson (offset temps-personne)",
+                   Statistique = round(a[["F"]][2], 3), ddl = a[["Df"]][2],
+                   p = p, N = nrow(d2))
+  }, error = function(e) NULL)
+  list(table = tab, test = test)
+}
+
+# ── 7. Contrôle qualité générique ───────────────────────────────────────────
 expert_quality <- function(d, vars) {
   vars <- vars[vars %in% names(d)]
   if (length(vars) == 0) return(tibble::tibble())
