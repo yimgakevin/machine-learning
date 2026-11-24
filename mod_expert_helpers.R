@@ -318,7 +318,32 @@ expert_uni_table <- function(d, var, cluster = NULL, strata = NULL, weights = NU
   out
 }
 
-# ── 9. Statistiques numériques complètes (module Univarié) ──────────────────
+# ── 10. Tests multiples avec correction (module Bivarié) ────────────────────
+expert_multi_tests <- function(d, y, x_vars) {
+  x_vars <- setdiff(x_vars[x_vars %in% names(d)], y)
+  if (length(x_vars) == 0) return(tibble::tibble())
+  ty <- var_type(d[[y]])
+  rows <- purrr::map_dfr(x_vars, function(v) {
+    tx <- var_type(d[[v]])
+    res <- tryCatch({
+      if (ty %in% c("binaire", "cat_peu", "cat_many") && tx %in% c("continue", "discrete")) {
+        auto_test(d, y, v, ty, tx)
+      } else {
+        auto_test(d, v, y, tx, ty)
+      }
+    }, error = function(e) NULL)
+    if (is.null(res) || is.null(res$p) || length(res$p) == 0 || is.na(res$p)) return(NULL)
+    tibble::tibble(Variable = v, Test = res$nom,
+                   Statistique = suppressWarnings(as.numeric(res$stat)),
+                   ddl = suppressWarnings(as.numeric(res$df)), p = res$p)
+  })
+  if (nrow(rows) == 0) return(rows)
+  rows$`p ajusté (BH)` <- expert_adjust_p(rows$p, "BH")
+  rows$`Significatif 5 %` <- rows$`p ajusté (BH)` < 0.05
+  rows[order(rows$`p ajusté (BH)`, rows$p), , drop = FALSE]
+}
+
+# ── 11. Statistiques numériques complètes (module Univarié) ─────────────────
 expert_num_summary <- function(x) {
   x <- suppressWarnings(as.numeric(x))
   n <- length(x); nv <- sum(!is.na(x)); xv <- x[!is.na(x)]

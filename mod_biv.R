@@ -57,6 +57,20 @@ mod_biv_ui <- function(id) {
               style="background:linear-gradient(135deg,#0077B6,#0C4A6E);color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;")),
           plotlyOutput(ns("biv_plot"), height="500px")
       )
+    ),
+    fluidRow(
+      box(width=12, status="info", solidHeader=TRUE, collapsible=TRUE,
+          title=tags$span(icon("flask"), " Statistiques expertes — tailles d'effet & tests multiples"),
+          tabsetPanel(
+            tabPanel("Tailles d'effet",
+              uiOutput(ns("biv_effect_note")), br(),
+              DT::DTOutput(ns("biv_effect_tbl"))),
+            tabPanel("Tests multiples (BH)",
+              uiOutput(ns("biv_multi_note")), br(),
+              DT::DTOutput(ns("biv_multi_tbl"))),
+            tabPanel("Export", expert_exports_ui(ns, "biv"))
+          )
+      )
     )
   )
 }
@@ -309,6 +323,53 @@ mod_biv_server <- function(id, df_f, vars_cat, vars_num,
       },error=function(e)
         plotly_empty()|>layout(title=list(text=paste("Erreur:",e$message),x=.5)))
     })
+
+    # ── Statistiques expertes : tailles d'effet & tests multiples ────────
+    biv_effects <- reactive({
+      req(input$biv_x, input$biv_y)
+      expert_effect_sizes(df_f(), input$biv_x, input$biv_y)
+    })
+    biv_multi <- reactive({
+      req(input$biv_y)
+      expert_multi_tests(df_f(), input$biv_y, unique(c(vars_num(), vars_cat())))
+    })
+
+    output$biv_effect_note <- renderUI({
+      tags$div(style="font-size:12px;color:#555;background:#f8f9fa;padding:8px 12px;border-radius:6px;",
+        icon("circle-info"), " ", tags$b(input$biv_x), " × ", tags$b(input$biv_y),
+        " — V de Cramér (quali×quali), d de Cohen / Wilcoxon (quali×quanti), ",
+        "r de Pearson / ρ de Spearman (quanti×quanti).")
+    })
+
+    output$biv_effect_tbl <- DT::renderDT({
+      e <- biv_effects()
+      if (is.null(e) || nrow(e) == 0) {
+        return(DT::datatable(data.frame(Message = "Aucune taille d'effet calculable pour ce couple."),
+                             rownames = FALSE, options = list(dom = "t")))
+      }
+      expert_dt(e)
+    })
+
+    output$biv_multi_note <- renderUI({
+      req(input$biv_y)
+      n <- tryCatch(nrow(biv_multi()), error = function(e) 0)
+      tags$div(style="font-size:12px;color:#555;background:#f8f9fa;padding:8px 12px;border-radius:6px;",
+        icon("layer-group"), " Tests de ", tags$b(input$biv_y), " contre toutes les autres variables (",
+        n, " tests), p ajustées par Benjamini-Hochberg (contrôle du FDR à 5 %).")
+    })
+
+    output$biv_multi_tbl <- DT::renderDT({
+      m <- biv_multi()
+      if (is.null(m) || nrow(m) == 0) {
+        return(DT::datatable(data.frame(Message = "Aucun test exploitable."),
+                             rownames = FALSE, options = list(dom = "t")))
+      }
+      expert_dt(m)
+    })
+
+    expert_export_server(input, output, session, "biv", reactive({
+      list(`Tailles d'effet` = biv_effects(), `Tests multiples BH` = biv_multi())
+    }))
 
     output$biv_dl_plot <- downloadHandler(
       filename=function() paste0("bivar_",Sys.Date(),".png"),
