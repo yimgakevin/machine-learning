@@ -152,6 +152,7 @@ source("mod_rdim.R")              # Réduction de dimension / ACP / t-SNE (modul
 source("mod_about.R")             # Onglet À propos (UI statique, module Shiny)
 source("mod_descoms.R")           # Tableau descriptif OMS + expert (module Shiny)
 source("mod_infer.R")             # Statistiques inférentielles + expert (module Shiny)
+source("mod_expert_helpers.R")    # Socle expert : IC, design, qualité, effets, exports
 source("mod_sens_helpers.R")      # Sélecteurs dynamiques namespacés des modules SENS
 source("mod_mortalite.R")         # Mortalité SMART CMR / U5MR (module Shiny)
 source("mod_paludisme.R")         # Paludisme / LLIN / TDR (module Shiny)
