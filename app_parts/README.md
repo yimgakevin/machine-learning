@@ -1,6 +1,6 @@
 # app_parts/ — code découpé de NutriAnalyse Pro v2
 
-Le point d'entrée reste `app.R` → `app_v2_final.R` (orchestrateur de ~60 lignes).
+Le point d'entrée reste `app.R` → `app_v2_final.R` (orchestrateur de 49 lignes).
 Tout le code applicatif est ici.
 
 ```

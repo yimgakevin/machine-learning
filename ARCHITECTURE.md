@@ -4,7 +4,7 @@
 
 | Élément | Avant | Après |
 |---|---|---|
-| `app_v2_final.R` | **15 754 lignes** | **54 lignes** (orchestrateur) |
+| `app_v2_final.R` | **15 754 lignes** | **49 lignes** (orchestrateur) |
 | UI | 1 bloc `dashboardPage` de ~3 030 lignes | `app_parts/ui/` : coquille + 23 modules `mod_*.R` |
 | Serveur | 1 fonction de ~11 750 lignes | 20 fichiers dans `app_parts/server/` + modules |
 | Onglets UI inline | 23 | 0 (tous convertis en modules namespacés) |
