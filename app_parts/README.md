@@ -13,7 +13,7 @@ app_parts/
 │   ├── ui_sidebar.R    # dashboardSidebar()
 │   └── ui_body.R       # dashboardBody() + login + chatbot + tabItems()
 └── server/
-    ├── README.md       # liste et rôle des 25 fichiers
+    ├── README.md       # liste et rôle des 20 fichiers
     └── server_<domaine>.R
 
 mod_<nom>.R             # 23 modules Shiny (UI + serveur namespacés)

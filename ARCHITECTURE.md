@@ -6,7 +6,7 @@
 |---|---|---|
 | `app_v2_final.R` | **15 754 lignes** | **54 lignes** (orchestrateur) |
 | UI | 1 bloc `dashboardPage` de ~3 030 lignes | `app_parts/ui/` : coquille + 23 modules `mod_*.R` |
-| Serveur | 1 fonction de ~11 750 lignes | 25 fichiers dans `app_parts/server/` + modules |
+| Serveur | 1 fonction de ~11 750 lignes | 20 fichiers dans `app_parts/server/` + modules |
 | Onglets UI inline | 23 | 0 (tous convertis en modules namespacés) |
 
 Le code n'a **pas** été réécrit : chaque fichier contient une tranche exacte de
@@ -26,7 +26,7 @@ app_parts/
 │   ├── ui_header.R
 │   ├── ui_sidebar.R
 │   └── ui_body.R          # login, chatbot, tabItems(mod_*_ui("<nom>"))
-└── server/                # 25 fichiers server_<domaine>.R
+└── server/                # 20 fichiers server_<domaine>.R
     └── README.md          # description de chaque fichier
 mod_*.R                   # 23 modules Shiny (UI + serveur namespacés)
 ```
@@ -95,7 +95,7 @@ Résultats obtenus après le découpage :
 
 - `PARSE OK` sur l'ensemble des fichiers R de l'application ;
 - `CHECK_OK` : 84 packages, UI construite, serveur défini ;
-- `CHECK_SERVER_OK` : les 25 fichiers serveur se sourcent et s'enregistrent ;
+- `CHECK_SERVER_OK` : les 20 fichiers serveur se sourcent et s'enregistrent ;
 - `HTTP_OK` : l'application répond sur `http://127.0.0.1:8765/` ;
 - testthat : 0 échec (les 5 erreurs `golem-recommended` sont pré-existantes :
   elles attendent `app_ui`/`app_server`, absents de l'application actuelle).
