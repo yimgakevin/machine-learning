@@ -155,7 +155,7 @@ expert_strat_test <- function(d, var, by) {
   if (nrow(tab) < 2 || ncol(tab) < 2) return(NULL)
   n <- sum(tab)
   test <- tryCatch({
-    if (any(chisq.test(tab)$expected < 5)) {
+    if (any(suppressWarnings(chisq.test(tab))$expected < 5)) {
       ft <- suppressWarnings(stats::fisher.test(tab, simulate.p.value = TRUE, B = 2000))
       list(nom = "Fisher exact (simulé)", stat = NA_real_, df = NA_real_, p = ft$p.value)
     } else {

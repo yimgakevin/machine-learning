@@ -17,7 +17,17 @@ app_parts/
     └── server_<domaine>.R
 
 mod_<nom>.R             # 23 modules Shiny (UI + serveur namespacés)
+mod_expert_helpers.R    # socle expert : IC, design, qualité, effets, exports
+mod_sens_helpers.R      # sélecteurs dynamiques namespacés des modules SENS
 ```
+
+## Niveau expert
+
+Les modules SENS (`anemie`, `paludisme`, `wash`, `menage`, `mortalite`,
+`handicap`) ainsi que `uni`, `biv`, `clust` et `oms` disposent d'onglets
+experts : IC 95 % Wilson ou design-based (cluster / strates / poids), DEFF,
+stratification, contrôles qualité et exports CSV/XLSX. Le socle commun est
+`mod_expert_helpers.R`, chargé dans `app_parts/00_setup.R` avant les modules.
 
 ## Règles importantes
 
@@ -41,6 +51,7 @@ Depuis la racine du projet :
 ```bash
 Rscript tools/check_app.R      # setup + UI + définition du serveur
 Rscript tools/check_server.R   # exécution du serveur en session mock
+Rscript tools/check_expert_modules.R  # onglets experts des 10 modules remontés
 Rscript tools/run_tests.R      # suite testthat
 Rscript tools/launch_test.R    # démarrage HTTP réel sur le port 8765
 ```

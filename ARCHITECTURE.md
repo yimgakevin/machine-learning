@@ -36,6 +36,61 @@ Quelques ponts racine restent volontairement dans `app_parts/server/` :
 (`event_data` plotly + `update*()` des filtres `f_*`) et
 `server_zscore_setup.R` (réactif `zs_data` partagé).
 
+## Niveau expert des modules
+
+Un socle partagé, `mod_expert_helpers.R`, fournit les briques communes :
+
+| Brique | Fonctions |
+|---|---|
+| IC & design | `expert_wilson()`, `expert_design()`, `expert_prev()`, `expert_prev_by()`, `expert_rate()`, `expert_rate_by()` |
+| Qualité | `expert_quality()`, `expert_num_summary()`, `expert_uni_table()` |
+| Inférence | `expert_strat_test()`, `expert_effect_sizes()`, `expert_multi_tests()`, `expert_adjust_p()` |
+| Clustering | `expert_ari()`, `expert_bootstrap_stability()` |
+| Exports | `expert_exports_ui()`, `expert_export_server()` (CSV concaténé + classeur xlsx) |
+
+Modules remontés au niveau expert :
+
+| Module | Ajouts |
+|---|---|
+| `anemie` | IC Wilson/design, stratification, qualité, exports |
+| `paludisme` | IC sur LLIN/TDR, ratio LLIN/personne, strates, qualité, exports |
+| `wash` | Indicateurs JMP recodés, IC/design, strates, qualité, exports |
+| `menage` | Indicateurs binaires (femme cheffe, part alimentaire, protection), IC/design, strates, qualité, exports |
+| `mortalite` | Taux CMR/U5MR avec IC Poisson ou `svyratio`, tests quasi-Poisson, strates, qualité, exports |
+| `handicap` | Prévalences globales et par domaine, IC/design, strates, qualité, exports |
+| `uni` | IC moyenne/proportions, pondération, normalité, valeurs extrêmes, export |
+| `biv` | Tailles d'effet (V de Cramér, d de Cohen, r/ρ), tests multiples BH, export |
+| `clust` | Stabilité bootstrap (ARI), comparaison K-means/CAH/DBSCAN, qualité, export |
+| `oms` | Mode design-based, DEFF, diagnostics de codage, exports |
+
+Les modules déjà experts (`zscore`, `prevalence`, `qualite`, `rdim`,
+`secu_alim`, `iycf`, `infer`, `descoms`) sont inchangés.
+
+## Vérifications experts
+
+```bash
+Rscript tools/check_expert_modules.R   # 10 modules experts en isolation
+```
+
+Le script source l'application une fois, injecte un jeu synthétique de 120
+lignes et exécute les nouveaux onglets (IC, strates, qualité, exports).
+
+## Performances
+
+Mesures locales (R 4.5.2, 84 packages) :
+
+| Mesure | Temps |
+|---|---|
+| Chargement complet de l'app | 18,4 s |
+| UI Accueil / Z-scores | 0,05 s / 0,21 s |
+| Calcul Z-scores (500 / 2 000 lignes) | 0,05 s / 0,07 s |
+| IC Wilson, 6 indicateurs, n = 5 000 | 0,12 s |
+| IC design-based (cluster + poids), n = 5 000 | 0,68 s |
+| Tests multiples BH, 11 variables, n = 5 000 | 0,20 s |
+| Stabilité bootstrap (B = 30), n = 5 000 | 0,92 s |
+
+`Rscript tools/benchmark_expert.R` reproduit les quatre dernières lignes.
+
 ## Comment ça fonctionne
 
 ### UI
