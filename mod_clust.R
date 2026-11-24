@@ -44,7 +44,22 @@ mod_clust_ui <- function(id) {
             tabPanel("Profil des clusters",
                      plotlyOutput(ns("clust_profile"), height="380px")),
             tabPanel("Tableau des clusters",
-                     DTOutput(ns("clust_table")))
+                     DTOutput(ns("clust_table"))),
+            tabPanel("Stabilité bootstrap",
+                     uiOutput(ns("clust_stab_note")), br(),
+                     actionButton(ns("run_stability"), "🎲 Calculer la stabilité (bootstrap B = 30)",
+                                  class = "btn-info"),
+                     br(), br(),
+                     DT::DTOutput(ns("clust_stab_tbl")), br(),
+                     plotlyOutput(ns("clust_stab_plot"), height = "300px")),
+            tabPanel("Comparaison méthodes",
+                     DT::DTOutput(ns("clust_compare_tbl")), br(),
+                     uiOutput(ns("clust_compare_note"))),
+            tabPanel("Qualité",
+                     tags$div(style = "font-size:12px;color:#555;",
+                              icon("shield-halved"), " Complétude et variabilité des variables de clustering."),
+                     br(), DT::DTOutput(ns("clust_quality_tbl"))),
+            tabPanel("Export", expert_exports_ui(ns, "clust"))
           )
       )
     )
@@ -134,7 +149,7 @@ mod_clust_server <- function(id, df_f, vars_num, gpal, gprimary) {
           pca_d <- PCA(d_scaled, ncp=2, graph=FALSE)
           clust_res(list(res=res_clust, pca=pca_d,
                          d_orig=d |> select(all_of(vars)) |> drop_na(),
-                         d_scaled=d_scaled,
+                         d_scaled=d_scaled, method_input=method,
                          sil_scores=if(input$clust_auto_k && method!="dbscan")
                            tibble(k=2:min(8,nrow(d_scaled)-1), sil=sil_scores) else NULL))
           showNotification(
@@ -237,5 +252,89 @@ mod_clust_server <- function(id, df_f, vars_num, gpal, gprimary) {
         datatable(rownames=FALSE,options=list(dom="t",pageLength=15,scrollX=TRUE),
                   class="compact stripe")
     })
+
+    # ── Stabilité bootstrap ──────────────────────────────────────────────
+    clust_stab <- reactiveVal(NULL)
+    observeEvent(input$run_stability, {
+      cr <- clust_res(); req(cr)
+      withProgress(message = "Bootstrap de stabilité...", value = 0.2, {
+        st <- expert_bootstrap_stability(cr$d_scaled, cr$res$clusters,
+                                         cr$method_input %||% cr$res$method, cr$res$k,
+                                         eps = isolate(input$clust_eps) %||% 0.5, B = 30)
+        incProgress(0.7)
+        clust_stab(st)
+      })
+      if (is.null(clust_stab())) showNotification("Stabilité non calculable", type = "warning")
+      else showNotification(paste0("ARI moyen = ", round(clust_stab()$mean_ari, 3)), type = "message")
+    })
+
+    output$clust_stab_note <- renderUI({
+      tags$div(style = "font-size:12px;color:#555;background:#f8f9fa;padding:8px 12px;border-radius:6px;",
+        icon("circle-info"), " Bootstrap non paramétrique (30 rééchantillonnages) : ",
+        "ARI proche de 1 = partitions stables ; < 0,5 = clusters instables.")
+    })
+    output$clust_stab_tbl <- DT::renderDT({
+      st <- clust_stab()
+      if (is.null(st)) return(DT::datatable(data.frame(Message = "Cliquez sur « Calculer la stabilité »."),
+                                            rownames = FALSE, options = list(dom = "t")))
+      expert_dt(data.frame(
+        Mesure = c("ARI moyen", "Écart-type ARI", "Bootstrap valides", "B total"),
+        Valeur = c(round(st$mean_ari, 4), round(st$sd_ari, 4), st$B, length(st$aris))))
+    })
+    output$clust_stab_plot <- renderPlotly({
+      st <- clust_stab()
+      if (is.null(st)) return(plotly_empty() |> layout(title = list(text = "Stabilité non calculée", x = .5)))
+      df <- data.frame(B = seq_along(st$aris), ARI = st$aris)
+      p <- ggplot(df, aes(x = B, y = ARI)) +
+        geom_hline(yintercept = c(0.5, 0.75, 0.9), linetype = "dashed",
+                   color = c("#e74c3c", "#f39c12", "#27ae60"), linewidth = .5) +
+        geom_line(color = "#0077B6") + geom_point(color = "#C0392B", size = 2) +
+        scale_y_continuous(limits = c(-0.1, 1)) +
+        labs(x = "Rééchantillonnage", y = "ARI") + theme_minimal(base_size = 11)
+      ggplotly(p) |> nutri_config()
+    })
+
+    # ── Comparaison de méthodes ──────────────────────────────────────────
+    output$clust_compare_tbl <- DT::renderDT({
+      cr <- clust_res(); req(cr)
+      ds <- cr$d_scaled; k <- cr$res$k
+      methods <- c("kmeans", "hclust")
+      if (requireNamespace("dbscan", quietly = TRUE)) methods <- c(methods, "dbscan")
+      alt <- lapply(methods, function(m) list(method = m, cl = expert_recluster(ds, m, k, 0.5)))
+      cur <- cr$res$clusters
+      rows <- purrr::map_dfr(seq_along(methods), function(i) {
+        cl <- alt[[i]]$cl
+        if (is.null(cl)) return(tibble::tibble(Methode = methods[i], `ARI vs partition` = NA_real_,
+                                               `Nb clusters` = NA_integer_, `Silhouette` = NA_real_))
+        sil <- tryCatch({
+          if (length(unique(cl)) > 1) mean(cluster::silhouette(cl, dist(ds))[, 3]) else NA_real_
+        }, error = function(e) NA_real_)
+        tibble::tibble(Methode = methods[i], `ARI vs partition` = round(expert_ari(cur, cl), 3),
+                       `Nb clusters` = length(unique(cl)), `Silhouette` = round(sil, 3))
+      })
+      rows$`Méthode active` <- methods == isolate(cr$method_input %||% "kmeans")
+      expert_dt(rows)
+    })
+    output$clust_compare_note <- renderUI({
+      tags$div(style = "font-size:12px;color:#555;background:#f8f9fa;padding:8px 12px;border-radius:6px;",
+        icon("circle-info"), " K-means et CAH sont recalculés avec le même k sur les données centrées-réduites ; ",
+        "l'ARI mesure la concordance des partitions (1 = identiques).")
+    })
+
+    output$clust_quality_tbl <- DT::renderDT({
+      req(input$clust_vars)
+      expert_dt(expert_quality(df_f(), input$clust_vars))
+    })
+
+    expert_export_server(input, output, session, "clust", reactive({
+      cr <- clust_res()
+      list(`Profil clusters` = if (!is.null(cr)) {
+        d_orig <- cr$d_orig; d_orig$Cluster <- factor(cr$res$clusters)
+        d_orig |> group_by(Cluster) |>
+          summarise(N = n(), across(where(is.numeric), ~round(mean(., na.rm = TRUE), 2)), .groups = "drop")
+      } else NULL,
+      `Stabilité` = if (!is.null(clust_stab())) data.frame(ARI = clust_stab()$aris) else NULL,
+      `Qualité` = if (!is.null(input$clust_vars)) expert_quality(df_f(), input$clust_vars) else NULL)
+    }))
   })
 }

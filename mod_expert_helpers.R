@@ -343,7 +343,48 @@ expert_multi_tests <- function(d, y, x_vars) {
   rows[order(rows$`p ajusté (BH)`, rows$p), , drop = FALSE]
 }
 
-# ── 11. Statistiques numériques complètes (module Univarié) ─────────────────
+# ── 12. Clustering : ARI et stabilité bootstrap ─────────────────────────────
+expert_ari <- function(a, b) {
+  tab <- table(a, b); n <- sum(tab)
+  if (n < 2) return(NA_real_)
+  comb2 <- function(x) sum(choose(x, 2))
+  idx <- comb2(tab)
+  ra <- comb2(rowSums(tab)); rb <- comb2(colSums(tab))
+  expected <- ra * rb / choose(n, 2)
+  max_idx <- (ra + rb) / 2
+  if (isTRUE(all.equal(max_idx, expected))) return(1)
+  (idx - expected) / (max_idx - expected)
+}
+
+expert_recluster <- function(d_scaled, method, k, eps = 0.5, minPts = 5) {
+  tryCatch({
+    if (method == "kmeans") {
+      stats::kmeans(d_scaled, centers = k, nstart = 10)$cluster
+    } else if (method == "hclust") {
+      stats::cutree(stats::hclust(stats::dist(d_scaled), method = "ward.D2"), k = k)
+    } else {
+      if (!requireNamespace("dbscan", quietly = TRUE)) return(NULL)
+      dbscan::dbscan(d_scaled, eps = eps, minPts = minPts)$cluster
+    }
+  }, error = function(e) NULL)
+}
+
+expert_bootstrap_stability <- function(d_scaled, clusters, method, k, eps = 0.5,
+                                       B = 30, seed = 2026) {
+  n <- nrow(d_scaled)
+  if (n < 5 || length(clusters) != n) return(NULL)
+  set.seed(seed)
+  aris <- numeric(B)
+  for (b in seq_len(B)) {
+    idx <- sample.int(n, n, replace = TRUE)
+    cb <- expert_recluster(d_scaled[idx, , drop = FALSE], method, k, eps)
+    aris[b] <- if (is.null(cb) || length(cb) != n) NA_real_ else expert_ari(clusters[idx], cb)
+  }
+  list(mean_ari = mean(aris, na.rm = TRUE), sd_ari = stats::sd(aris, na.rm = TRUE),
+       aris = aris, B = sum(!is.na(aris)))
+}
+
+# ── 13. Statistiques numériques complètes (module Univarié) ─────────────────
 expert_num_summary <- function(x) {
   x <- suppressWarnings(as.numeric(x))
   n <- length(x); nv <- sum(!is.na(x)); xv <- x[!is.na(x)]
