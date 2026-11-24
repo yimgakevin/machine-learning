@@ -47,6 +47,8 @@ mod_uni_ui <- function(id) {
           checkboxInput(ns("uni_lbl"),"Afficher effectifs/valeurs",TRUE),
           checkboxInput(ns("uni_interactive"),"Mode ggiraph (hover+)",FALSE),
           hr(),
+          expert_design_controls_ui(ns, "uni"),
+          hr(),
           tags$div(class="section-header","📐 Statistiques complètes"),
           div(style="max-height:350px;overflow-y:auto;font-size:12px;",
               tableOutput(ns("uni_stats_tbl")))
@@ -57,6 +59,21 @@ mod_uni_ui <- function(id) {
             downloadButton(ns("uni_dl_plot"),"📥 Télécharger HD",
               style="background:linear-gradient(135deg,#0077B6,#0C4A6E);color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;")),
           uiOutput(ns("uni_plot_ui"), style="height:500px;")
+      )
+    ),
+    fluidRow(
+      box(width=12, status="info", solidHeader=TRUE, collapsible=TRUE,
+          title=tags$span(icon("chart-line"), " Statistiques expertes — IC, normalité, pondération"),
+          tabsetPanel(
+            tabPanel("Résumé & IC",
+              uiOutput(ns("uni_expert_note")), br(),
+              DT::DTOutput(ns("uni_expert_tbl"))),
+            tabPanel("Modalités & IC",
+              DT::DTOutput(ns("uni_mod_tbl"))),
+            tabPanel("Qualité",
+              DT::DTOutput(ns("uni_quality_tbl"))),
+            tabPanel("Export", expert_exports_ui(ns, "uni"))
+          )
       )
     )
   )
@@ -257,6 +274,55 @@ mod_uni_server <- function(id, df_f, vars_cat, vars_cat_pie, vars_num,
       plotlyOutput(ns("uni_plot_out"), height="500px")
     })
     output$uni_plot_out <- renderPlotly({ make_uni_plotly() })
+
+    # ── Statistiques expertes (IC, normalité, pondération) ────────────────
+    expert_design_controls_server(input, output, session, "uni", df_f)
+
+    uni_expert <- reactive({
+      d <- df_f(); v <- req(input$uni_var); da <- expert_design_args(input, "uni")
+      expert_uni_table(d, v, da$cluster, da$strata, da$weights)
+    })
+
+    output$uni_expert_note <- renderUI({
+      d <- df_f(); v <- req(input$uni_var)
+      da <- expert_design_args(input, "uni")
+      method <- if (!is.null(da$cluster) || !is.null(da$strata) || !is.null(da$weights))
+        "Plan de sondage actif (moyenne/proportions pondérées, IC design-based)" else
+        "Sans pondération (IC 95 % : moyenne t de Student, proportions Wilson)"
+      tags$div(style="font-size:12px;color:#555;background:#f8f9fa;padding:8px 12px;border-radius:6px;",
+        icon("circle-info"), " Variable : ", tags$b(v),
+        " | type : ", tags$b(if (is.numeric(d[[v]])) "numérique" else "catégorielle"),
+        " | ", method, ".")
+    })
+
+    output$uni_expert_tbl <- DT::renderDT({
+      e <- uni_expert(); d <- df_f(); v <- req(input$uni_var)
+      if (is.numeric(d[[v]])) expert_dt(e$summary) else {
+        DT::datatable(e$modalities[c("Modalite","N","Cas","Prév. (%)","IC bas (%)","IC haut (%)","DEFF","Methode")],
+                      rownames = FALSE, options = list(dom = "t", scrollX = TRUE))
+      }
+    })
+
+    output$uni_mod_tbl <- DT::renderDT({
+      d <- df_f(); v <- req(input$uni_var); e <- uni_expert()
+      if (is.numeric(d[[v]])) {
+        DT::datatable(data.frame(Message = "Variable numérique — voir l'onglet Résumé & IC."),
+                      rownames = FALSE, options = list(dom = "t"))
+      } else {
+        expert_dt(e$modalities[c("Modalite","N","Cas","Prév. (%)","IC bas (%)","IC haut (%)","DEFF","Methode")])
+      }
+    })
+
+    output$uni_quality_tbl <- DT::renderDT({
+      d <- df_f(); v <- req(input$uni_var)
+      expert_dt(expert_quality(d, v))
+    })
+
+    expert_export_server(input, output, session, "uni", reactive({
+      e <- uni_expert(); d <- df_f(); v <- input$uni_var
+      list(`Résumé` = e$summary, `Modalités IC` = e$modalities,
+           `Qualité` = if (!is.null(v)) expert_quality(d, v) else NULL)
+    }))
 
     output$uni_dl_plot <- downloadHandler(
       filename=function() paste0("graphique_",input$uni_var,"_",Sys.Date(),".png"),

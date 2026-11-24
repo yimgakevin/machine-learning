@@ -280,7 +280,45 @@ expert_quality <- function(d, vars) {
   })
 }
 
-# ── 7. Statistiques numériques complètes (module Univarié) ──────────────────
+# ── 8. Statistiques expertes univariées (avec plan de sondage) ──────────────
+expert_uni_table <- function(d, var, cluster = NULL, strata = NULL, weights = NULL) {
+  out <- list(summary = tibble::tibble(), modalities = tibble::tibble())
+  if (is.null(var) || !var %in% names(d)) return(out)
+  x <- d[[var]]
+  use_design <- !is.null(cluster) || !is.null(strata) || !is.null(weights)
+  if (is.numeric(x)) {
+    s <- expert_num_summary(x)
+    if (use_design) {
+      d2 <- as.data.frame(d); d2$.x <- suppressWarnings(as.numeric(x))
+      des <- expert_design(d2[!is.na(d2$.x), , drop = FALSE], cluster, strata, weights)
+      if (!is.null(des)) {
+        est <- tryCatch({
+          m <- survey::svymean(~.x, des, na.rm = TRUE)
+          ci <- stats::confint(m)
+          tibble::tibble(
+            Mesure = c("Moyenne pondérée", "IC95 pondéré — bas", "IC95 pondéré — haut"),
+            Valeur = c(round(as.numeric(stats::coef(m))[1], 3),
+                       round(ci[1, 1], 3), round(ci[1, 2], 3))
+          )
+        }, error = function(e) NULL)
+        if (!is.null(est)) s <- dplyr::bind_rows(s, est)
+      }
+    }
+    out$summary <- s
+    return(out)
+  }
+  xc <- as.character(x)
+  lev <- sort(unique(xc[!is.na(xc)]))
+  out$modalities <- purrr::map_dfr(lev, function(g) {
+    d2 <- as.data.frame(d); d2$.y <- as.integer(!is.na(xc) & xc == g)
+    r <- expert_prev(d2, ".y", g, cluster, strata, weights)
+    r$Modalite <- g; r
+  })
+  out$modalities$N_total <- sum(!is.na(xc))
+  out
+}
+
+# ── 9. Statistiques numériques complètes (module Univarié) ──────────────────
 expert_num_summary <- function(x) {
   x <- suppressWarnings(as.numeric(x))
   n <- length(x); nv <- sum(!is.na(x)); xv <- x[!is.na(x)]
