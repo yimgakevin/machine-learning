@@ -2,6 +2,7 @@
 
 # Archives et anciennes versions
 _archive/
+R_backup/
 
 # Documentation (pas de code R actif)
 *.md

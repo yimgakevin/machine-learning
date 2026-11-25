@@ -58,6 +58,8 @@ Imports:
     rnaturalearth,
     rnaturalearthdata,
     rmarkdown,
+    knitr,
+    kableExtra,
     officer,
     flextable,
     writexl,
