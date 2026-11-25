@@ -1,12 +1,16 @@
 # ============================================================================
-# Configuration API Sécurisée - Gemini v3 (Version Alternative)
+# Configuration API Sécurisée - Gemini v3
 # ============================================================================
-# Cette version stocke la clé directement mais avec protections d'affichage
+# La clé n'est JAMAIS codée en dur : elle est lue depuis l'environnement.
+# Définir GEMINI_API_KEY dans .Renviron (voir .Renviron.example) ou dans
+# l'environnement du serveur de déploiement.
 # ============================================================================
 
-# INITIALISER AVEC VOTRE CLÉ API (VERSION DE DÉVELOPPEMENT SÉCURISÉE)
+.gemini_api_key <- Sys.getenv("GEMINI_API_KEY", unset = "")
+
 GEMINI_CONFIG <- list(
-  api_key = "REDACTED_GEMINI_KEY",
+  api_key = .gemini_api_key,
+  api_key_configured = nzchar(.gemini_api_key),
   model = "gemini-2.5-flash",
   rate_limit = 60,
   timeout = 90,
@@ -15,7 +19,7 @@ GEMINI_CONFIG <- list(
 )
 
 # Ajouter attribut secret pour blocage automatique d'affichage
-attr(GEMINI_CONFIG$api_key, "secret") <- TRUE
+if (nzchar(GEMINI_CONFIG$api_key)) attr(GEMINI_CONFIG$api_key, "secret") <- TRUE
 
 # ============================================================================
 # Fonction utilitaire: Masquer clé dans les logs
@@ -45,16 +49,17 @@ mask_api_key <- function(text) {
 # Fonction sécurisée: Afficher config SANS exposer la clé
 # ============================================================================
 print_config_safe <- function(config = GEMINI_CONFIG) {
+  configure <- isTRUE(config$api_key_configured)
   cat("\n")
   cat("┌─────────────────────────────────────────────────┐\n")
-  cat("│  📋 Configuration API Gemini (clé masquée)      │\n")
+  cat("│  📋 Configuration API Gemini                    │\n")
   cat("├─────────────────────────────────────────────────┤\n")
   cat("│  Model:        ", config$model, "\n")
   cat("│  Rate Limit:   ", config$rate_limit, " req/min\n")
   cat("│  Timeout:      ", config$timeout, "s\n")
   cat("│  Cache:        ", ifelse(config$cache_enabled, "✅ Enabled", "❌ Disabled"), "\n")
-  cat("│  API Key:      ", "AIzaSy****", "[MASKED]\n")
-  cat("│  Status:       ✅ Ready to use\n")
+  cat("│  API Key:      ", if (configure) "****[MASKED]" else "⚠  absente (GEMINI_API_KEY)", "\n")
+  cat("│  Status:       ", if (configure) "✅ Prête" else "⚠  IA désactivée", "\n")
   cat("└─────────────────────────────────────────────────┘\n")
 }
 
@@ -70,8 +75,8 @@ call_gemini_api <- function(
 ) {
   
   # Valider config
-  if (is.null(config$api_key)) {
-    stop("❌ API Key missing from config")
+  if (is.null(config$api_key) || !nzchar(config$api_key)) {
+    stop("❌ GEMINI_API_KEY non définie. Ajoutez-la dans .Renviron (voir .Renviron.example) ou dans l'environnement du serveur.", call. = FALSE)
   }
   
   if (nchar(config$api_key) < 30) {
@@ -193,8 +198,9 @@ test_gemini_connection <- function(config = GEMINI_CONFIG) {
   # 1. Vérifier config
   cat("1️⃣  Vérification configuration... ")
   
-  if (is.null(config$api_key) || config$api_key == "") {
-    cat("❌ ÉCHOUÉ\n")
+  if (is.null(config$api_key) || !nzchar(config$api_key)) {
+    cat("❌ ÉCHOUÉ — GEMINI_API_KEY non définie\n")
+    cat("   Ajoutez la clé dans .Renviron (voir .Renviron.example)\n")
     return(FALSE)
   }
   
@@ -244,7 +250,7 @@ test_gemini_connection <- function(config = GEMINI_CONFIG) {
 # ============================================================================
 cat("\n")
 cat("╔═════════════════════════════════════════════════════════════╗\n")
-cat("║  🔐 Configuration API Gemini Chargée Avec Sécurité         ║\n")
+cat("║  🔐 Configuration API Gemini — clé lue depuis GEMINI_API_KEY ║\n")
 cat("║                                                             ║\n")
 cat("║  Utilisez:                                                 ║\n")
 cat("║    • print_config_safe() - Afficher config (clé masquée)   ║\n")
@@ -252,7 +258,11 @@ cat("║    • call_gemini_api(prompt) - Appeler l'API              ║\n")
 cat("║    • test_gemini_connection() - Tester la connexion       ║\n")
 cat("║                                                             ║\n")
 cat("║  🛡️  La clé API est MASQUÉE automatiquement en logs        ║\n")
+cat("║  ⚠️  Si absente : définir GEMINI_API_KEY dans .Renviron     ║\n")
 cat("╚═════════════════════════════════════════════════════════════╝\n\n")
+if (!isTRUE(GEMINI_CONFIG$api_key_configured)) {
+  message("⚠️  GEMINI_API_KEY absente — les agents IA sont désactivés. Voir .Renviron.example.")
+}
 
 # Export de la fonction principale pour utilisation facile
 #' Gemini API Call (Wrapper simplifié)

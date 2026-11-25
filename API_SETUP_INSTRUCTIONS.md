@@ -107,7 +107,7 @@ print(GEMINI_CONFIG$api_key)
 cat("Mon API key:", GEMINI_CONFIG$api_key)
 
 # ❌ Mettre clé en dur dans le code
-api_key <- "REDACTED_GEMINI_KEY"
+api_key <- "VOTRE_CLE_GEMINI"
 call_api(api_key)
 
 # ❌ Commiter .env

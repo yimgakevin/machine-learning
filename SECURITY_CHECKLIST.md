@@ -61,7 +61,7 @@ response <- call_gemini_api(
 
 ```r
 # Console
-test <- "Erreur avec clé REDACTED_GEMINI_KEY"
+test <- "Erreur avec clé VOTRE_CLE_GEMINI"
 masked <- mask_api_key(test)
 print(masked)
 # Doit afficher: "Erreur avec clé ****[GOOGLE_API_KEY_MASKED]****"

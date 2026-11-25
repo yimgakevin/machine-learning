@@ -8,7 +8,7 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  📄 .env                             🔴 SENSIBLE - Stocke clé API          │
-│     └─ Contient: GOOGLE_API_KEY=REDACTED_GEMINI_KEY...           │
+│     └─ Contient: GOOGLE_API_KEY=********           │
 │     └─ Local only, JAMAIS shareable                                         │
 │     └─ JAMAIS versionner dans Git                                           │
 │                                                                              │
@@ -93,7 +93,7 @@
 │  ❌ cat("API Key:", GEMINI_CONFIG$api_key)                                  │
 │     → Loggue la clé!                                                        │
 │                                                                              │
-│  ❌ api_key <- "REDACTED_GEMINI_KEY"                    │
+│  ❌ api_key <- "VOTRE_CLE_GEMINI"                    │
 │     → Hardcoder la clé dans le code source!                                │
 │                                                                              │
 │  ❌ git add .env                                                            │

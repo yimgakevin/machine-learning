@@ -1,0 +1,22 @@
+# ============================================================================
+# .Renviron.example — modèle de configuration locale
+# ============================================================================
+# Copier ce fichier en .Renviron (ignoré par git) puis renseigner les valeurs.
+# Ne JAMAIS committer .Renviron ni une clé API.
+#
+#   cp .Renviron.example .Renviron
+#
+# Sous Windows : copier le fichier, puis le renommer .Renviron
+# ============================================================================
+
+# Clé Google AI Studio (Gemini). Sans clé, les agents IA sont désactivés
+# mais le reste de l'application fonctionne normalement.
+GEMINI_API_KEY=
+
+# Environnement : development | production
+# En production, les comptes de démonstration sont refusés et
+# config/users.rds doit exister.
+NUTRI_ENV=development
+
+# Fichier utilisateurs haché, généré par tools/manage_users.R
+NUTRI_USERS_FILE=config/users.rds
