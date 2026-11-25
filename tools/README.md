@@ -9,6 +9,7 @@
 | `check_expert_modules.R` | Exécute les onglets experts des 10 modules remontés sur un jeu synthétique. |
 | `benchmark_expert.R` | Micro-benchmark des helpers experts (IC, design, qualité, tests, bootstrap). |
 | `run_tests.R` | Lance la suite `tests/testthat`. |
+| `manage_users.R` | Gère `config/users.rds` : `list`, `add`, `passwd`, `remove`. |
 | `launch_test.R` | Démarre l'app sur le port 8765, vérifie la réponse HTTP, puis l'arrête. |
 
 Tous se lancent depuis la racine du projet :

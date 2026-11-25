@@ -46,7 +46,7 @@ Un socle partagé, `mod_expert_helpers.R`, fournit les briques communes :
 | Qualité | `expert_quality()`, `expert_num_summary()`, `expert_uni_table()` |
 | Inférence | `expert_strat_test()`, `expert_effect_sizes()`, `expert_multi_tests()`, `expert_adjust_p()` |
 | Clustering | `expert_ari()`, `expert_bootstrap_stability()` |
-| Exports | `expert_exports_ui()`, `expert_export_server()` (CSV concaténé + classeur xlsx) |
+| Exports | `expert_exports_ui()`, `expert_export_server()` (CSV concaténé + classeur xlsx), `expert_mask_small()` (diffusion des petits effectifs) |
 
 Modules remontés au niveau expert :
 
@@ -142,7 +142,7 @@ doivent **jamais** être chargés globalement. Le nom `app_parts/` évite ce pi�
 ```bash
 Rscript tools/check_app.R      # setup + construction de l'UI + serveur défini
 Rscript tools/check_server.R   # exécution de server() en session mock
-Rscript tools/run_tests.R      # suite testthat (39 tests)
+Rscript tools/run_tests.R      # suite testthat (48 tests)
 Rscript tools/launch_test.R    # démarrage HTTP réel (port 8765)
 ```
 
@@ -152,8 +152,25 @@ Résultats obtenus après le découpage :
 - `CHECK_OK` : 84 packages, UI construite, serveur défini ;
 - `CHECK_SERVER_OK` : les 20 fichiers serveur se sourcent et s'enregistrent ;
 - `HTTP_OK` : l'application répond sur `http://127.0.0.1:8765/` ;
-- testthat : 0 échec (les 5 erreurs `golem-recommended` sont pré-existantes :
-  elles attendent `app_ui`/`app_server`, absents de l'application actuelle).
+- testthat : 48 tests, 0 échec ;
+- `CHECK_EXPERT_MODULES_OK` : 10 modules experts, 0 échec.
+
+La CI GitHub Actions (`.github/workflows/ci.yml`) rejoue ces vérifications sur
+Windows avec R 4.5.2 et l'environnement `renv`, et refuse toute clé `AIzaSy…`
+dans les fichiers versionnés.
+
+## Sécurité et configuration
+
+| Sujet | Mise en œuvre |
+|---|---|
+| Clé Gemini | `GEMINI_API_KEY` dans `.Renviron` ou l'environnement serveur ; jamais dans le code |
+| Modèle local | `.Renviron.example` à copier en `.Renviron` (ignoré par git) |
+| Utilisateurs | `config/users.rds` (ignoré), géré par `tools/manage_users.R` |
+| Mots de passe | hachés `sodium` (argon2), jamais en clair |
+| Production | `NUTRI_ENV=production` refuse les comptes de démonstration |
+| Petits effectifs | exports masqués par défaut : `n < 30` ou `1-4 cas` |
+
+Voir `SECURITY_GUIDE.md` pour la procédure complète et la rotation des comptes.
 
 ## Conventions pour la suite
 
