@@ -527,6 +527,46 @@ expert_design_args <- function(input, prefix) {
   list(cluster = g("cluster"), strata = g("strata"), weights = g("weights"))
 }
 
+# ── 14. Règle de diffusion des petits effectifs ─────────────────────────────
+# Masque les prévalences/taux instables ou trop détaillés dans les exports :
+#   - strate de moins de `min_n` observations ;
+#   - strate comportant 1 à `min_cases - 1` cas (suppression complémentaire).
+# Les tableaux sans colonne N ni Cas restent inchangés.
+expert_mask_small <- function(tbl, min_n = 30, min_cases = 5) {
+  if (is.null(tbl)) return(tbl)
+  d <- as.data.frame(tbl)
+  if (nrow(d) == 0) return(d)
+
+  n_col <- intersect(c("N", "N_total", "Effectif", "n"), names(d))
+  case_col <- intersect(c("Cas", "Deces", "Décès", "Décès observés", "cases"), names(d))
+  n_col <- if (length(n_col) > 0) n_col[1] else NULL
+  case_col <- if (length(case_col) > 0) case_col[1] else NULL
+  if (is.null(n_col) && is.null(case_col)) return(d)
+
+  n <- if (!is.null(n_col)) suppressWarnings(as.numeric(d[[n_col]])) else rep(NA_real_, nrow(d))
+  cases <- if (!is.null(case_col)) suppressWarnings(as.numeric(d[[case_col]])) else rep(NA_real_, nrow(d))
+
+  value_cols <- grep("(Pr[ée]v|Taux|IC|Proportion|Moyenne|M[ée]diane|Incidence)",
+                     names(d), value = TRUE)
+  value_cols <- setdiff(value_cols, c(n_col, case_col))
+
+  mask_n <- !is.na(n) & n > 0 & n < min_n
+  mask_cases <- !is.na(cases) & cases > 0 & cases < min_cases
+  mask <- mask_n | mask_cases
+
+  d$Diffusion <- "Libre"
+  both <- mask_n & mask_cases
+  d$Diffusion[mask_n & !mask_cases] <- paste0("n < ", min_n)
+  d$Diffusion[mask_cases & !mask_n] <- paste0("1-", min_cases - 1, " cas")
+  d$Diffusion[both] <- paste0("n < ", min_n, " ; 1-", min_cases - 1, " cas")
+
+  if (any(mask)) {
+    for (v in value_cols) d[[v]][mask] <- NA
+    if (!is.null(case_col) && any(mask_cases)) d[[case_col]][mask_cases] <- NA
+  }
+  d
+}
+
 # ── 11. Exports CSV / Excel mutualisés ──────────────────────────────────────
 expert_exports_ui <- function(ns, prefix) {
   shiny::tagList(
@@ -534,6 +574,11 @@ expert_exports_ui <- function(ns, prefix) {
     shiny::tags$p(style = "font-size:12px;color:#555;",
                   "CSV = concaténation de tous les tableaux (colonne Table). ",
                   "Excel = un onglet par tableau."),
+    shiny::checkboxInput(ns(paste0(prefix, "_mask_small")),
+                         "Masquer les petits effectifs (n < 30 ou 1-4 cas)", value = TRUE),
+    shiny::tags$p(style = "font-size:11px;color:#777;",
+                  "Règle de diffusion : les prévalences des strates de moins de 30 observations ",
+                  "ou comportant 1 à 4 cas sont remplacées par NA et signalées dans la colonne Diffusion."),
     shiny::downloadButton(ns(paste0(prefix, "_dl_csv")), "CSV (tous tableaux)",
                           style = "background:#0077B6;color:white;border:none;border-radius:8px;"),
     shiny::downloadButton(ns(paste0(prefix, "_dl_xlsx")), "Excel (xlsx)",
@@ -544,10 +589,17 @@ expert_exports_ui <- function(ns, prefix) {
 }
 
 expert_export_server <- function(input, output, session, prefix, tables) {
+  mask_small <- function(x) {
+    flag <- input[[paste0(prefix, "_mask_small")]]
+    if (is.null(flag)) flag <- TRUE
+    if (!isTRUE(flag)) return(x)
+    expert_mask_small(x)
+  }
   clean_tables <- function() {
     tl <- tryCatch(tables(), error = function(e) NULL)
     if (is.null(tl)) return(list())
-    tl[vapply(tl, function(x) !is.null(x) && nrow(as.data.frame(x)) > 0, logical(1))]
+    tl <- tl[vapply(tl, function(x) !is.null(x) && nrow(as.data.frame(x)) > 0, logical(1))]
+    lapply(tl, mask_small)
   }
   output[[paste0(prefix, "_dl_csv")]] <- shiny::downloadHandler(
     filename = function() paste0(prefix, "_", Sys.Date(), ".csv"),
@@ -569,9 +621,13 @@ expert_export_server <- function(input, output, session, prefix, tables) {
   )
   output[[paste0(prefix, "_export_info")]] <- shiny::renderUI({
     tl <- clean_tables()
+    flag <- input[[paste0(prefix, "_mask_small")]]
+    if (is.null(flag)) flag <- TRUE
     shiny::tags$div(style = "font-size:12px;color:#555;",
       shiny::tags$b(length(tl), " tableau(x) prêt(s) : "),
-      paste(names(tl), collapse = ", "))
+      paste(names(tl), collapse = ", "),
+      shiny::tags$br(),
+      "Règle petits effectifs : ", shiny::tags$b(if (isTRUE(flag)) "activée" else "désactivée"))
   })
 }
 
