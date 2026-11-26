@@ -10,7 +10,7 @@ errors <- 0
 cat("1️⃣  Vérification des 'if' sur input (NULL check)...\n")
 
 app_content <- readLines("app_v2_final.R")
-problem_lines <- grep('if\s*\(input\$.*\s*[!=<>]', app_content, value = TRUE)
+problem_lines <- grep('if\\s*\\(input\\$.*\\s*[!=<>]', app_content, value = TRUE)
 problem_lines <- problem_lines[!grepl("!is.null", problem_lines)]
 problem_lines <- problem_lines[!grepl("length(", problem_lines)]
 
@@ -28,7 +28,7 @@ if (length(problem_lines) > 0) {
 cat("\n2️⃣  Vérification carto_country_selector.R...\n")
 
 carto_content <- readLines("carto_country_selector.R")
-carto_problems <- grep('if\s*\(input\$', carto_content, value = TRUE)
+carto_problems <- grep('if\\s*\\(input\\$', carto_content, value = TRUE)
 carto_problems <- carto_problems[!grepl("!is.null", carto_problems)]
 carto_problems <- carto_problems[!grepl("length(", carto_problems)]
 

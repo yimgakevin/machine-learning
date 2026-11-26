@@ -3,6 +3,7 @@
 # Archives et anciennes versions
 _archive/
 R_backup/
+app_v2_final_*.R
 
 # Documentation (pas de code R actif)
 *.md
