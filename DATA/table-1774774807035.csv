@@ -1,0 +1,5 @@
+﻿Fichier,Taille,Description
+`SMART_SENS_Global_Final_2024.csv`,2.2 MB,"Dataset complet avec 5,000 enregistrements"
+`SMART_SENS_Country_Summary_2024.csv`,2.4 KB,Agrégations par pays (15 lignes)
+`SMART_SENS_Metadata.json`,2.5 KB,Dictionnaire des variables
+`Documentation_Shiny_SMART_SENS.md`,5.7 KB,Guide technique complet

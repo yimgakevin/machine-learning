@@ -1,0 +1,216 @@
+NOTE (novembre 2026) : document historique. La configuration actuelle utilise
+GEMINI_API_KEY dans .Renviron. Voir SECURITY_GUIDE.md.
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                    🔐 RÉSUMÉ SÉCURITÉ API GEMINI 🔐                        ║
+║                          Configuration Complétée                            ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ✅ ÉTAPE 1: FICHIERS CRÉÉS AVEC SÉCURITÉ                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  📄 .Renviron                             🔴 SENSIBLE - Stocke clé API          │
+│     └─ Contient: GEMINI_API_KEY=********           │
+│     └─ Local only, JAMAIS shareable                                         │
+│     └─ JAMAIS versionner dans Git                                           │
+│                                                                              │
+│  📄 .gitignore                       🟢 PUBLIC - Exclut .Renviron               │
+│     └─ Contient: .Renviron (+ autres fichiers sensibles)                        │
+│     └─ Prévient commits accidentels                                         │
+│     └─ Safe à partager                                                      │
+│                                                                              │
+│  📄 config_api_secure_v2.R           🟢 PUBLIC - Charge config             │
+│     └─ Fonctions: gemini(), call_gemini_api(), print_config_safe()        │
+│     └─ Masque clé automatiquement                                           │
+│     └─ Safe à partager                                                      │
+│                                                                              │
+│  📄 SECURITY_GUIDE.md                🟢 PUBLIC - Guide complet             │
+│  📄 API_SETUP_INSTRUCTIONS.md        🟢 PUBLIC - Mode d'emploi            │
+│  📄 SECURITY_SUMMARY.txt             🟢 PUBLIC - Résumé visuel            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ✅ ÉTAPE 2: PROTECTIONS ACTIVÉES                                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  🛡️  PROTECTION 1: Fichier .Renviron (Local, Git-Ignored)                       │
+│     ├─ Clé stockée EN CLAIR dans .Renviron (local machine seulement)            │
+│     ├─ .Renviron dans .gitignore → impossible de commiter                       │
+│     ├─ Fichier JAMAIS shareable par email/chat/etc                         │
+│     └─ Chaque dev a son propre .Renviron avec sa clé                            │
+│                                                                              │
+│  🛡️  PROTECTION 2: Masquage Automatique en Logs                            │
+│     ├─ print_config_safe() → Affiche: ****[MASKED]                   │
+│     ├─ call_gemini_api() → Clé JAMAIS dans erreurs                         │
+│     ├─ mask_api_key() → Remplace toute clé par ****MASKED****              │
+│     └─ Logs/console JAMAIS exposent la clé                                 │
+│                                                                              │
+│  🛡️  PROTECTION 3: Wrapper Sécurisé                                         │
+│     ├─ gemini(prompt) → API call simple et sûre                            │
+│     ├─ call_gemini_api() → API call avancée avec protections               │
+│     └─ Fonctions JAMAIS exposent la clé en résultat                        │
+│                                                                              │
+│  🛡️  PROTECTION 4: Validation & Tests                                      │
+│     ├─ test_gemini_connection() → Valide config avant usage                │
+│     ├─ Détecte clé manquante/invalide                                      │
+│     ├─ Vérifie packages requis (httr, jsonlite)                            │
+│     └─ Test d'appel réel pour confirmer connexion                          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ✅ ÉTAPE 3: UTILISATION SIMPLE                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Dans votre code (app_v2_final.R, etc):                                    │
+│                                                                              │
+│  ────────────────────────────────────────────────────────────────────────  │
+│  # Charger config au démarrage                                              │
+│  source("config_api_secure_v2.R")                                           │
+│                                                                              │
+│  # OPTION 1: Appel simple                                                   │
+│  response <- gemini("Explique l'IA en 50 mots")                            │
+│                                                                              │
+│  # OPTION 2: Appel avancé                                                   │
+│  response <- call_gemini_api(                                               │
+│    prompt = "Votre question ici",                                          │
+│    max_tokens = 2048,                                                       │
+│    temperature = 0.7                                                        │
+│  )                                                                           │
+│                                                                              │
+│  # Afficher config (clé masquée)                                            │
+│  print_config_safe()                                                        │
+│  ────────────────────────────────────────────────────────────────────────  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ⚠️  CHOSES INTERDITES (JAMAIS FAIRE!)                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ❌ print(GEMINI_CONFIG$api_key)                                            │
+│     → Affiche la clé en clair dans la console!                             │
+│                                                                              │
+│  ❌ cat("API Key:", GEMINI_CONFIG$api_key)                                  │
+│     → Loggue la clé!                                                        │
+│                                                                              │
+│  ❌ api_key <- "VOTRE_CLE_GEMINI"                    │
+│     → Hardcoder la clé dans le code source!                                │
+│                                                                              │
+│  ❌ git add .Renviron                                                            │
+│     → Versionner le fichier sensible!                                       │
+│                                                                              │
+│  ❌ Email: Partager .Renviron avec quelqu'un                                     │
+│  ❌ Slack: Partager clé API en message                                      │
+│  ❌ GitHub: Pusher .Renviron par accident                                        │
+│     → Exposer la clé à des tiers!                                          │
+│                                                                              │
+│  ❌ Laisser console logs avec clé API visible                               │
+│     → Quelqu'un d'autre pourrait voir l'historique!                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ✅ VÉRIFICATIONS AVANT DE COMMENCER                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  À faire maintenant:                                                        │
+│                                                                              │
+│  1️⃣  Vérifier fichiers existent:                                            │
+│      □ .Renviron (contient votre clé)                                            │
+│      □ .gitignore (contient .Renviron)                                           │
+│      □ config_api_secure_v2.R (contient les fonctions)                      │
+│                                                                              │
+│  2️⃣  Charger et tester config:                                              │
+│      □ source("config_api_secure_v2.R")                                     │
+│      □ print_config_safe()  # Doit afficher ****[MASKED]             │
+│      □ test_gemini_connection()  # Doit retourner ✅ OK                     │
+│                                                                              │
+│  3️⃣  Vérifier Git ignore:                                                   │
+│      □ git check-ignore -v .Renviron                                             │
+│        Output: .Renviron  .gitignore  ✅                                         │
+│                                                                              │
+│  4️⃣  Jamais commiter .Renviron:                                                 │
+│      □ git status (vérifier .Renviron n'est PAS listé)                           │
+│      □ git add . (ajouter tout SAUF .Renviron)                                   │
+│      □ git commit  (commit sans .Renviron)                                       │
+│      □ git push    (push sans .Renviron)                                         │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🆘 EN CAS DE COMPROMISSION DE CLÉ                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Si clé accidentellement exposée (versionné, sharée, etc):                 │
+│                                                                              │
+│  1. IMMÉDIATEMENT:                                                          │
+│     → Aller sur https://aistudio.google.com/                               │
+│     → Révoquer la clé compromise                                            │
+│                                                                              │
+│  2. Générer nouvelle clé                                                    │
+│     → Google AI Studio créera une nouvelle clé                              │
+│     → Copier la nouvelle clé                                                │
+│                                                                              │
+│  3. Mettre à jour .Renviron                                                      │
+│     → Ouvrir .Renviron                                                           │
+│     → Remplacer ancienne clé par nouvelle:                                 │
+│        GEMINI_API_KEY=AIzaSy[NOUVELLE_CLÉ_ICI]                              │
+│     → Sauvegarder                                                           │
+│                                                                              │
+│  4. Tester connexion:                                                       │
+│     → test_gemini_connection()                                              │
+│     → Doit retourner ✅ OK avec nouvelle clé                                │
+│                                                                              │
+│  5. Audit historique:                                                       │
+│     → Chercher clé expose dans historique Git:                              │
+│        git log -p | grep AIzaSy                                             │
+│     → Chercher clé dans logs d'erreurs passés:                              │
+│        grep -r "AIzaSy" .Rhistory                                           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 📚 DOCUMENTATION COMPLÈTE                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Pour comprendre chaque aspect de la sécurité:                             │
+│                                                                              │
+│  📖 SECURITY_GUIDE.md                                                       │
+│     → Guide complet sécurité (8 sections, 200+ lignes)                      │
+│     → Explique chaque protection en détail                                  │
+│     → Contient checklist, FAQ, troubleshooting                              │
+│                                                                              │
+│  📖 API_SETUP_INSTRUCTIONS.md                                               │
+│     → Mode d'emploi pratique (10 sections, 300+ lignes)                     │
+│     → Exemples de code, workflows, bonnes pratiques                         │
+│     → Problèmes courants et solutions                                       │
+│                                                                              │
+│  📖 config_api_secure_v2.R                                                  │
+│     → Code source annoté avec commentaires                                  │
+│     → Comprendre comment clé est protégée en détail                         │
+│     → Fonctions documentées avec @examples                                  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                         ✅ PRÊT À UTILISER!                              ║
+║                                                                           ║
+║  Votre clé API est sécurisée avec 4 couches de protection.              ║
+║  Vous pouvez commencer à développer les modules IA avec confiance.      ║
+║                                                                           ║
+║  Prochain : context_manager_v3.R pour agents intelligents               ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+Fichiers created: 3
+├─ .Renviron (configuration sensible)
+├─ .gitignore (protection Git)
+├─ config_api_secure_v2.R (module sécurisé)
+├─ SECURITY_GUIDE.md (documentation)
+├─ API_SETUP_INSTRUCTIONS.md (guide pratique)
+└─ SECURITY_SUMMARY.txt (résumé visuel)
+
+Status: ✅ PRODUCTION READY
+Date: March 25, 2026

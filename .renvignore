@@ -1,0 +1,35 @@
+# Fichiers exclus du scan renv (pour accélérer la détection des dépendances)
+
+# Archives et anciennes versions
+_archive/
+R_backup/
+
+# Documentation (pas de code R actif)
+*.md
+*.txt
+*.bat
+
+# Scripts utilitaires non-sourcés par l'app
+setup_renv.R
+
+# Dossiers générés automatiquement
+gadm_cache/
+renv/
+
+# Scripts de test et diagnostics
+scratch/
+
+# Données et exports générés
+data/
+data_*/
+*.csv
+*.xlsx
+*.xls
+*.rds
+*.rda
+*.log
+*.html
+*.pdf
+*.docx
+site/
+docs/
