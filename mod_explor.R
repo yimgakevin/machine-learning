@@ -5,6 +5,162 @@
 # manip_reset, adv_result, adv_data_r) ont été retirés : aucun widget
 # correspondant n'existe dans l'interface, ils étaient donc inatteignables.
 
+# ── Statistiques numériques complètes ────────────────────────────────────────
+# Fonction pure, testable : retourne un tibble Mesure / Valeur.
+explor_numeric_stats <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  v <- x[!is.na(x)]
+  n <- length(v)
+  n_total <- length(x)
+
+  fmt <- function(z, digits = 4) {
+    if (length(z) == 0 || is.null(z) || !is.finite(z)) return("N/A")
+    formatC(z, format = "f", digits = digits)
+  }
+  fmt_p <- function(p) {
+    if (is.null(p) || length(p) == 0 || is.na(p)) return("N/A")
+    format.pval(p, digits = 4, eps = 0.0001)
+  }
+
+  if (n == 0) {
+    return(tibble::tibble(
+      Mesure = c("── DONNÉES ──", "N valides", "N manquants", "% manquants"),
+      Valeur = c("", "0", as.character(n_total),
+                 if (n_total > 0) "100" else "N/A")
+    ))
+  }
+
+  mean_v   <- mean(v)
+  median_v <- median(v)
+  mode_v   <- NA_real_
+  if (length(v) > 1) {
+    u <- unique(v)
+    if (length(u) < length(v)) {
+      idx <- tabulate(match(v, u))
+      if (max(idx) > 1) mode_v <- u[which.max(idx)]
+    }
+  }
+  geo_v    <- if (all(v > 0)) exp(mean(log(v))) else NA_real_
+  harm_v   <- if (all(v != 0)) length(v) / sum(1 / v) else NA_real_
+  sd_v     <- if (n > 1) stats::sd(v) else NA_real_
+  var_v    <- if (n > 1) stats::var(v) else NA_real_
+  cv_v     <- if (!is.na(sd_v) && is.finite(mean_v) && mean_v != 0) {
+    sd_v / abs(mean_v) * 100
+  } else {
+    NA_real_
+  }
+  iqr_v    <- if (n > 1) stats::IQR(v) else NA_real_
+  range_v  <- if (n > 1) diff(range(v)) else NA_real_
+  mad_v    <- if (n > 1) mean(abs(v - mean_v)) else NA_real_
+
+  qs <- if (n > 1) {
+    stats::quantile(v, probs = c(.05, .10, .25, .50, .75, .90, .95),
+                    na.rm = TRUE, names = FALSE)
+  } else {
+    rep(NA_real_, 7)
+  }
+
+  skew_v <- if (n > 2 && requireNamespace("e1071", quietly = TRUE)) {
+    e1071::skewness(v)
+  } else {
+    NA_real_
+  }
+  kurt_v <- if (n > 3 && requireNamespace("e1071", quietly = TRUE)) {
+    e1071::kurtosis(v)
+  } else {
+    NA_real_
+  }
+
+  sw <- if (n >= 3 && n <= 5000) {
+    tryCatch(stats::shapiro.test(v), error = function(e) NULL)
+  } else {
+    NULL
+  }
+  jb_p <- if (n > 3) {
+    m3 <- mean((v - mean_v)^3)
+    m4 <- mean((v - mean_v)^4)
+    s  <- m3 / (sd_v^3)
+    k  <- m4 / (sd_v^4) - 3
+    stats::pchisq(n * (s^2 / 6 + k^2 / 24), df = 2, lower.tail = FALSE)
+  } else {
+    NA_real_
+  }
+
+  ci_lo <- ci_hi <- NA_real_
+  if (n > 1) {
+    se <- sd_v / sqrt(n)
+    tcrit <- stats::qt(0.975, df = n - 1)
+    ci_lo <- mean_v - tcrit * se
+    ci_hi <- mean_v + tcrit * se
+  }
+
+  tibble::tibble(
+    Mesure = c(
+      "── TENDANCE CENTRALE ──", "Moyenne (μ)", "Médiane", "Mode",
+      "Moyenne géométrique", "Moyenne harmonique",
+      "── DISPERSION ──", "Écart-type (σ)", "Variance (σ²)", "CV (%)",
+      "IQR", "Étendue", "Écart absolu moyen",
+      "── POSITION ──", "Min", "Q1 (25%)", "Q2 (50%)", "Q3 (75%)", "Max",
+      "P5", "P10", "P90", "P95",
+      "── FORME ──", "Asymétrie (Skewness)", "Kurtosis", "Kurtosis excès",
+      "── NORMALITÉ ──", "Shapiro-Wilk W", "Shapiro-Wilk p",
+      "Jarque-Bera p", "Distribution",
+      "── INTERVALLE DE CONFIANCE ──", "IC 95% moyenne inf",
+      "IC 95% moyenne sup",
+      "── DONNÉES ──", "N valides", "N manquants", "% manquants"
+    ),
+    Valeur = c(
+      "", fmt(mean_v), fmt(median_v), fmt(mode_v),
+      fmt(geo_v), fmt(harm_v),
+      "", fmt(sd_v), fmt(var_v), fmt(cv_v),
+      fmt(iqr_v), fmt(range_v), fmt(mad_v),
+      "", fmt(min(v)), fmt(qs[3]), fmt(qs[4]), fmt(qs[5]), fmt(max(v)),
+      fmt(qs[1]), fmt(qs[2]), fmt(qs[6]), fmt(qs[7]),
+      "", fmt(skew_v), fmt(kurt_v + 3), fmt(kurt_v),
+      "", if (!is.null(sw)) fmt(unname(sw$statistic)) else "N/A",
+      if (!is.null(sw)) fmt_p(sw$p.value) else "N/A",
+      fmt_p(jb_p),
+      if (!is.null(sw)) {
+        if (sw$p.value < .05) "❌ Non normale (p<0.05)" else "✅ Normale (p≥0.05)"
+      } else {
+        "N/A"
+      },
+      "", fmt(ci_lo), fmt(ci_hi),
+      "", as.character(n), as.character(n_total - n),
+      formatC((n_total - n) / n_total * 100, format = "f", digits = 1)
+    )
+  )
+}
+
+# ── Statistiques catégorielles avec IC Wilson ───────────────────────────────
+explor_categorical_stats <- function(x) {
+  x_chr <- as.character(x)
+  valid <- !is.na(x_chr) & nzchar(trimws(x_chr))
+  n <- sum(valid)
+  if (n == 0) {
+    return(tibble::tibble(
+      Modalité = character(), N = integer(), `%` = numeric(),
+      `% cumulé` = numeric(), `IC 95% inf` = numeric(),
+      `IC 95% sup` = numeric()
+    ))
+  }
+
+  tab <- table(x_chr[valid], useNA = "no")
+  cnt <- tibble::tibble(
+    Modalité = names(tab),
+    N = as.integer(tab)
+  ) |>
+    dplyr::mutate(
+      `%` = round(N / sum(N) * 100, 1),
+      `% cumulé` = round(cumsum(N) / sum(N) * 100, 1)
+    )
+
+  ic <- binom::binom.confint(cnt$N, sum(cnt$N), methods = "wilson")
+  cnt$`IC 95% inf` <- round(ic$lower * 100, 1)
+  cnt$`IC 95% sup` <- round(ic$upper * 100, 1)
+  cnt
+}
+
 mod_explor_ui <- function(id) {
   ns <- shiny::NS(id)
 
@@ -39,7 +195,7 @@ mod_explor_ui <- function(id) {
         ),
         fluidRow(
           box(width=4, status="info", solidHeader=TRUE,
-              title=icon("calculator"), " Statistiques complètes",
+              title=icon("calculator"), " Statistiques complètes · IC 95%",
               selectInput(ns("explor_var"),"Variable :",choices=NULL,width="100%"),
               div(style="max-height:400px;overflow-y:auto;",
                   tableOutput(ns("explor_stats")))
@@ -79,49 +235,12 @@ mod_explor_server <- function(id, df_f, vars_cat, vars_num,
   })
 
   output$explor_stats <- renderTable({
-    req(input$explor_var); x <- df_f()[[input$explor_var]]
+    req(input$explor_var)
+    x <- df_f()[[input$explor_var]]
     if (is.numeric(x)) {
-      v <- na.omit(x)
-      sw <- tryCatch(shapiro.test(v[1:min(5000,length(v))]), error=function(e) NULL)
-      jb_p <- tryCatch({
-        n <- length(v); m3 <- mean((v-mean(v))^3); m4 <- mean((v-mean(v))^4)
-        s <- m3/(sd(v)^3); k <- m4/(sd(v)^4)-3
-        jb_stat <- n*(s^2/6 + k^2/24)
-        round(pchisq(jb_stat, df=2, lower.tail=FALSE), 4)
-      }, error=function(e) NA)
-      tibble(
-        Mesure = c(
-          "── TENDANCE CENTRALE ──","Moyenne (μ)","Médiane","Mode","Moyenne géométrique","Moyenne harmonique",
-          "── DISPERSION ──","Écart-type (σ)","Variance (σ²)","CV (%)","IQR","Étendue","Écart absolu moyen",
-          "── POSITION ──","Min","Q1 (25%)","Q2 (50%)","Q3 (75%)","Max","P5","P10","P90","P95",
-          "── FORME ──","Asymétrie (Skewness)","Aplatissement (Kurtosis)","Kurtosis excès",
-          "── NORMALITÉ ──","Shapiro-Wilk W","Shapiro-Wilk p","Jarque-Bera p","Distribution",
-          "── DONNÉES ──","N valides","N manquants","% manquants"
-        ),
-        Valeur = c(
-          "","round(mean(v),4)","round(median(v),4)",
-          as.character(round(as.numeric(e1071::moment(v,order=1,center=FALSE)),4)),
-          round(exp(mean(log(v[v>0]))),4),
-          round(length(v)/sum(1/v[v!=0]),4),
-          "",round(sd(v),4),round(var(v),4),round(sd(v)/mean(v)*100,2),
-          round(IQR(v),4),round(diff(range(v)),4),round(mean(abs(v-mean(v))),4),
-          "",round(min(v),4),round(quantile(v,.25),4),round(median(v),4),
-          round(quantile(v,.75),4),round(max(v),4),
-          round(quantile(v,.05),4),round(quantile(v,.10),4),
-          round(quantile(v,.90),4),round(quantile(v,.95),4),
-          "",round(e1071::skewness(v),4),round(e1071::kurtosis(v)+3,4),round(e1071::kurtosis(v),4),
-          "",if(!is.null(sw))round(sw$statistic,4) else "N/A",
-          if(!is.null(sw))round(sw$p.value,4) else "N/A",
-          if(!is.na(jb_p))jb_p else "N/A",
-          if(!is.null(sw)) if(sw$p.value<.05)"❌ Non normale (p<0.05)" else "✅ Normale (p≥0.05)" else "N/A",
-          "",length(v),sum(is.na(x)),round(mean(is.na(x))*100,1)
-        )
-      ) |> filter(Mesure != "" | Valeur != "")
+      explor_numeric_stats(x)
     } else {
-      cnt <- df_f() |> count(.data[[input$explor_var]]) |>
-        mutate(Pct=round(n/sum(n)*100,1), Cum=cumsum(Pct))
-      tibble(Modalité=as.character(cnt[[input$explor_var]]),
-             N=cnt$n, `%`=cnt$Pct, `% cumulé`=cnt$Cum)
+      explor_categorical_stats(x)
     }
   }, striped=TRUE, hover=TRUE, bordered=TRUE, spacing="xs")
 

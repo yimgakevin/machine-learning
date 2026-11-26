@@ -63,6 +63,10 @@ Modules remontés au niveau expert :
 | `clust` | Stabilité bootstrap (ARI), comparaison K-means/CAH/DBSCAN, qualité, export |
 | `oms` | Mode design-based, DEFF, diagnostics de codage, exports |
 
+`mod_explor.R` complète ce socle : statistiques numériques corrigées
+(moyenne et IC 95%, médiane, mode, dispersion, normalité) et statistiques
+catégorielles avec IC Wilson par modalité, dans des fonctions pures testées.
+
 Les modules déjà experts (`zscore`, `prevalence`, `qualite`, `rdim`,
 `secu_alim`, `iycf`, `infer`, `descoms`) sont inchangés.
 
@@ -142,7 +146,7 @@ doivent **jamais** être chargés globalement. Le nom `app_parts/` évite ce pi�
 ```bash
 Rscript tools/check_app.R      # setup + construction de l'UI + serveur défini
 Rscript tools/check_server.R   # exécution de server() en session mock
-Rscript tools/run_tests.R      # suite testthat (48 tests)
+Rscript tools/run_tests.R      # suite testthat (55 tests)
 Rscript tools/launch_test.R    # démarrage HTTP réel (port 8765)
 ```
 
@@ -152,7 +156,7 @@ Résultats obtenus après le découpage :
 - `CHECK_OK` : 84 packages, UI construite, serveur défini ;
 - `CHECK_SERVER_OK` : les 20 fichiers serveur se sourcent et s'enregistrent ;
 - `HTTP_OK` : l'application répond sur `http://127.0.0.1:8765/` ;
-- testthat : 48 tests, 0 échec ;
+- testthat : 55 tests, 0 échec ;
 - `CHECK_EXPERT_MODULES_OK` : 10 modules experts, 0 échec.
 
 La CI GitHub Actions (`.github/workflows/ci.yml`) rejoue ces vérifications sur
