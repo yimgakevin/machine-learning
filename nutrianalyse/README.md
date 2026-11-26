@@ -318,9 +318,10 @@ Le module `mod_predictif.R` entraîne et compare plusieurs familles de modèles 
 
 Évaluation et interprétation :
 
-- **ROC/AUC** avec intervalle de confiance ;
-- **matrice de confusion**, sensibilité, spécificité, valeurs prédictives ;
-- **calibration** et **lift** ;
+- **ROC/AUC** avec intervalle de confiance et **PR-AUC** ;
+- **matrice de confusion**, sensibilité, spécificité, valeurs prédictives,
+  **accuracy**, **Kappa**, **F1**, **MCC** ;
+- **Brier score**, **log-loss**, **calibration** et courbes **gain/lift** ;
 - **importance** des variables, **PDP** (partial dependence) et **permutation
   importance** ;
 - **courbe d'apprentissage** et optimisation du **seuil de décision** ;
@@ -405,7 +406,7 @@ l'UI et découpe le serveur en fichiers spécialisés. Le monolithe initial de
 | `app_v2_final.R` | 15 754 lignes | 49 lignes |
 | UI | un bloc `dashboardPage` de ~3 030 lignes | coquille + 23 modules namespacés + onglets experts |
 | Serveur | une fonction de ~11 750 lignes | 20 fichiers `app_parts/server/` + modules |
-| Onglets UI inline | 23 | 0 (tous convertis en modules) |
+| Onglets de la v2 initiale | 23 onglets inline | 23 modules namespacés |
 
 Le découpage est **mécanique** : chaque fichier contient une tranche exacte de
 l'ancien monolithe, ce qui garantit un comportement identique. La CI vérifie le
@@ -591,7 +592,7 @@ Connect** ou un conteneur R maîtrisé. Recommandations :
 - définir `NUTRI_ENV=production` et `GEMINI_API_KEY` dans l'environnement du
   serveur, jamais dans l'image ni dans le dépôt ;
 - monter `config/users.rds` sur un volume persistant accessible en lecture ;
-- prévoir un volume pour le cache GADM (`.gadm_cache/`) et, si utilisé, le cache
+- prévoir un volume pour le cache GADM (`gadm_cache/`) et, si utilisé, le cache
   Gemini (`.gemini_cache/`) ;
 - servir l'application derrière un reverse proxy HTTPS ;
 - dimensionner la mémoire selon la taille des fichiers importés ;
