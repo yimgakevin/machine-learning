@@ -1,3 +1,6 @@
+NOTE (novembre 2026) : document historique. La configuration actuelle utilise
+GEMINI_API_KEY dans .Renviron. Voir SECURITY_GUIDE.md.
+
 ╔═══════════════════════════════════════════════════════════════════════════╗
 ║                    🔐 RÉSUMÉ SÉCURITÉ API GEMINI 🔐                        ║
 ║                          Configuration Complétée                            ║
@@ -7,13 +10,13 @@
 │ ✅ ÉTAPE 1: FICHIERS CRÉÉS AVEC SÉCURITÉ                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  📄 .env                             🔴 SENSIBLE - Stocke clé API          │
-│     └─ Contient: GOOGLE_API_KEY=********           │
+│  📄 .Renviron                             🔴 SENSIBLE - Stocke clé API          │
+│     └─ Contient: GEMINI_API_KEY=********           │
 │     └─ Local only, JAMAIS shareable                                         │
 │     └─ JAMAIS versionner dans Git                                           │
 │                                                                              │
-│  📄 .gitignore                       🟢 PUBLIC - Exclut .env               │
-│     └─ Contient: .env (+ autres fichiers sensibles)                        │
+│  📄 .gitignore                       🟢 PUBLIC - Exclut .Renviron               │
+│     └─ Contient: .Renviron (+ autres fichiers sensibles)                        │
 │     └─ Prévient commits accidentels                                         │
 │     └─ Safe à partager                                                      │
 │                                                                              │
@@ -32,14 +35,14 @@
 │ ✅ ÉTAPE 2: PROTECTIONS ACTIVÉES                                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  🛡️  PROTECTION 1: Fichier .env (Local, Git-Ignored)                       │
-│     ├─ Clé stockée EN CLAIR dans .env (local machine seulement)            │
-│     ├─ .env dans .gitignore → impossible de commiter                       │
+│  🛡️  PROTECTION 1: Fichier .Renviron (Local, Git-Ignored)                       │
+│     ├─ Clé stockée EN CLAIR dans .Renviron (local machine seulement)            │
+│     ├─ .Renviron dans .gitignore → impossible de commiter                       │
 │     ├─ Fichier JAMAIS shareable par email/chat/etc                         │
-│     └─ Chaque dev a son propre .env avec sa clé                            │
+│     └─ Chaque dev a son propre .Renviron avec sa clé                            │
 │                                                                              │
 │  🛡️  PROTECTION 2: Masquage Automatique en Logs                            │
-│     ├─ print_config_safe() → Affiche: AIzaSy****[MASKED]                   │
+│     ├─ print_config_safe() → Affiche: ****[MASKED]                   │
 │     ├─ call_gemini_api() → Clé JAMAIS dans erreurs                         │
 │     ├─ mask_api_key() → Remplace toute clé par ****MASKED****              │
 │     └─ Logs/console JAMAIS exposent la clé                                 │
@@ -96,12 +99,12 @@
 │  ❌ api_key <- "VOTRE_CLE_GEMINI"                    │
 │     → Hardcoder la clé dans le code source!                                │
 │                                                                              │
-│  ❌ git add .env                                                            │
+│  ❌ git add .Renviron                                                            │
 │     → Versionner le fichier sensible!                                       │
 │                                                                              │
-│  ❌ Email: Partager .env avec quelqu'un                                     │
+│  ❌ Email: Partager .Renviron avec quelqu'un                                     │
 │  ❌ Slack: Partager clé API en message                                      │
-│  ❌ GitHub: Pusher .env par accident                                        │
+│  ❌ GitHub: Pusher .Renviron par accident                                        │
 │     → Exposer la clé à des tiers!                                          │
 │                                                                              │
 │  ❌ Laisser console logs avec clé API visible                               │
@@ -116,24 +119,24 @@
 │  À faire maintenant:                                                        │
 │                                                                              │
 │  1️⃣  Vérifier fichiers existent:                                            │
-│      □ .env (contient votre clé)                                            │
-│      □ .gitignore (contient .env)                                           │
+│      □ .Renviron (contient votre clé)                                            │
+│      □ .gitignore (contient .Renviron)                                           │
 │      □ config_api_secure_v2.R (contient les fonctions)                      │
 │                                                                              │
 │  2️⃣  Charger et tester config:                                              │
 │      □ source("config_api_secure_v2.R")                                     │
-│      □ print_config_safe()  # Doit afficher AIzaSy****[MASKED]             │
+│      □ print_config_safe()  # Doit afficher ****[MASKED]             │
 │      □ test_gemini_connection()  # Doit retourner ✅ OK                     │
 │                                                                              │
 │  3️⃣  Vérifier Git ignore:                                                   │
-│      □ git check-ignore -v .env                                             │
-│        Output: .env  .gitignore  ✅                                         │
+│      □ git check-ignore -v .Renviron                                             │
+│        Output: .Renviron  .gitignore  ✅                                         │
 │                                                                              │
-│  4️⃣  Jamais commiter .env:                                                 │
-│      □ git status (vérifier .env n'est PAS listé)                           │
-│      □ git add . (ajouter tout SAUF .env)                                   │
-│      □ git commit  (commit sans .env)                                       │
-│      □ git push    (push sans .env)                                         │
+│  4️⃣  Jamais commiter .Renviron:                                                 │
+│      □ git status (vérifier .Renviron n'est PAS listé)                           │
+│      □ git add . (ajouter tout SAUF .Renviron)                                   │
+│      □ git commit  (commit sans .Renviron)                                       │
+│      □ git push    (push sans .Renviron)                                         │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -151,10 +154,10 @@
 │     → Google AI Studio créera une nouvelle clé                              │
 │     → Copier la nouvelle clé                                                │
 │                                                                              │
-│  3. Mettre à jour .env                                                      │
-│     → Ouvrir .env                                                           │
+│  3. Mettre à jour .Renviron                                                      │
+│     → Ouvrir .Renviron                                                           │
 │     → Remplacer ancienne clé par nouvelle:                                 │
-│        GOOGLE_API_KEY=AIzaSy[NOUVELLE_CLÉ_ICI]                              │
+│        GEMINI_API_KEY=AIzaSy[NOUVELLE_CLÉ_ICI]                              │
 │     → Sauvegarder                                                           │
 │                                                                              │
 │  4. Tester connexion:                                                       │
@@ -202,7 +205,7 @@
 ╚═══════════════════════════════════════════════════════════════════════════╝
 
 Fichiers created: 3
-├─ .env (configuration sensible)
+├─ .Renviron (configuration sensible)
 ├─ .gitignore (protection Git)
 ├─ config_api_secure_v2.R (module sécurisé)
 ├─ SECURITY_GUIDE.md (documentation)

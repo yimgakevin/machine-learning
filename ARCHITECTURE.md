@@ -168,7 +168,7 @@ dans les fichiers versionnés.
 | Utilisateurs | `config/users.rds` (ignoré), géré par `tools/manage_users.R` |
 | Mots de passe | hachés `sodium` (argon2), jamais en clair |
 | Production | `NUTRI_ENV=production` refuse les comptes de démonstration |
-| Petits effectifs | exports masqués par défaut : `n < 30` ou `1-4 cas` |
+| Petits effectifs | exports experts (case activée), Prévalences SMART, IYCF, rapport Word et résumé Z-scores : `n < 30` ou `1-4 cas` |
 
 Voir `SECURITY_GUIDE.md` pour la procédure complète et la rotation des comptes.
 

@@ -429,9 +429,9 @@ Master Agent:
 
 ## 🔐 Sécurité
 
-**Clé API:** Stockée en `.env` (local, masquée, git-ignorée)
+**Clé API:** Stockée en `.Renviron` (local, masquée, git-ignorée)
 ```bash
-GOOGLE_API_KEY=VOTRE_CLE_GEMINI
+GEMINI_API_KEY=VOTRE_CLE_GEMINI
 ```
 
 **Protections:**

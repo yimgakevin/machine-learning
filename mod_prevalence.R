@@ -308,6 +308,9 @@ mod_prevalence_server <- function(id, df_f, vars_cat, vars_num) {
         if (!is.null(res$global)) res$global |> mutate(Strate = "Global", Groupe = "Tous"),
         res$strat
       )
+      if (exists("expert_mask_small", mode = "function")) {
+        all_data <- expert_mask_small(all_data)
+      }
       write.csv(all_data, file, row.names = FALSE)
     }
   )

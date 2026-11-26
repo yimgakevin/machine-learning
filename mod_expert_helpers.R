@@ -528,9 +528,9 @@ expert_design_args <- function(input, prefix) {
 }
 
 # ── 14. Règle de diffusion des petits effectifs ─────────────────────────────
-# Masque les prévalences/taux instables ou trop détaillés dans les exports :
-#   - strate de moins de `min_n` observations ;
-#   - strate comportant 1 à `min_cases - 1` cas (suppression complémentaire).
+# Masque les statistiques instables ou trop détaillées dans les exports :
+#   - strate de moins de `min_n` observations : statistiques dérivées masquées ;
+#   - strate comportant 1 à `min_cases - 1` cas : prévalences, IC et cas masqués.
 # Les tableaux sans colonne N ni Cas restent inchangés.
 expert_mask_small <- function(tbl, min_n = 30, min_cases = 5) {
   if (is.null(tbl)) return(tbl)
@@ -538,7 +538,11 @@ expert_mask_small <- function(tbl, min_n = 30, min_cases = 5) {
   if (nrow(d) == 0) return(d)
 
   n_col <- intersect(c("N", "N_total", "Effectif", "n"), names(d))
-  case_col <- intersect(c("Cas", "Deces", "Décès", "Décès observés", "cases"), names(d))
+  case_col <- intersect(
+    c("Cas", "N cas", "Cas positifs", "Positifs", "Atteints",
+      "Deces", "Décès", "Décès observés", "cases"),
+    names(d)
+  )
   n_col <- if (length(n_col) > 0) n_col[1] else NULL
   case_col <- if (length(case_col) > 0) case_col[1] else NULL
   if (is.null(n_col) && is.null(case_col)) return(d)
@@ -546,13 +550,19 @@ expert_mask_small <- function(tbl, min_n = 30, min_cases = 5) {
   n <- if (!is.null(n_col)) suppressWarnings(as.numeric(d[[n_col]])) else rep(NA_real_, nrow(d))
   cases <- if (!is.null(case_col)) suppressWarnings(as.numeric(d[[case_col]])) else rep(NA_real_, nrow(d))
 
-  value_cols <- grep("(Pr[ée]v|Taux|IC|Proportion|Moyenne|M[ée]diane|Incidence)",
-                     names(d), value = TRUE)
-  value_cols <- setdiff(value_cols, c(n_col, case_col))
+  # Statistiques dérivées : masquées dès que l'effectif est trop petit.
+  stat_cols <- grep(
+    "(Pr[ée]v|Taux|Proportion|Incidence|IC|Moyenne|M[ée]diane|cart|SD|%|Ratio|DEFF)",
+    names(d), value = TRUE
+  )
+  # Statistiques dépendant directement du nombre de cas : masquées aussi pour 1-4 cas.
+  prev_cols <- grep("(Pr[ée]v|Taux|Proportion|Incidence|IC|cart)",
+                    names(d), value = TRUE)
+  stat_cols <- setdiff(stat_cols, c(n_col, case_col))
+  prev_cols <- setdiff(prev_cols, c(n_col, case_col))
 
   mask_n <- !is.na(n) & n > 0 & n < min_n
   mask_cases <- !is.na(cases) & cases > 0 & cases < min_cases
-  mask <- mask_n | mask_cases
 
   d$Diffusion <- "Libre"
   both <- mask_n & mask_cases
@@ -560,10 +570,9 @@ expert_mask_small <- function(tbl, min_n = 30, min_cases = 5) {
   d$Diffusion[mask_cases & !mask_n] <- paste0("1-", min_cases - 1, " cas")
   d$Diffusion[both] <- paste0("n < ", min_n, " ; 1-", min_cases - 1, " cas")
 
-  if (any(mask)) {
-    for (v in value_cols) d[[v]][mask] <- NA
-    if (!is.null(case_col) && any(mask_cases)) d[[case_col]][mask_cases] <- NA
-  }
+  for (v in stat_cols) d[[v]][mask_n] <- NA
+  for (v in prev_cols) d[[v]][mask_cases] <- NA
+  if (!is.null(case_col) && any(mask_cases)) d[[case_col]][mask_cases] <- NA
   d
 }
 

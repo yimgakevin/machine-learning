@@ -3,12 +3,12 @@
 ## Avant de Coder Quoi Que Ce Soit
 
 ### 1️⃣ Vérifier Fichiers Créés
-- [x] `.env` existe (contient GOOGLE_API_KEY)
-- [x] `.gitignore` existe (contient .env)
+- [ ] `.Renviron` créé à partir de `.Renviron.example` (contient GEMINI_API_KEY)
+- [x] `.gitignore` existe (contient .Renviron)
 - [x] `config_api_secure_v2.R` existe
 - [x] `SECURITY_GUIDE.md` existe
 - [x] `API_SETUP_INSTRUCTIONS.md` existe
-- [x] `QUICK_START_API.md` existe
+- [x] `.Renviron.example` existe
 
 ### 2️⃣ Tester Configuration
 
@@ -17,7 +17,7 @@
 source("config_api_secure_v2.R")
 
 # Doit afficher: Configuration chargée ✅
-# Doit afficher: AIzaSy****[MASKED]
+# Doit afficher: ****[MASKED]
 print_config_safe()
 
 # Doit afficher: ✅ Connexion API fonctionnelle!
@@ -30,13 +30,13 @@ test_gemini_connection()
 # Terminal ou Git Bash
 cd "C:/Users/Yimga kevin/Documents/Shiny_entreprise"
 
-# Vérifier .env est ignoré
-git check-ignore -v .env
-# Output: .env  .gitignore  ✅
+# Vérifier .Renviron est ignoré
+git check-ignore -v .Renviron
+# Output: .Renviron  .gitignore  ✅
 
-# Vérifier .env n'est pas staged
+# Vérifier .Renviron n'est pas staged
 git status
-# Ne doit PAS lister .env
+# Ne doit PAS lister .Renviron
 ```
 
 ### 4️⃣ Tester Premier Appel API
@@ -61,7 +61,7 @@ response <- call_gemini_api(
 
 ```r
 # Console
-test <- "Erreur avec clé VOTRE_CLE_GEMINI"
+test <- paste0("Erreur avec clé AIzaSy", strrep("x", 30))
 masked <- mask_api_key(test)
 print(masked)
 # Doit afficher: "Erreur avec clé ****[GOOGLE_API_KEY_MASKED]****"
@@ -73,16 +73,16 @@ print(masked)
 
 ## ⚠️ Avant Chaque Push Git
 
-### 6️⃣ Vérifier Pas de .env
+### 6️⃣ Vérifier Pas de .Renviron
 
 ```bash
 # Terminal
 git status
-# ❌ NE DOIT PAS CONTENIR: .env
+# ❌ NE DOIT PAS CONTENIR: .Renviron
 
-# Si .env apparaît:
-git rm --cached .env
-git commit -m "Remove .env from tracking"
+# Si .Renviron apparaît:
+git rm --cached .Renviron
+git commit -m "Remove .Renviron from tracking"
 ```
 
 ### 7️⃣ Chercher Clés Exposées
@@ -114,18 +114,18 @@ call_gemini_api(prompt)           # ✅
 
 ## En Production (Shiny Déployée)
 
-### 9️⃣ Gérer .env en Déploiement
+### 9️⃣ Gérer .Renviron en Déploiement
 
 **Option 1: Posit Connect (Recommandé)**
 ```
-Ne pas inclure .env dans déploiement
+Ne pas inclure .Renviron dans déploiement
 Utiliser Posit Connect Secrets Manager
 Injector clé via variables d'environnement
 ```
 
 **Option 2: Docker/Conteneur**
 ```
-Ne pas inclure .env dans image
+Ne pas inclure .Renviron dans image
 Passer clé via ENV vars au runtime
 Documenter dans Dockerfile
 ```
@@ -134,14 +134,14 @@ Documenter dans Dockerfile
 ```
 Stocker clé dans AWS Secrets Manager
 Récupérer à runtime via SDK
-Ne pas faire circuler .env
+Ne pas faire circuler .Renviron
 ```
 
 ### 🔟 Audit Régulier (Mensuel)
 
 - [ ] Clé Google AI Studio toujours valide?
 - [ ] Aucun usage anormal (quotas OK)?
-- [ ] Aucun commit accidentel .env?
+- [ ] Aucun commit accidentel .Renviron?
 - [ ] Aucune clé exposée dans logs?
 - [ ] Toute l'équipe suit bonnes pratiques?
 
@@ -149,7 +149,7 @@ Ne pas faire circuler .env
 
 ## 🚨 En Cas de Problème
 
-### Si .env a été Commité
+### Si .Renviron a été Commité
 
 ```bash
 # 1. Révoquer immédiatement la clé
@@ -158,11 +158,11 @@ Ne pas faire circuler .env
 # 2. Générer nouvelle clé
 #    → Google AI Studio → Create new key
 
-# 3. Mettre à jour .env
-#    → GOOGLE_API_KEY=AIzaSy[NOUVELLE]
+# 3. Mettre à jour .Renviron
+#    → GEMINI_API_KEY=AIzaSy[NOUVELLE]
 
 # 4. Nettoyer Git history
-git filter-branch --tree-filter 'rm -f .env' -- --all
+git filter-branch --tree-filter 'rm -f .Renviron' -- --all
 git push origin --force --all
 
 # ⚠️ Danger: force push! Coordonner avec équipe
@@ -177,7 +177,7 @@ cat(.Rhistory)
 
 # 1. Révoquer clé dans Google AI Studio
 # 2. Générer nouvelle
-# 3. Mettre à jour .env
+# 3. Mettre à jour .Renviron
 # 4. Redémarrer R session
 
 rm(list=ls())  # Vider mémoire
@@ -191,19 +191,19 @@ source("config_api_secure_v2.R")
 ## 📋 Checklist Quotidienne
 
 Avant de coder:
-- [ ] .env existe et contient clé valide
+- [ ] .Renviron existe et contient clé valide
 - [ ] source("config_api_secure_v2.R") fonctionne
-- [ ] print_config_safe() affiche AIzaSy****[MASKED]
+- [ ] print_config_safe() affiche ****[MASKED]
 - [ ] test_gemini_connection() retourne ✅
 
 Avant de push:
-- [ ] git status ne liste PAS .env
+- [ ] git status ne liste PAS .Renviron
 - [ ] Aucune clé en dur dans code
 - [ ] Pas de print(GEMINI_CONFIG$api_key)
 - [ ] Tous les appels via gemini() ou call_gemini_api()
 
 Avant de déployer:
-- [ ] .env n'est PAS dans déploiement
+- [ ] .Renviron n'est PAS dans déploiement
 - [ ] Clé injectée via secrets manager
 - [ ] Logs ne contiennent PAS clé
 - [ ] Configuration Posit Connect prête

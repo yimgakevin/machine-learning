@@ -1,15 +1,19 @@
 # 🔐 Instructions Configuration API Gemini - Sécurisée
 
+> **Mise à jour novembre 2026.** Aucune clé n'est livrée avec le dépôt.
+> La clé se configure dans `.Renviron` (`GEMINI_API_KEY`) ou dans
+> l'environnement du serveur. Voir `SECURITY_GUIDE.md` et `.Renviron.example`.
+
 ## ✅ Configuration Complétée
 
-Votre clé API Google a été configurée de manière **SÉCURISÉE** avec 3 couches de protection:
+Votre clé API Google se configure de manière **SÉCURISÉE** avec 3 couches de protection:
 
 ### 1. Fichiers Créés
 
 | Fichier | Rôle | Traiter Comme |
 |---------|------|---------------|
-| `.env` | Stocke clé API en clair | 🔴 **SECRET** - Ne jamais partager |
-| `.gitignore` | Exclut `.env` de Git | 🟢 Public (peut être shared) |
+| `.Renviron` | Stocke clé API en clair | 🔴 **SECRET** - Ne jamais partager |
+| `.gitignore` | Exclut `.Renviron` de Git | 🟢 Public (peut être shared) |
 | `config_api_secure_v2.R` | Charge et protège config | 🟢 Public |
 | `SECURITY_GUIDE.md` | Guide complet sécurité | 🟢 Public |
 
@@ -41,16 +45,16 @@ response <- call_gemini_api(
 
 ## 🔒 Protections Activées
 
-### A. Fichier `.env` (Non Versionné)
+### A. Fichier `.Renviron` (Non Versionné)
 
-✅ Votre clé API est dans `.env`  
-✅ `.env` est dans `.gitignore`  
-✅ Impossible de commiter `.env` accidentellement  
+✅ Votre clé API est dans `.Renviron`  
+✅ `.Renviron` est dans `.gitignore`  
+✅ Impossible de commiter `.Renviron` accidentellement  
 
 ```bash
 # Vérifier (exécuter dans terminal Git Bash)
-git check-ignore -v .env
-# Output: .env  .gitignore  ✅
+git check-ignore -v .Renviron
+# Output: .Renviron  .gitignore  ✅
 ```
 
 ### B. Masquage Automatique
@@ -60,7 +64,7 @@ git check-ignore -v .env
 ✅ Clé JAMAIS visible dans les erreurs  
 
 ```r
-# ✅ Sécurisé - Affiche: AIzaSy****[MASKED]
+# ✅ Sécurisé - Affiche: ****[MASKED]
 print_config_safe()
 
 # ✅ Sécurisé - Clé masquée automatiquement
@@ -83,7 +87,7 @@ answer <- gemini("Explique l'épidémiologie en 50 mots")
 
 ## 📋 Checklist: Avant de Coder
 
-- [ ] `.env` créé avec votre clé ✅
+- [ ] `.Renviron` créé avec votre clé ✅
 - [ ] `.gitignore` créé ✅
 - [ ] `config_api_secure_v2.R` chargé ✅
 - [ ] Test de connexion réussi ✅
@@ -110,14 +114,14 @@ cat("Mon API key:", GEMINI_CONFIG$api_key)
 api_key <- "VOTRE_CLE_GEMINI"
 call_api(api_key)
 
-# ❌ Commiter .env
-git add .env
+# ❌ Commiter .Renviron
+git add .Renviron
 git commit -m "Add API key"
 
-# ❌ Partager .env
-# Email: .env → ❌
-# Slack: .env → ❌
-# GitHub: .env → ❌
+# ❌ Partager .Renviron
+# Email: .Renviron → ❌
+# Slack: .Renviron → ❌
+# GitHub: .Renviron → ❌
 # Personne ne doit avoir ce fichier
 
 # ❌ Logger la clé
@@ -137,7 +141,7 @@ response <- gemini(prompt)
 response <- call_gemini_api(prompt)
 
 # ✅ Afficher config de manière sécurisée
-print_config_safe()  # Affiche: AIzaSy****[MASKED]
+print_config_safe()  # Affiche: ****[MASKED]
 
 # ✅ Tester avant déploiement
 test_gemini_connection()
@@ -156,14 +160,14 @@ tryCatch({
 ## 🚨 En Cas de Problème
 
 ### Problem 1: "API Key missing"
-**Cause:** `.env` non trouvé ou clé manquante  
+**Cause:** `.Renviron` non trouvé ou clé manquante  
 **Solution:**
 ```bash
-# Vérifier .env existe dans répertoire courant
-ls -la | grep .env
+# Vérifier .Renviron existe dans répertoire courant
+ls -la | grep .Renviron
 
 # Vérifier contenu
-cat .env | grep GOOGLE_API_KEY
+cat .Renviron | grep GEMINI_API_KEY
 ```
 
 ### Problem 2: Erreur "Invalid API Key"
@@ -171,7 +175,7 @@ cat .env | grep GOOGLE_API_KEY
 **Solution:**
 1. Aller dans Google AI Studio: https://aistudio.google.com/
 2. Générer nouvelle clé
-3. Mettre à jour `.env` avec nouvelle clé
+3. Mettre à jour `.Renviron` avec nouvelle clé
 
 ### Problem 3: Rate Limit atteint
 **Cause:** Trop d'appels API (~60 req/min)  
@@ -213,13 +217,13 @@ call_gemini_api(
         ┌──────┴──────┐
         ▼             ▼
    ┌────────┐   ┌──────────────┐
-   │  .env  │   │ Gemini API   │
+   │  .Renviron  │   │ Gemini API   │
    │ (LOCAL)│   │ (Google)     │
    └────────┘   └──────────────┘
    🔴 SECRET    🌐 Internet
 
 FLUX SÉCURISÉ:
-1. .env → GEMINI_CONFIG (mémoire, clé masquée)
+1. .Renviron → GEMINI_CONFIG (mémoire, clé masquée)
 2. gemini(prompt) → call_gemini_api()
 3. Clé utilisée UNIQUEMENT pour requête HTTP
 4. Clé JAMAIS loggée/affichée
@@ -274,7 +278,7 @@ response <- call_gemini_api(
 ```bash
 # Terminal
 git status
-# Vérifier que .env n'est PAS dans les fichiers à commiter
+# Vérifier que .Renviron n'est PAS dans les fichiers à commiter
 
 git add .
 git commit -m "Feature: Implémentation module IA"
@@ -296,11 +300,11 @@ git push origin feature-branch
 
 ## ❓ FAQ
 
-**Q: Puis-je partager mon `.env` avec mon équipe?**  
+**Q: Puis-je partager mon `.Renviron` avec mon équipe?**  
 R: ❌ NON. Chaque personne doit avoir sa propre clé API générée dans Google AI Studio.
 
 **Q: Où stocker la clé en production?**  
-R: Utiliser des secrets management (Posit Connect Secrets, AWS Secrets Manager, etc.). PAS dans `.env`.
+R: Utiliser des secrets management (Posit Connect Secrets, AWS Secrets Manager, etc.). PAS dans `.Renviron`.
 
 **Q: Comment revisualize la clé?**  
 R: Vous ne pouvez pas. Google AI Studio ne réaffiche jamais une clé existante. Générer une nouvelle.
@@ -309,7 +313,7 @@ R: Vous ne pouvez pas. Google AI Studio ne réaffiche jamais une clé existante.
 R: ✅ Oui, techniquement. Mais recommandé d'avoir 1 clé = 1 environment pour sécurité.
 
 **Q: Qu'est-ce qui se passe si quelqu'un compromise la clé?**  
-R: 1) Allez dans Google AI Studio 2) Révoquez la clé 3) Générez une nouvelle 4) Mettez à jour `.env`
+R: 1) Allez dans Google AI Studio 2) Révoquez la clé 3) Générez une nouvelle 4) Mettez à jour `.Renviron`
 
 ---
 

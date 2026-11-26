@@ -440,10 +440,16 @@ mod_iycf_server <- function(id, df_f) {
       iycf_export_frames(iycf_res(), iycf_verdict_r(), iycf_strat_r(),
                          iycf_rounds_r(), iycf_child_r(), iycf_equity_r())
     })
+    iycf_frames_export_r <- reactive({
+      frames <- iycf_frames_r()
+      if (length(frames) == 0) return(frames)
+      if (!exists("expert_mask_small", mode = "function")) return(frames)
+      lapply(frames, expert_mask_small)
+    })
     output$iycf_dl_xlsx <- downloadHandler(
       filename = function() paste0("iycf_anje_", Sys.Date(), ".xlsx"),
       content = function(file) {
-        frames <- iycf_frames_r()
+        frames <- iycf_frames_export_r()
         if (length(frames) == 0) { writeLines("Aucun résultat IYCF", file); return() }
         wb <- openxlsx::createWorkbook()
         for (nm in names(frames)) {
@@ -455,7 +461,7 @@ mod_iycf_server <- function(id, df_f) {
     output$iycf_dl_csv_summary <- downloadHandler(
       filename = function() paste0("synthese_iycf_", Sys.Date(), ".csv"),
       content = function(file) {
-        frames <- iycf_frames_r()
+        frames <- iycf_frames_export_r()
         frames$Enfants <- NULL
         if (length(frames) == 0) { writeLines("Aucun résultat IYCF", file); return() }
         synth <- dplyr::bind_rows(lapply(names(frames), function(nm) {

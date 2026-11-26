@@ -262,6 +262,12 @@ generate_word_report <- function(d, map_cols_res,
       )
     })
 
+    # Règle de diffusion : masquer les prévalences des strates fragiles.
+    if (exists("expert_mask_small", mode = "function")) {
+      prev_rows <- expert_mask_small(prev_rows)
+      prev_rows$Sévérité[is.na(prev_rows$`Prév. (%)`)] <- NA
+    }
+
     ft_prev <- flextable(prev_rows) |>
       bg(bg = "#008DC9", part = "header") |>
       color(color = "white", part = "header") |>

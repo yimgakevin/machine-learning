@@ -1413,10 +1413,14 @@ mod_zscore_server <- function(id, df_f, raw_data, zs_data) {
         filename = function() paste0("zscores_oms_", Sys.Date(), ".xlsx"),
         content = function(file) {
           res <- zs_data(); req(res)
+          resume <- resume_zscores(res)
+          if (exists("expert_mask_small", mode = "function")) {
+            resume <- expert_mask_small(resume)
+          }
           writexl::write_xlsx(
             list(
               "Z-scores" = res,
-              "Résumé" = resume_zscores(res)
+              "Résumé" = resume
             ),
             file
           )

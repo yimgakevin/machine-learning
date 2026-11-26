@@ -74,6 +74,34 @@ test_that("expert_mask_small laisse les tableaux sans N/Cas inchangés", {
   expect_identical(expert_mask_small(d), d)
 })
 
+test_that("expert_mask_small gère N cas et les statistiques dérivées", {
+  d <- data.frame(
+    N = c(100, 20),
+    `N cas` = c(10, 8),
+    `Prévalence (%)` = c(10, 40),
+    Moyenne = c(5, 6),
+    `% manquants` = c(1, 2),
+    check.names = FALSE
+  )
+  m <- expert_mask_small(d)
+  expect_false(is.na(m$`Prévalence (%)`[1]))
+  expect_true(is.na(m$`Prévalence (%)`[2]))
+  expect_true(is.na(m$Moyenne[2]))
+  expect_true(is.na(m$`% manquants`[2]))
+  expect_equal(m$`N cas`[2], 8)
+  expect_equal(m$Diffusion[2], "n < 30")
+})
+
+test_that("expert_mask_small ne masque pas les moyennes pour 1-4 cas", {
+  d <- data.frame(N = 100, Cas = 3, `Prévalence (%)` = 3, Moyenne = 5,
+                  check.names = FALSE)
+  m <- expert_mask_small(d)
+  expect_true(is.na(m$`Prévalence (%)`))
+  expect_true(is.na(m$Cas))
+  expect_equal(m$Moyenne, 5)
+  expect_equal(m$Diffusion, "1-4 cas")
+})
+
 test_that("expert_quality produit une ligne par variable", {
   d <- data.frame(a = c(1, 2, NA), b = c("x", NA, NA), stringsAsFactors = FALSE)
   q <- expert_quality(d, c("a", "b"))

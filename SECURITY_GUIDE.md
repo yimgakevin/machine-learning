@@ -82,15 +82,18 @@ dont les mots de passe sont connus. Ce mode est **refusé** quand
 
 ## 3. Diffusion des résultats
 
-Les exports CSV/Excel appliquent par défaut une règle de petits effectifs :
+Les exports de résultats appliquent une règle de petits effectifs :
 
-- strate de moins de 30 observations → prévalences et IC remplacés par `NA` ;
-- strate comportant 1 à 4 cas → cas et prévalences masqués ;
+- strate de moins de 30 observations → statistiques dérivées (prévalences,
+  IC, moyennes, pourcentages) remplacées par `NA` ;
+- strate comportant 1 à 4 cas → cas, prévalences et IC masqués ;
 - une colonne `Diffusion` documente chaque ligne (`Libre`, `n < 30`,
   `1-4 cas`).
 
-La case « Masquer les petits effectifs » est activée par défaut dans chaque
-module expert. Elle ne doit être désactivée que pour un usage interne documenté.
+Couverture actuelle : exports des 10 modules experts (case activée par
+défaut), CSV « Prévalences SMART », exports IYCF, rapport Word et résumé
+Z-scores. La case « Masquer les petits effectifs » ne doit être désactivée que
+pour un usage interne documenté.
 
 ---
 
