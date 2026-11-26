@@ -9,7 +9,7 @@ Le code a été découpé en modules (novembre 2026). `app_v2_final.R` n'est plu
 qu'un orchestrateur de ~60 lignes ; tout le code est dans `app_parts/`.
 
 ```
-Shiny_entreprise/
+nutrianalyse/
 ├── app.R                  ← Point d'entrée (shiny::runApp)
 ├── app_v2_final.R         ← Orchestrateur : setup + UI + serveur
 ├── app_parts/

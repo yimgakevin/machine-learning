@@ -1,78 +1,9 @@
-# SECURITY: Variables d'environnement & Clés sensibles
-.env
-.env.local
-.env.*.local
-.Renviron
-.Renviron.*
-!.Renviron.example
-config/users.rds
-secrets/
-.secrets/
-*.key
-*.pem
-
-# SECURITY: Historique Git
-.git/history/
-.github/workflows/logs/
-
-# R Session files
-.Rhistory
-.Rapp.history
-.RData
-.Ruserdata
-*.rds
-.rs.settings/
-
-# RStudio files
-.Rproj.user/
-.Rproj.user
-*.Rproj
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Cache & Temp
-.cache/
-.gadm_cache/
-gadm_cache/
-scratch/
-*.cache
-temp/
-tmp/
-
-# renv — ne pas versionner la bibliothèque locale (55 Mo), mais garder renv.lock
-renv/library/
-renv/staging/
-renv/python/
-renv/sandbox/
-renv/local/
-
-# Sauvegardes manuelles du monolithe
-*.bak
-*.backup
-*.before_*
-*_backup_structure.R
-app_v2_final_fixed.R
-R_backup/
-_archive/
-
-# Artefacts divers
-Rplots.pdf
-nul
-~$*
-
-# System
+# Système
 .DS_Store
 Thumbs.db
 *.log
 
-# Documentation (optionnel - garder si vous voulez)
-# docs/
-# reports/
-
-# Data sensibles (si applicable)
-# data/raw/
-# data/personal/
+# Secrets de l'application (sécurité au niveau racine)
+nutrianalyse/.Renviron
+nutrianalyse/.env
+nutrianalyse/config/users.rds
