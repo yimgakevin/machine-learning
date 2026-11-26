@@ -1,27 +1,53 @@
-# Machine Learning
+# NutriAnalyse Pro
 
-This repository explores Machine Learning through projects, scripts, and tutorials.  
-It covers **data preprocessing**, **feature engineering**, **model training**, **evaluation**, and **deployment** using frameworks like **scikit-learn**, **TensorFlow**, and **PyTorch**, **EdgeR**, **DESEq2**, **Limma**.
-## Applications include :  
-**classification**, **regression**, **NLP**, and **deep learning**, **supervise learning**, **semi supervised learning**, **reinforcement learning**, **Unsupervised learning**, **Transcriptomics Analysis**, **Genomics analysis**, **Cancer genomics analysis**, **proteomics**
+Application Shiny d'analyse nutritionnelle et épidémiologique (enquêtes SMART,
+standards OMS/UNICEF) : import et contrôle qualité des données, indicateurs
+nutritionnels, cartographie, rapports et agents IA.
 
----
+## Démarrage rapide
 
-## 📂 Repository Structure
-- `data/` : raw and processed datasets use to do linear_regression_et_polinomiale (`.csv`, ...)
-- `doc/`: raw data use to do a notebook supervised_machine_learning(`.csv`)
-- `dataset` : data use to do supervise machine learning(apprentissage_supervise) (`.parquet` etc)
-- `scripts/` : Python scripts for preprocessing, training, and evaluation
-- `notebooks/` : Jupyter/Colab notebooks with tutorials and experiments
-- `models/` : trained models (pickle, h5, or pt formats
-- `mlruns/` : MLflow tracking for experiments
-- `service.py` : deployment script (API or service)
-- `settings.py` : project configuration
-
----
-
-## ⚙️ Installation
-Clone the repository:
 ```bash
-git clone https://github.com/your-username/machine-learning.git
-cd machine-learning
+Rscript tools/run_app.R
+```
+
+Ou ouvrir `app.R` dans RStudio.
+
+### Configuration locale
+
+1. Copier le modèle :
+
+   ```bash
+   cp .Renviron.example .Renviron
+   ```
+
+2. Renseigner éventuellement `GEMINI_API_KEY` dans `.Renviron`.
+   Sans clé, les agents IA sont désactivés mais l'application reste utilisable.
+
+3. Ne jamais committer `.Renviron` ni `config/users.rds`.
+
+## Documentation
+
+- [README_v2.md](README_v2.md) — guide complet de l'application
+- [ARCHITECTURE.md](ARCHITECTURE.md) — architecture, conventions, vérifications
+- [SECURITY_GUIDE.md](SECURITY_GUIDE.md) — sécurité, comptes, clés API
+- [INSTRUCTIONS_LANCEMENT.md](INSTRUCTIONS_LANCEMENT.md) — lancement détaillé
+
+## Vérifications
+
+```bash
+Rscript tools/run_tests.R
+Rscript tools/check_app.R
+Rscript tools/check_server.R
+Rscript tools/check_expert_modules.R
+```
+
+## Historique du dépôt
+
+Ce dépôt contient également l'ancien portfolio Machine Learning, conservé dans
+[README_MACHINE_LEARNING.md](README_MACHINE_LEARNING.md). Le dossier `data/` de
+ce portfolio a été renommé `ml_data/` pour éviter un conflit de casse avec le
+dossier `DATA/` de l'application.
+
+Les dossiers de l'ancienne application NutriAnalyse (`shiny_application/`,
+`NutritionalAnalysis/`) ont été retirés de la branche `main` ; leur historique
+reste consultable dans les commits antérieurs.

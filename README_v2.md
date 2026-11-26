@@ -18,7 +18,7 @@ Shiny_entreprise/
 │   ├── ui/                ← Coquille UI + 23 onglets
 │   └── server/            ← 32 fichiers serveur par domaine
 ├── tools/                 ← Scripts de vérification
-└── data/                  ← Fichiers de données
+└── DATA/                  ← Fichiers de données
 ```
 
 📖 Détail de l'architecture, conventions et plan de conversion en vrais modules

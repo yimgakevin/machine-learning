@@ -1,5 +1,0 @@
-
-NOTE: Dependency discovery took 16 seconds during snapshot.
-Consider using .renvignore to ignore files, or switching to explicit snapshots.
-See `?renv::dependencies` for more information.
-

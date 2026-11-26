@@ -19,6 +19,22 @@ renv/
 # Scripts de test et diagnostics
 scratch/
 
+# Portfolio Machine Learning historique (hors application NutriAnalyse)
+Certifications/
+Clustering/
+Introduction_to_deep_learning/
+NGS RNASq/
+PANCAN_RNASeq_Cancer/
+Semi_Supervised_Learning/
+Times series/
+cafa_protein_prediction/
+dataset/
+doc/
+heart-disease/
+malaria_shiny_app/
+ml_data/
+*.ipynb
+
 # Données et exports générés
 data/
 data_*/
