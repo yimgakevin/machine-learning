@@ -146,7 +146,7 @@ doivent **jamais** être chargés globalement. Le nom `app_parts/` évite ce pi�
 ```bash
 Rscript tools/check_app.R      # setup + construction de l'UI + serveur défini
 Rscript tools/check_server.R   # exécution de server() en session mock
-Rscript tools/run_tests.R      # suite testthat (55 tests)
+Rscript tools/run_tests.R      # suite testthat (54 tests)
 Rscript tools/launch_test.R    # démarrage HTTP réel (port 8765)
 ```
 
@@ -156,7 +156,7 @@ Résultats obtenus après le découpage :
 - `CHECK_OK` : 84 packages, UI construite, serveur défini ;
 - `CHECK_SERVER_OK` : les 20 fichiers serveur se sourcent et s'enregistrent ;
 - `HTTP_OK` : l'application répond sur `http://127.0.0.1:8765/` ;
-- testthat : 55 tests, 0 échec ;
+- testthat : 54 tests, 0 échec ;
 - `CHECK_EXPERT_MODULES_OK` : 10 modules experts, 0 échec.
 
 La CI GitHub Actions (`.github/workflows/ci.yml`) rejoue ces vérifications sur
@@ -170,6 +170,7 @@ dans les fichiers versionnés.
 | Clé Gemini | `GEMINI_API_KEY` dans `.Renviron` ou l'environnement serveur ; jamais dans le code |
 | Modèle local | `.Renviron.example` à copier en `.Renviron` (ignoré par git) |
 | Utilisateurs | `config/users.rds` (ignoré), géré par `tools/manage_users.R` |
+| Droits | identiques pour tous les comptes authentifiés, sans rôles |
 | Mots de passe | hachés `sodium` (argon2), jamais en clair |
 | Production | `NUTRI_ENV=production` refuse les comptes de démonstration |
 | Petits effectifs | exports experts (case activée), Prévalences SMART, IYCF, rapport Word et résumé Z-scores : `n < 30` ou `1-4 cas` |

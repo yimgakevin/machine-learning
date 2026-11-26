@@ -137,16 +137,13 @@
     shinyjs::show("main_app_content")
   })
 
-  # Infos utilisateur connecté
+  # Infos utilisateur connecté (tous les comptes ont les mêmes droits)
   current_user <- reactive({
     req(credentials()$user_auth)
     info <- USER_BASE[USER_BASE$user == credentials()$info$user, ]
-    role <- info$role[1]
     list(
-      user  = credentials()$info$user,
-      name  = info$name[1],
-      role  = role,
-      perms = ROLE_PERMISSIONS[[role]]
+      user = credentials()$info$user,
+      name = info$name[1]
     )
   })
 
@@ -155,22 +152,12 @@
     if (!isTRUE(credentials()$user_auth)) return(NULL)
     u <- current_user()
     tags$span(
-      tags$span(style = paste0("color:", u$perms$color, ";font-weight:600;"),
-                u$perms$label),
+      tags$span(style = "color:#008DC9;font-weight:600;", "👤 Utilisateur"),
       tags$span(style = "opacity:.7;margin-left:6px;", u$name),
       actionLink("logout_btn",
                  label     = tags$span(icon("sign-out-alt"), "Déconnexion"),
                  style     = "color:rgba(255,255,255,.7);margin-left:12px;font-size:11px;")
     )
-  })
-
-  # Garde — masquer le bouton IA si rôle lecteur
-  observe({
-    req(credentials()$user_auth)
-    u <- current_user()
-    if (!isTRUE(u$perms$can_ia)) {
-      shinyjs::hide("ai_float_btn")
-    }
   })
 
   # ── SOURCE : Intégration Shiny cartographie (local=TRUE = scope server) ──────

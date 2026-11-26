@@ -41,15 +41,17 @@ test_gemini_connection()     # test réel, facultatif
 
 ---
 
-## 2. Authentification et rôles
+## 2. Authentification
 
-Les utilisateurs ne sont pas définis dans le code source.
+Les utilisateurs ne sont pas définis dans le code source. Tous les comptes
+authentifiés disposent des mêmes droits : il n'y a plus de rôles ni de
+permissions différenciées.
 
-| Élément | Rôle | Sensibilité |
-|---------|------|-------------|
+| Élément | Fonction | Sensibilité |
+|---------|----------|-------------|
 | `config/users.rds` | Comptes et hashes `sodium` | 🔴 Secret, hors git |
 | `tools/manage_users.R` | Création / rotation des comptes | 🟢 Public |
-| `auth_config.R` | Chargement et permissions | 🟢 Public |
+| `auth_config.R` | Chargement des comptes | 🟢 Public |
 | `.Renviron` | Clé API et chemins | 🔴 Secret, hors git |
 | `.Renviron.example` | Modèle sans secret | 🟢 Public |
 
@@ -57,7 +59,7 @@ Les utilisateurs ne sont pas définis dans le code source.
 
 ```bash
 Rscript tools/manage_users.R list
-Rscript tools/manage_users.R add alice analyste "Alice D."
+Rscript tools/manage_users.R add alice "Alice D."
 Rscript tools/manage_users.R passwd alice
 Rscript tools/manage_users.R remove alice
 ```
@@ -71,12 +73,6 @@ saisi interactivement (12 caractères minimum).
 Sans `config/users.rds`, l'application utilise trois comptes de démonstration
 dont les mots de passe sont connus. Ce mode est **refusé** quand
 `NUTRI_ENV=production` : le démarrage échoue avec un message explicite.
-
-### Rôles
-
-- `admin` : tous les onglets, export, suppression, IA, cartographie.
-- `analyste` : analyse et export, pas de suppression.
-- `lecteur` : consultation seule, sans IA ni cartographie.
 
 ---
 
@@ -114,7 +110,7 @@ pour un usage interne documenté.
 | Fichier | Rôle |
 |---------|------|
 | `config_api_secure_v2.R` | Lecture de la clé, masquage, appels API |
-| `auth_config.R` | Utilisateurs, rôles, permissions |
+| `auth_config.R` | Chargement des comptes |
 | `tools/manage_users.R` | Gestion des comptes |
 | `.Renviron.example` | Modèle de configuration locale |
 | `SECURITY_CHECKLIST.md` | Checklist opérationnelle |

@@ -1,7 +1,7 @@
 # ============================================================================
 # .Renviron.example — modèle de configuration locale
 # ============================================================================
-# Copier ce fichier en .Renviron (ignoré par git) puis renseigner les valeurs.
+# Copier ce fichier en .Renviron (ignoré par git) puis renseigner la clé.
 # Ne JAMAIS committer .Renviron ni une clé API.
 #
 #   cp .Renviron.example .Renviron
@@ -13,10 +13,13 @@
 # mais le reste de l'application fonctionne normalement.
 GEMINI_API_KEY=
 
+# Les variables suivantes sont commentées pour laisser la priorité aux
+# variables d'environnement du serveur. Décommenter si nécessaire.
+
 # Environnement : development | production
 # En production, les comptes de démonstration sont refusés et
 # config/users.rds doit exister.
-NUTRI_ENV=development
+# NUTRI_ENV=production
 
 # Fichier utilisateurs haché, généré par tools/manage_users.R
-NUTRI_USERS_FILE=config/users.rds
+# NUTRI_USERS_FILE=config/users.rds
