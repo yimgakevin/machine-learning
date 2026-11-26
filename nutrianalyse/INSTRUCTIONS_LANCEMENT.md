@@ -1,176 +1,159 @@
-# 🚀 Instructions de Lancement - NutriAnalyse Pro v2 Niveau 3
+# Instructions de lancement — NutriAnalyse Pro v2
 
-**Date:** March 25, 2026  
-**Status:** 🟢 Production Ready
+Ce guide décrit le lancement de l'application depuis le dossier
+`nutrianalyse/`. Pour l'installation complète, la configuration et la
+méthodologie, voir [README.md](README.md).
 
 ---
 
-## ❌ NON - Ne pas utiliser ceci
+## 1. Prérequis
+
+- R **4.5.2** (version verrouillée par `renv.lock`) ;
+- RStudio ou Positron (recommandé), ou `Rscript` dans le `PATH` ;
+- Pandoc pour les exports Word/PDF/HTML (fourni par RStudio/Quarto) ;
+- Chrome ou Chromium pour l'export PDF via `pagedown::chrome_print()`.
+
+---
+
+## 2. Installation de l'environnement
+
+Depuis la racine du dépôt :
 
 ```bash
-# ❌ Ceci ne marche PAS dans la console R
-Rscript LAUNCH.R
-# Erreur: symbole inattendu
+cd nutrianalyse
+Rscript -e 'renv::restore()'
 ```
+
+Sous Windows, si `Rscript` n'est pas reconnu :
+
+```powershell
+& "C:\Program Files\R\R-4.5.2\bin\Rscript.exe" -e "renv::restore()"
+```
+
+La restauration installe les dépendances verrouillées dans `renv.lock`. Elle
+peut prendre plusieurs minutes au premier lancement.
 
 ---
 
-## ✅ OUI - Utilisez l'une de ces méthodes
+## 3. Configuration locale
 
-### **Méthode 1: RStudio (RECOMMANDÉE)** 🎯
+Créer le fichier `.Renviron` à partir du modèle :
 
-**Étape 1:** Ouvrez RStudio
-
-**Étape 2:** Ouvrez le fichier `LAUNCH_SIMPLE.R` ou `app_v2_final.R`
-
-**Étape 3:** Cliquez sur **"Run App"** (bouton vert en haut à droite)
-
-OU
-
-**Étape 3 (Alternative):** Exécutez dans la console R:
-```r
-setwd("C:/Users/Yimga kevin/Documents/Shiny_entreprise")
-source("LAUNCH_SIMPLE.R")
-```
-
----
-
-### **Méthode 2: Terminal PowerShell/CMD** 💻
-
-**Étape 1:** Ouvrez **PowerShell** ou **Command Prompt** (pas la console R)
-
-**Étape 2:** Naviguez au dossier:
 ```bash
-cd "C:\Users\Yimga kevin\Documents\Shiny_entreprise"
+cp .Renviron.example .Renviron
 ```
 
-**Étape 3:** Lancez l'app:
+Sous Windows PowerShell :
+
+```powershell
+Copy-Item .Renviron.example .Renviron
+```
+
+Renseigner si nécessaire :
+
+```text
+GEMINI_API_KEY=...
+# NUTRI_ENV=production
+# NUTRI_USERS_FILE=config/users.rds
+```
+
+Sans `GEMINI_API_KEY`, l'application démarre normalement ; seuls les agents IA
+sont désactivés. Ne jamais committer `.Renviron` ni `config/users.rds`.
+
+---
+
+## 4. Lancement
+
+### Méthode recommandée — terminal
+
+Depuis `nutrianalyse/` :
+
 ```bash
-Rscript LAUNCH_SIMPLE.R
+Rscript tools/run_app.R
 ```
 
----
+L'application démarre sur **http://127.0.0.1:8765** et ouvre le navigateur.
 
-### **Méthode 3: Console R directement** ✨
+Changer le port :
 
-**Étape 1:** Dans RStudio Console, exécutez:
+```bash
+NUTRI_PORT=3838 Rscript tools/run_app.R
+```
+
+Sous Windows PowerShell :
+
+```powershell
+$env:NUTRI_PORT = "3838"
+Rscript tools/run_app.R
+```
+
+### Méthode RStudio
+
+1. Ouvrir `nutrianalyse/Shiny_entreprise.Rproj` ou `nutrianalyse/app.R`.
+2. Vérifier que le répertoire de travail est `nutrianalyse/` (`getwd()`).
+3. Cliquer sur **Run App**.
+
+### Méthode console R
 
 ```r
-setwd("C:/Users/Yimga kevin/Documents/Shiny_entreprise")
-source("app_v2_final.R")
-shinyApp(ui, server)
+setwd("chemin/vers/nutrianalyse")
+shiny::runApp(".")
 ```
 
 ---
 
-## 📱 Une fois l'app lancée
+## 5. Arrêt
 
-Vous verrez:
-```
-╔═══════════════════════════════════╗
-║  Démarrage serveur Shiny...       ║
-║                                   ║
-║  📱 URL: http://localhost:3838    ║
-║                                   ║
-╚═══════════════════════════════════╝
-```
-
-**Ouvrez dans navigateur:** `http://localhost:3838`
+- RStudio : bouton **Stop** ou `Échap` ;
+- terminal : `Ctrl+C`.
 
 ---
 
-## 🛑 Pour arrêter l'app
+## 6. Vérifications rapides
 
-Appuyez sur:
-- **ESC** (dans RStudio)
-- **Ctrl+C** (dans Terminal)
-
----
-
-## ⚠️ Si vous avez encore des erreurs
-
-### Erreur: "plotly.yaml file not found"
-```r
-# Solution: Utiliser LAUNCH_SIMPLE.R au lieu de LAUNCH.R
-source("LAUNCH_SIMPLE.R")
+```bash
+Rscript tools/check_app.R
+Rscript tools/check_server.R
+Rscript tools/run_tests.R
+Rscript tools/check_expert_modules.R
+Rscript tools/launch_test.R
 ```
 
-### Erreur: "Working directory"
-```r
-# Vérifier le répertoire courant
-getwd()
-
-# Changer vers le bon répertoire
-setwd("C:/Users/Yimga kevin/Documents/Shiny_entreprise")
-```
-
-### Erreur: "File not found"
-```r
-# Vérifier que vous êtes dans le bon dossier
-list.files()
-# Vous devez voir: app_v2_final.R, LAUNCH_SIMPLE.R, etc.
-```
+Résultats attendus : `CHECK_OK`, `CHECK_SERVER_OK`, 54 tests sans échec,
+`CHECK_EXPERT_MODULES_OK` (10 modules), `HTTP_OK`.
 
 ---
 
-## 🎯 Checklist Avant Lancement
+## 7. Dépannage
 
-- [ ] RStudio est ouvert
-- [ ] Console R visible (pas en mode source)
-- [ ] Répertoire courant = `C:/Users/Yimga kevin/Documents/Shiny_entreprise`
-- [ ] Fichiers existent: `app_v2_final.R`, `LAUNCH_SIMPLE.R`, `.env`
-- [ ] Clé API configurée dans `.env`
-
----
-
-## 📊 Vérifier que tout est prêt
-
-Exécutez dans la console R:
-
-```r
-setwd("C:/Users/Yimga kevin/Documents/Shiny_entreprise")
-
-# Vérifier fichiers
-cat("✅ Fichiers existent:\n")
-cat("   app_v2_final.R:", file.exists("app_v2_final.R"), "\n")
-cat("   .env:", file.exists(".env"), "\n")
-cat("   config_api_secure_v2.R:", file.exists("config_api_secure_v2.R"), "\n")
-
-# Vérifier répertoire
-cat("\n✅ Répertoire courant:\n")
-cat("   ", getwd(), "\n")
-
-# Vérifier config API
-cat("\n✅ Configuration API:\n")
-source("config_api_secure_v2.R")
-```
-
-Si tout affiche ✅, vous êtes prêt à lancer!
+| Problème | Cause probable | Solution |
+|---|---|---|
+| `Rscript` introuvable | R absent du `PATH` | Utiliser le chemin complet ou RStudio |
+| `There is no package called …` | `renv` non restauré | `Rscript -e 'renv::restore()'` |
+| `renv::status()` non synchronisé | Bibliothèque incohérente | `renv::restore()` puis `renv::status()` |
+| Export PDF en échec | Chrome/Chromium absent | Installer Chrome ou exporter en Word/HTML |
+| Pandoc introuvable | `RSTUDIO_PANDOC` non défini | Installer RStudio/Quarto ou définir la variable |
+| Agents IA indisponibles | `GEMINI_API_KEY` vide/invalide | Renseigner `.Renviron` |
+| Démarrage refusé en production | `config/users.rds` absent | `Rscript tools/manage_users.R add …` |
+| Port 8765 occupé | Autre instance Shiny | `NUTRI_PORT=3838` |
 
 ---
 
-## 🚀 Lancement Final
+## 8. En production
 
-Exécutez:
-```r
-source("LAUNCH_SIMPLE.R")
-```
+1. Générer les comptes :
 
-L'app s'ouvrira automatiquement dans le navigateur!
+   ```bash
+   Rscript tools/manage_users.R add alice "Alice D."
+   ```
 
----
+2. Définir `NUTRI_ENV=production` et `GEMINI_API_KEY` dans l'environnement du
+   serveur (jamais dans le dépôt).
+3. Vérifier que les comptes de démonstration sont refusés.
+4. Servir l'application derrière HTTPS et restreindre les exports.
 
-## 📞 Support
-
-| Problème | Solution |
-|----------|----------|
-| Erreur "symbole inattendu" | Vous êtes dans console R, pas terminal. Utilisez `source()` au lieu de `Rscript` |
-| App ne démarre pas | Vérifier répertoire courant avec `getwd()` |
-| Port 3838 occupé | Fermer autres instances Shiny, ou spécifier autre port |
-| Clé API invalide | Vérifier `.env` contient clé valide |
+Voir [SECURITY_GUIDE.md](SECURITY_GUIDE.md) pour la procédure complète.
 
 ---
 
-**Status:** 🟢 Production Ready  
-**Version:** 1.0  
-**Date:** March 25, 2026
+*Dernière mise à jour : novembre 2026.*

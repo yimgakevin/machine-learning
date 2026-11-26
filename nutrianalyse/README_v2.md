@@ -1,6 +1,10 @@
 # NutriAnalyse Pro v2 — Application Shiny Universelle
 ## Niveau publication scientifique | Style OMS/UNICEF officiel
 
+> **Document historique.** Ce guide décrit l'état initial de la v2 (10 onglets,
+> `app_v2.R`). L'application actuelle expose 40 onglets et son architecture a
+> été modularisée. La référence à jour est [README.md](README.md).
+
 ---
 
 ## Structure du projet
