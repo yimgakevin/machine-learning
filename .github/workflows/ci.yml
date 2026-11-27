@@ -43,6 +43,9 @@ jobs:
       - name: Vérifier la synchronisation renv
         run: Rscript -e 'if (!isTRUE(renv::status()$synchronized)) quit(status = 1)'
 
+      - name: Vérifier les dépendances déclarées
+        run: Rscript tools/check_dependencies.R
+
       - name: Interdire les secrets dans les fichiers versionnés
         shell: bash
         working-directory: .

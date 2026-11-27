@@ -99,22 +99,6 @@
       "Maintainer": "Richard D. Morey <richarddmorey@gmail.com>",
       "Repository": "CRAN"
     },
-    "BiasedUrn": {
-      "Package": "BiasedUrn",
-      "Version": "2.0.12",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "Biased Urn Model Distributions",
-      "Date": "2024-06-16",
-      "Author": "Agner Fog",
-      "Maintainer": "Agner Fog <agner@agner.org>",
-      "Description": "Statistical models of biased sampling in the form of  univariate and multivariate noncentral hypergeometric distributions,  including Wallenius' noncentral hypergeometric distribution and Fisher's noncentral hypergeometric distribution.  See vignette(\"UrnTheory\") for explanation of these distributions. Literature:  Fog, A. (2008a). Calculation Methods for Wallenius' Noncentral Hypergeometric Distribution, Communications in Statistics, Simulation and Computation, 37(2) <doi:10.1080/03610910701790269>. Fog, A. (2008b). Sampling methods for Wallenius’ and Fisher’s noncentral hypergeometric distributions, Communications in Statistics—Simulation and Computation, 37(2) <doi:10.1080/03610910701790236>.",
-      "License": "GPL-3",
-      "Encoding": "UTF-8",
-      "URL": "https://www.agner.org/random/ https://www.r-project.org/",
-      "NeedsCompilation": "yes",
-      "Repository": "CRAN"
-    },
     "DBI": {
       "Package": "DBI",
       "Version": "1.3.0",
@@ -591,23 +575,6 @@
       "Author": "Kurt Hornik [aut, cre] (<https://orcid.org/0000-0003-4198-9911>)",
       "Maintainer": "Kurt Hornik <Kurt.Hornik@R-project.org>",
       "Repository": "https://packagemanager.posit.co/cran/latest"
-    },
-    "PropCIs": {
-      "Package": "PropCIs",
-      "Version": "0.3-0",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "Various Confidence Interval Methods for Proportions",
-      "Date": "2018-02-22",
-      "Author": "Ralph Scherer",
-      "Maintainer": "Ralph Scherer <shearer.ra76@gmail.com>",
-      "Description": "Computes two-sample confidence intervals for single, paired and independent proportions.",
-      "License": "GPL",
-      "URL": "https://github.com/shearer/PropCIs",
-      "BugReports": "https://github.com/shearer/PropCIs/issues",
-      "LazyLoad": "yes",
-      "NeedsCompilation": "no",
-      "Repository": "CRAN"
     },
     "R.methodsS3": {
       "Package": "R.methodsS3",
@@ -4144,70 +4111,6 @@
       "RoxygenNote": "7.1.1",
       "VignetteBuilder": "knitr",
       "Repository": "https://packagemanager.posit.co/cran/latest"
-    },
-    "epiR": {
-      "Package": "epiR",
-      "Version": "2.0.91",
-      "Source": "Repository",
-      "Date": "2026-02-23",
-      "Title": "Tools for the Analysis of Epidemiological Data",
-      "Authors@R": "c(person(given = \"Mark\", family = \"Stevenson\", role = c(\"aut\", \"cre\"), email = \"mark.stevenson1@unimelb.edu.au\", comment = c(ORCID = \"0000-0003-1890-9784\")), person(given = \"Evan\", family = \"Sergeant\", role = \"aut\", email = \"evansergeant@gmail.com\"), person(given = \"Cord\", family = \"Heuer\", role = \"ctb\"), person(given = \"Telmo\", family = \"Nunes\", role = \"ctb\"), person(given = \"Cord\", family = \"Heuer\", role = \"ctb\"), person(given = \"Jonathon\", family = \"Marshall\", role = \"ctb\"), person(given = \"Javier\", family = \"Sanchez\", role = \"ctb\"), person(given = \"Ron\", family = \"Thornton\", role = \"ctb\"), person(given = \"Jeno\", family = \"Reiczigel\", role = \"ctb\"), person(given = \"Jim\", family = \"Robison-Cox\", role = \"ctb\"), person(given = \"Paola\", family = \"Sebastiani\", role = \"ctb\"), person(given = \"Peter\", family = \"Solymos\", role = \"ctb\"), person(given = \"Kazuki\", family = \"Yoshida\", role = \"ctb\"), person(given = \"Geoff\", family = \"Jones\", role = \"ctb\"), person(given = \"Sarah\", family = \"Pirikahu\", role = \"ctb\"), person(given = \"Simon\", family = \"Firestone\", role = \"ctb\"), person(given = \"Ryan\", family = \"Kyle\", role = \"ctb\"), person(given = \"Johann\", family = \"Popp\", role = \"ctb\"), person(given = \"Mathew\", family = \"Jay\", role = \"ctb\"), person(given = \"Allison\", family = \"Cheung\", role = \"ctb\"), person(given = \"Nagendra\", family = \"Singanallur\", role = \"ctb\"), person(given = \"Aniko\", family = \"Szabo\", role = \"ctb\"), person(given = \"Ahmad\", family = \"Rabiee\", role = \"ctb\"))",
-      "Maintainer": "Mark Stevenson <mark.stevenson1@unimelb.edu.au>",
-      "Description": "Tools for the analysis of epidemiological and surveillance data. Contains functions for directly and indirectly adjusting measures of disease frequency, quantifying measures of association on the basis of single or multiple strata of count data presented in a contingency table, computation of confidence intervals around incidence risk and incidence rate estimates and sample size calculations for cross-sectional, case-control and cohort studies. Surveillance tools include functions to calculate an appropriate sample size for 1- and 2-stage representative freedom surveys, functions to estimate surveillance system sensitivity and functions to support scenario tree modelling analyses.",
-      "Depends": [
-        "R (>= 3.0.0)",
-        "survival"
-      ],
-      "Imports": [
-        "BiasedUrn",
-        "pander",
-        "methods",
-        "sf",
-        "lubridate",
-        "zoo",
-        "flextable",
-        "stats",
-        "officer"
-      ],
-      "Suggests": [
-        "MASS (>= 3.1-20)",
-        "dplyr",
-        "foreign",
-        "ggplot2",
-        "knitr",
-        "rmarkdown",
-        "bookdown",
-        "plyr",
-        "RColorBrewer",
-        "scales",
-        "sp",
-        "spData (>= 2.3.0)",
-        "spatstat",
-        "tidyr"
-      ],
-      "VignetteBuilder": "knitr",
-      "License": "GPL (>= 2)",
-      "RoxygenNote": "7.1.0",
-      "NeedsCompilation": "no",
-      "Author": "Mark Stevenson [aut, cre] (ORCID: <https://orcid.org/0000-0003-1890-9784>), Evan Sergeant [aut], Cord Heuer [ctb], Telmo Nunes [ctb], Cord Heuer [ctb], Jonathon Marshall [ctb], Javier Sanchez [ctb], Ron Thornton [ctb], Jeno Reiczigel [ctb], Jim Robison-Cox [ctb], Paola Sebastiani [ctb], Peter Solymos [ctb], Kazuki Yoshida [ctb], Geoff Jones [ctb], Sarah Pirikahu [ctb], Simon Firestone [ctb], Ryan Kyle [ctb], Johann Popp [ctb], Mathew Jay [ctb], Allison Cheung [ctb], Nagendra Singanallur [ctb], Aniko Szabo [ctb], Ahmad Rabiee [ctb]",
-      "Repository": "CRAN"
-    },
-    "epitools": {
-      "Package": "epitools",
-      "Version": "0.5-10.1",
-      "Source": "Repository",
-      "Date": "2017-10-26",
-      "Title": "Epidemiology Tools",
-      "Authors@R": "c(person(\"Tomas J.\", \"Aragon\", role = \"aut\", email = \"aragon@berkeley.edu\"), person(\"Michael P.\", \"Fay\", role = \"ctb\", email = \"mfay@niaid.nih.gov\"), person(\"Daniel\", \"Wollschlaeger\", role = \"ctb\", email = \"dwoll@psychologie.uni-kiel.de\"), person(\"Adam\", \"Omidpanah\", role = c(\"cre\", \"ctb\"), email = \"adam.omidpanah@wsu.edu\"))",
-      "Depends": [
-        "R (>= 2.10)"
-      ],
-      "Description": "Tools for training and practicing epidemiologists including methods for two-way and multi-way contingency tables.",
-      "License": "GPL (>= 2)",
-      "Author": "Tomas J. Aragon [aut], Michael P. Fay [ctb], Daniel Wollschlaeger [ctb], Adam Omidpanah [cre, ctb]",
-      "Maintainer": "Adam Omidpanah <adam.omidpanah@wsu.edu>",
-      "Repository": "CRAN",
-      "NeedsCompilation": "no"
     },
     "estimability": {
       "Package": "estimability",
@@ -8670,69 +8573,6 @@
       "Description": "It provides functions and examples for maximum likelihood estimation for generalized linear mixed models and Gibbs sampler for multivariate linear mixed models with incomplete data, as described in Schafer JL (1997) \"Imputation of missing covariates under a multivariate linear mixed model\". Technical report 97-04, Dept. of Statistics, The Pennsylvania State University.",
       "License": "GPL-3",
       "NeedsCompilation": "yes",
-      "Repository": "CRAN"
-    },
-    "pander": {
-      "Package": "pander",
-      "Version": "0.6.6",
-      "Source": "Repository",
-      "Authors@R": "c( person(\"Gergely\", \"Daróczi\", , \"daroczig@rapporter.net\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0003-3149-8537\")), person(\"Roman\", \"Tsegelskyi\", , \"roman.tsegelskyi@gmail.com\", role = c(\"aut\")))",
-      "Title": "An R 'Pandoc' Writer",
-      "Type": "Package",
-      "Encoding": "UTF-8",
-      "Description": "Contains some functions catching all messages, 'stdout' and other useful information while evaluating R code and other helpers to return user specified text elements (like: header, paragraph, table, image, lists etc.) in 'pandoc' markdown or several type of R objects similarly automatically transformed to markdown format. Also capable of exporting/converting (the resulting) complex 'pandoc' documents to e.g. HTML, 'PDF', 'docx' or 'odt'. This latter reporting feature is supported in brew syntax or with a custom reference class with a smarty caching 'backend'.",
-      "Date": "2025-03-01",
-      "URL": "https://rapporter.github.io/pander/",
-      "BugReports": "https://github.com/rapporter/pander/issues",
-      "License": "AGPL-3 | file LICENSE",
-      "Depends": [
-        "R (>= 2.15.0)"
-      ],
-      "Imports": [
-        "grDevices",
-        "graphics",
-        "methods",
-        "utils",
-        "stats",
-        "digest",
-        "tools",
-        "Rcpp"
-      ],
-      "Suggests": [
-        "grid",
-        "lattice",
-        "ggplot2 (>= 0.9.2)",
-        "sylly",
-        "sylly.en",
-        "logger",
-        "survival",
-        "microbenchmark",
-        "zoo",
-        "nlme",
-        "descr",
-        "MASS",
-        "knitr",
-        "rmarkdown",
-        "tables",
-        "reshape",
-        "memisc",
-        "Epi",
-        "randomForest",
-        "tseries",
-        "gtable",
-        "rms",
-        "forecast",
-        "data.table"
-      ],
-      "SystemRequirements": "pandoc (https://johnmacfarlane.net/pandoc) for exporting markdown files to other formats.",
-      "LinkingTo": [
-        "Rcpp"
-      ],
-      "VignetteBuilder": "knitr",
-      "RoxygenNote": "7.3.2",
-      "NeedsCompilation": "yes",
-      "Author": "Gergely Daróczi [aut, cre] (<https://orcid.org/0000-0003-3149-8537>), Roman Tsegelskyi [aut]",
-      "Maintainer": "Gergely Daróczi <daroczig@rapporter.net>",
       "Repository": "CRAN"
     },
     "parallelly": {

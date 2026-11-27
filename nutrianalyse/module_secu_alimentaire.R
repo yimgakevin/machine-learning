@@ -324,6 +324,7 @@ calc_hhs <- function(d, col_no_food = NULL, col_sleep_hungry = NULL,
 
 classify_fcs_precalc <- function(fcs_scores) {
   fcs_class <- case_when(
+    is.na(fcs_scores) ~ NA_character_,
     fcs_scores < FCS_THRESHOLDS$pauvre ~ "Pauvre",
     fcs_scores <= FCS_THRESHOLDS$limite ~ "Limite",
     TRUE ~ "Acceptable"

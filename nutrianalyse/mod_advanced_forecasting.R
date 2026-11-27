@@ -1,5 +1,5 @@
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║  mod_advanced_forecasting.R — Forecasting ARIMA/Prophet                    ║
+# ║  mod_advanced_forecasting.R — Forecasting ARIMA/ETS                        ║
 # ║  Prévisions sur séries temporelles avec intervalles de confiance 95%       ║
 # ║  Variables et dates dynamiques selon les données importées                 ║
 # ║  Niveau: Doctoral Research Grade                                           ║

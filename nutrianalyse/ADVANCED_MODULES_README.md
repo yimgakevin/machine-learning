@@ -41,7 +41,7 @@ Four professional-grade modules adding **doctoral-level research capabilities** 
 1. Select indicator to forecast
 2. Choose temporal grouping (monthly/quarterly)
 3. Set prediction horizon (6-24 months)
-4. Select method (ARIMA/Prophet/Ensemble)
+4. Select method (ARIMA/ETS)
 5. View diagnostics and confidence bands
 
 ---
@@ -324,7 +324,7 @@ If publishing results using these modules:
 ## Future Enhancements
 
 ### Forecasting
-- [ ] Prophet integration (requires fable package)
+- [ ] Intégration Prophet (non implémentée ; ARIMA/ETS disponibles)
 - [ ] ARIMAX with external regressors
 - [ ] Seasonal decomposition visualization
 

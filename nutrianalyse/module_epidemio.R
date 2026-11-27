@@ -3,10 +3,6 @@
 # ║  RR · OR brut/ajusté · PAF · IC exacts · Tendances · 2×2 complet          ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 
-tryCatch(library(epitools), error = function(e) message("⚠️ epitools non disponible — install.packages('epitools')"))
-library(epiR)
-library(PropCIs)
-
 # ── Tableau 2×2 complet ───────────────────────────────────────────────────────
 analyse_2x2 <- function(exposed, outcome, conf_level = 0.95) {
   tbl <- table(exposed, outcome)

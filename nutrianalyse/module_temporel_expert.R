@@ -177,8 +177,7 @@ run_did_analysis <- function(d, round_col, r1, r2, outcome, group_col,
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 3. TREND ANALYSIS MULTI-ROUNDS
-#    Cochran-Armitage (proportions), Jonckheere-Terpstra (continu),
-#    Mann-Kendall + Sen's slope
+#    Cochran-Armitage (proportions), Jonckheere-Terpstra (continu)
 # ══════════════════════════════════════════════════════════════════════════════
 
 #' Multi-round trend analysis for proportions and continuous indicators

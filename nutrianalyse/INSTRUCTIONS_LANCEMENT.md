@@ -119,7 +119,7 @@ Rscript tools/check_expert_modules.R
 Rscript tools/launch_test.R
 ```
 
-Résultats attendus : `CHECK_OK`, `CHECK_SERVER_OK`, 54 tests sans échec,
+Résultats attendus : `CHECK_OK`, `CHECK_SERVER_OK`, 68 tests sans échec,
 `CHECK_EXPERT_MODULES_OK` (10 modules), `HTTP_OK`.
 
 ---

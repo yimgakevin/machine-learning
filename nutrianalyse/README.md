@@ -381,7 +381,7 @@ nutrianalyse/
 ├── mod_*.R                    # modules Shiny namespacés (UI + serveur)
 ├── module_*.R                 # moteurs métier et helpers experts
 ├── tools/                     # vérifications, tests, benchmarks, gestion des comptes
-├── tests/testthat/            # 54 tests unitaires et d'intégration
+├── tests/testthat/            # 68 tests unitaires et d'intégration
 ├── DATA/                      # jeux de démonstration synthétiques
 ├── renv.lock                  # environnement R verrouillé (R 4.5.2)
 ├── DESCRIPTION                # métadonnées du projet
@@ -488,7 +488,7 @@ isole les dépendances optionnelles (`DBI`, `RSQLite`, `RPostgres`, `RMariaDB`,
 
 ### 5.6 Performance
 
-Mesures locales documentées (R 4.5.2, 84 packages chargés ; dépend du matériel) :
+Mesures locales documentées (R 4.5.2, 78 packages chargés ; dépend du matériel) :
 
 | Mesure | Temps |
 |---|---|
@@ -710,9 +710,10 @@ mapping, les contrôles qualité et les analyses, sans exposer de données réel
 Depuis `nutrianalyse/` :
 
 ```bash
+Rscript tools/check_dependencies.R    # packages utilisés vs DESCRIPTION
 Rscript tools/check_app.R             # setup + UI + définition de server()
 Rscript tools/check_server.R          # exécution de server() en session mock
-Rscript tools/run_tests.R             # suite testthat (54 tests)
+Rscript tools/run_tests.R             # suite testthat (68 tests)
 Rscript tools/check_expert_modules.R  # 10 modules experts en isolation
 Rscript tools/launch_test.R           # démarrage HTTP réel sur le port 8765
 Rscript tools/benchmark_expert.R      # micro-benchmarks des helpers experts
@@ -720,9 +721,10 @@ Rscript tools/benchmark_expert.R      # micro-benchmarks des helpers experts
 
 Résultats attendus :
 
-- `CHECK_OK` : 84 packages chargés, UI construite, `server()` défini ;
+- `CHECK_DEPS_OK` : tous les packages utilisés sont déclarés dans `DESCRIPTION` ;
+- `CHECK_OK` : 78 packages chargés, UI construite, `server()` défini ;
 - `CHECK_SERVER_OK` : les 20 fichiers serveur se sourcent et s'enregistrent ;
-- `testthat` : **54 tests, 0 échec** ;
+- `testthat` : **68 tests, 0 échec** ;
 - `CHECK_EXPERT_MODULES_OK` : **10 modules, 0 échec** ;
 - `HTTP_OK` : l'application répond sur `http://127.0.0.1:8765/`.
 
@@ -732,7 +734,7 @@ clust, qualite, prevalence, secu_alim, OMS, SENS, etc.).
 
 ### 9.2 Suite `testthat`
 
-Les 54 tests couvrent notamment :
+Les 68 tests couvrent notamment :
 
 | Fichier | Domaine |
 |---|---|
@@ -748,9 +750,13 @@ Les 54 tests couvrent notamment :
 | `test-predictif.R` | Modélisation prédictive |
 | `test-qualite_smart.R` | Flags et plausibilité SMART |
 | `test-rapport.R` | Génération de rapports |
-| `test-secu_alimentaire.R` | FCS, HHS, rCSI, HDDS |
+| `test-secu_alimentaire.R` | FCS, HHS, rCSI, HDDS (structure) |
+| `test-secu_alimentaire_numeric.R` | Valeurs de référence FCS, HDDS, HHS |
+| `test-iycf.R` | Indicateurs IYCF/ANJE et bornes d'âge |
+| `test-prevalence.R` | Prévalences pondérées et IC Wilson |
 | `test-survie.R` | Kaplan-Meier, Cox, log-rank |
 | `test-utils.R` | Utilitaires et détection de colonnes |
+| `test-zscore_oms.R` | Formule LMS, ajustement SD23, interpolation et flags OMS |
 
 ### 9.3 Intégration continue
 
@@ -763,6 +769,7 @@ Le workflow se trouve à la racine du monorepo :
 | R | 4.5.2 via `r-lib/actions/setup-r` |
 | Environnement | `renv` restauré depuis `nutrianalyse/renv.lock` |
 | Synchronisation | `renv::status()` doit être `TRUE` |
+| Dépendances | `check_dependencies.R` : tout package utilisé doit être déclaré |
 | Sécurité | scan des clés `AIzaSy…` dans les fichiers versionnés |
 | Application | `check_app.R`, `check_server.R` |
 | Tests | `run_tests.R`, `check_expert_modules.R` |

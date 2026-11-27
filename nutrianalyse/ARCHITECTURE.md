@@ -81,7 +81,7 @@ lignes et exécute les nouveaux onglets (IC, strates, qualité, exports).
 
 ## Performances
 
-Mesures locales (R 4.5.2, 84 packages) :
+Mesures locales (R 4.5.2, 78 packages) :
 
 | Mesure | Temps |
 |---|---|
@@ -146,17 +146,17 @@ doivent **jamais** être chargés globalement. Le nom `app_parts/` évite ce pi�
 ```bash
 Rscript tools/check_app.R      # setup + construction de l'UI + serveur défini
 Rscript tools/check_server.R   # exécution de server() en session mock
-Rscript tools/run_tests.R      # suite testthat (54 tests)
+Rscript tools/run_tests.R      # suite testthat (68 tests)
 Rscript tools/launch_test.R    # démarrage HTTP réel (port 8765)
 ```
 
 Résultats obtenus après le découpage :
 
 - `PARSE OK` sur l'ensemble des fichiers R de l'application ;
-- `CHECK_OK` : 84 packages, UI construite, serveur défini ;
+- `CHECK_OK` : 78 packages, UI construite, serveur défini ;
 - `CHECK_SERVER_OK` : les 20 fichiers serveur se sourcent et s'enregistrent ;
 - `HTTP_OK` : l'application répond sur `http://127.0.0.1:8765/` ;
-- testthat : 54 tests, 0 échec ;
+- testthat : 68 tests, 0 échec ;
 - `CHECK_EXPERT_MODULES_OK` : 10 modules experts, 0 échec.
 
 La CI GitHub Actions (`.github/workflows/ci.yml`) rejoue ces vérifications sur
